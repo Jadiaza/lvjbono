@@ -1,0 +1,12 @@
+{
+  "name": "¡Qué Locura de Rifa!",
+  "short_name": "Qué Locura",
+  "description": "Rifa virtual 00 al 99. Compra tu boleta desde donde estés.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1a0d2e",
+  "theme_color": "#f5c518",
+  "icons": [{ "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }]
+}
