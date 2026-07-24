@@ -20,5 +20,6 @@ export function formatDate(iso: string | null | undefined): string {
 
 export function buildWhatsAppUrl(phone: string, message: string): string {
   const clean = phone.replace(/[^\d]/g, "");
-  return `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
+  const international = clean.length === 10 && clean.startsWith("3") ? `57${clean}` : clean;
+  return `https://wa.me/${international}?text=${encodeURIComponent(message)}`;
 }

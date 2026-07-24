@@ -18,6 +18,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useSelectedRaffle } from "@/hooks/use-selected-raffle";
+import { AdminSalesTools } from "@/components/admin-sales-tools";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminTickets,
@@ -206,6 +207,8 @@ function AdminTickets() {
         <Stat label="Por cobrar" value={formatCOP(stats.pendientes)} tone="warning" />
         <Stat label="Ingresos" value={formatCOP(stats.ingresos)} tone="gold" />
       </div>
+
+      <AdminSalesTools raffle={data.raffle} tickets={tickets} />
 
       <div className="flex flex-wrap gap-2 items-center">
         <div className="relative flex-1 min-w-[200px]">
