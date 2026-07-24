@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResultadosRouteImport } from './routes/resultados'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -16,7 +17,15 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as BoletaCodigoRouteImport } from './routes/boleta.$codigo'
 import { Route as AdminSorteoRouteImport } from './routes/admin.sorteo'
 import { Route as AdminRifaRouteImport } from './routes/admin.rifa'
+import { Route as AdminRecordatoriosRouteImport } from './routes/admin.recordatorios'
+import { Route as AdminPadrinosRouteImport } from './routes/admin.padrinos'
+import { Route as AdminAlquileresRouteImport } from './routes/admin.alquileres'
 
+const ResultadosRoute = ResultadosRouteImport.update({
+  id: '/resultados',
+  path: '/resultados',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -52,11 +61,30 @@ const AdminRifaRoute = AdminRifaRouteImport.update({
   path: '/rifa',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminRecordatoriosRoute = AdminRecordatoriosRouteImport.update({
+  id: '/recordatorios',
+  path: '/recordatorios',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPadrinosRoute = AdminPadrinosRouteImport.update({
+  id: '/padrinos',
+  path: '/padrinos',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAlquileresRoute = AdminAlquileresRouteImport.update({
+  id: '/alquileres',
+  path: '/alquileres',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
+  '/resultados': typeof ResultadosRoute
+  '/admin/alquileres': typeof AdminAlquileresRoute
+  '/admin/padrinos': typeof AdminPadrinosRoute
+  '/admin/recordatorios': typeof AdminRecordatoriosRoute
   '/admin/rifa': typeof AdminRifaRoute
   '/admin/sorteo': typeof AdminSorteoRoute
   '/boleta/$codigo': typeof BoletaCodigoRoute
@@ -65,6 +93,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/resultados': typeof ResultadosRoute
+  '/admin/alquileres': typeof AdminAlquileresRoute
+  '/admin/padrinos': typeof AdminPadrinosRoute
+  '/admin/recordatorios': typeof AdminRecordatoriosRoute
   '/admin/rifa': typeof AdminRifaRoute
   '/admin/sorteo': typeof AdminSorteoRoute
   '/boleta/$codigo': typeof BoletaCodigoRoute
@@ -75,6 +107,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
+  '/resultados': typeof ResultadosRoute
+  '/admin/alquileres': typeof AdminAlquileresRoute
+  '/admin/padrinos': typeof AdminPadrinosRoute
+  '/admin/recordatorios': typeof AdminRecordatoriosRoute
   '/admin/rifa': typeof AdminRifaRoute
   '/admin/sorteo': typeof AdminSorteoRoute
   '/boleta/$codigo': typeof BoletaCodigoRoute
@@ -86,6 +122,10 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/resultados'
+    | '/admin/alquileres'
+    | '/admin/padrinos'
+    | '/admin/recordatorios'
     | '/admin/rifa'
     | '/admin/sorteo'
     | '/boleta/$codigo'
@@ -94,6 +134,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/resultados'
+    | '/admin/alquileres'
+    | '/admin/padrinos'
+    | '/admin/recordatorios'
     | '/admin/rifa'
     | '/admin/sorteo'
     | '/boleta/$codigo'
@@ -103,6 +147,10 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/resultados'
+    | '/admin/alquileres'
+    | '/admin/padrinos'
+    | '/admin/recordatorios'
     | '/admin/rifa'
     | '/admin/sorteo'
     | '/boleta/$codigo'
@@ -113,11 +161,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ResultadosRoute: typeof ResultadosRoute
   BoletaCodigoRoute: typeof BoletaCodigoRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/resultados': {
+      id: '/resultados'
+      path: '/resultados'
+      fullPath: '/resultados'
+      preLoaderRoute: typeof ResultadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -167,16 +223,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRifaRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/recordatorios': {
+      id: '/admin/recordatorios'
+      path: '/recordatorios'
+      fullPath: '/admin/recordatorios'
+      preLoaderRoute: typeof AdminRecordatoriosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/padrinos': {
+      id: '/admin/padrinos'
+      path: '/padrinos'
+      fullPath: '/admin/padrinos'
+      preLoaderRoute: typeof AdminPadrinosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/alquileres': {
+      id: '/admin/alquileres'
+      path: '/alquileres'
+      fullPath: '/admin/alquileres'
+      preLoaderRoute: typeof AdminAlquileresRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminAlquileresRoute: typeof AdminAlquileresRoute
+  AdminPadrinosRoute: typeof AdminPadrinosRoute
+  AdminRecordatoriosRoute: typeof AdminRecordatoriosRoute
   AdminRifaRoute: typeof AdminRifaRoute
   AdminSorteoRoute: typeof AdminSorteoRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAlquileresRoute: AdminAlquileresRoute,
+  AdminPadrinosRoute: AdminPadrinosRoute,
+  AdminRecordatoriosRoute: AdminRecordatoriosRoute,
   AdminRifaRoute: AdminRifaRoute,
   AdminSorteoRoute: AdminSorteoRoute,
   AdminIndexRoute: AdminIndexRoute,
@@ -188,6 +271,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
+  ResultadosRoute: ResultadosRoute,
   BoletaCodigoRoute: BoletaCodigoRoute,
 }
 export const routeTree = rootRouteImport

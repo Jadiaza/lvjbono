@@ -73,6 +73,9 @@
   --brand: oklch(0.68 0.14 165);
   --brand-foreground: oklch(1 0 0);
   --brand-soft: oklch(0.95 0.04 165);
+  --brand-gradient-from: #43b78f;
+  --brand-gradient-to: #078c67;
+  --skin-page: linear-gradient(180deg, #f8fcfa, #edf8f4);
   --chart-1: oklch(0.68 0.14 165);
   --chart-2: oklch(0.55 0.15 220);
   --chart-3: oklch(0.75 0.15 80);
@@ -112,7 +115,7 @@
 }
 
 @utility bg-gold-gradient {
-  background-image: linear-gradient(135deg, oklch(0.72 0.14 165), oklch(0.62 0.15 170));
+  background-image: linear-gradient(135deg, var(--brand-gradient-from), var(--brand-gradient-to));
   color: white;
 }
 @utility bg-purple-gradient {
@@ -140,4 +143,794 @@
 }
 @utility soft-shadow {
   box-shadow: 0 10px 30px -12px oklch(0.22 0.03 250 / 0.12);
+}
+
+/* Public raffle skins. These variables are scoped to the buyer-facing page. */
+.fiesta-title {
+  display: none;
+}
+
+.public-hero {
+  position: relative;
+  overflow: hidden;
+}
+
+.public-confetti {
+  display: none;
+  pointer-events: none;
+}
+
+.public-raffle[data-public-skin="verde-esmeralda"],
+.admin-ecosystem[data-public-skin="verde-esmeralda"],
+:root[data-admin-skin="verde-esmeralda"],
+:root[data-public-active-skin="verde-esmeralda"],
+.public-ticket-page[data-public-skin="verde-esmeralda"] {
+  --primary: #078c67;
+  --primary-foreground: #ffffff;
+  --brand: #078c67;
+  --brand-foreground: #ffffff;
+  --brand-soft: #d9f2ea;
+  --ring: #16ad83;
+  --accent: #e9f7f2;
+  --accent-foreground: #075f49;
+  --brand-gradient-from: #16ad83;
+  --brand-gradient-to: #078c67;
+  --skin-page: linear-gradient(180deg, #f8fcfa, #e6f5f0);
+  --skin-surface: #ffffff;
+  --skin-surface-ink: #18263d;
+  --skin-surface-muted: #607069;
+  --skin-hero:
+    radial-gradient(circle at 85% 10%, rgba(22, 173, 131, 0.22), transparent 38%),
+    linear-gradient(180deg, #ffffff, #eef9f5);
+}
+
+.public-raffle[data-public-skin="azul-profundo"],
+.admin-ecosystem[data-public-skin="azul-profundo"],
+:root[data-admin-skin="azul-profundo"],
+:root[data-public-active-skin="azul-profundo"],
+.public-ticket-page[data-public-skin="azul-profundo"] {
+  --primary: #103879;
+  --primary-foreground: #ffffff;
+  --brand: #103879;
+  --brand-foreground: #ffffff;
+  --brand-soft: #dce7fa;
+  --ring: #245dca;
+  --accent: #edf3ff;
+  --accent-foreground: #103879;
+  --brand-gradient-from: #245dca;
+  --brand-gradient-to: #103879;
+  --skin-page: linear-gradient(180deg, #f8faff, #e7eefb);
+  --skin-surface: #ffffff;
+  --skin-surface-ink: #15223b;
+  --skin-surface-muted: #65708a;
+  --skin-hero:
+    radial-gradient(circle at 85% 10%, rgba(36, 93, 202, 0.2), transparent 38%),
+    linear-gradient(180deg, #ffffff, #eef3fc);
+}
+
+.public-raffle[data-public-skin="naranja-energia"],
+.admin-ecosystem[data-public-skin="naranja-energia"],
+:root[data-admin-skin="naranja-energia"],
+:root[data-public-active-skin="naranja-energia"],
+.public-ticket-page[data-public-skin="naranja-energia"] {
+  --primary: #f05a00;
+  --primary-foreground: #ffffff;
+  --brand: #f05a00;
+  --brand-foreground: #ffffff;
+  --brand-soft: #ffead5;
+  --ring: #ff8b12;
+  --accent: #fff4e8;
+  --accent-foreground: #9c3b00;
+  --brand-gradient-from: #ff8b12;
+  --brand-gradient-to: #f05a00;
+  --skin-page: linear-gradient(180deg, #fffaf5, #ffead5);
+  --skin-surface: #fffdf9;
+  --skin-surface-ink: #302117;
+  --skin-surface-muted: #796456;
+  --skin-hero:
+    radial-gradient(circle at 85% 10%, rgba(255, 139, 18, 0.23), transparent 38%),
+    linear-gradient(180deg, #ffffff, #fff4e8);
+}
+
+.public-raffle[data-public-skin="rojo-pasion"],
+.admin-ecosystem[data-public-skin="rojo-pasion"],
+:root[data-admin-skin="rojo-pasion"],
+:root[data-public-active-skin="rojo-pasion"],
+.public-ticket-page[data-public-skin="rojo-pasion"] {
+  --primary: #c70d18;
+  --primary-foreground: #ffffff;
+  --brand: #c70d18;
+  --brand-foreground: #ffffff;
+  --brand-soft: #ffe0e2;
+  --ring: #f33a45;
+  --accent: #fff0f1;
+  --accent-foreground: #970912;
+  --brand-gradient-from: #f33a45;
+  --brand-gradient-to: #c70d18;
+  --skin-page: linear-gradient(180deg, #fff9f9, #ffe4e6);
+  --skin-surface: #fffdfd;
+  --skin-surface-ink: #30181b;
+  --skin-surface-muted: #7b5f62;
+  --skin-hero:
+    radial-gradient(circle at 85% 10%, rgba(243, 58, 69, 0.2), transparent 38%),
+    linear-gradient(180deg, #ffffff, #fff0f1);
+}
+
+.public-raffle[data-public-skin="dorado-premium"],
+.admin-ecosystem[data-public-skin="dorado-premium"],
+:root[data-admin-skin="dorado-premium"],
+:root[data-public-active-skin="dorado-premium"],
+.public-ticket-page[data-public-skin="dorado-premium"] {
+  --primary: #bd8411;
+  --primary-foreground: #ffffff;
+  --brand: #bd8411;
+  --brand-foreground: #ffffff;
+  --brand-soft: #f6e8c4;
+  --ring: #e5b54a;
+  --accent: #fbf7ec;
+  --accent-foreground: #765006;
+  --brand-gradient-from: #e5b54a;
+  --brand-gradient-to: #bd8411;
+  --skin-page: linear-gradient(180deg, #fffdf8, #f4ead0);
+  --skin-surface: #fffdf8;
+  --skin-surface-ink: #302817;
+  --skin-surface-muted: #786e58;
+  --skin-hero:
+    radial-gradient(circle at 85% 10%, rgba(229, 181, 74, 0.24), transparent 38%),
+    linear-gradient(180deg, #ffffff, #fbf7ec);
+}
+
+.public-raffle[data-public-skin="turquesa-marino"],
+.admin-ecosystem[data-public-skin="turquesa-marino"],
+:root[data-admin-skin="turquesa-marino"],
+:root[data-public-active-skin="turquesa-marino"],
+.public-ticket-page[data-public-skin="turquesa-marino"] {
+  --primary: #00635f;
+  --primary-foreground: #ffffff;
+  --brand: #00635f;
+  --brand-foreground: #ffffff;
+  --brand-soft: #d7efee;
+  --ring: #159a98;
+  --accent: #eef8f7;
+  --accent-foreground: #004a47;
+  --brand-gradient-from: #159a98;
+  --brand-gradient-to: #00635f;
+  --skin-page: linear-gradient(180deg, #f7fcfb, #dbf1f0);
+  --skin-surface: #ffffff;
+  --skin-surface-ink: #14302f;
+  --skin-surface-muted: #587371;
+  --skin-hero:
+    radial-gradient(circle at 85% 10%, rgba(21, 154, 152, 0.22), transparent 38%),
+    linear-gradient(180deg, #ffffff, #eef8f7);
+}
+
+.public-raffle[data-public-skin="verde-esmeralda"] .public-hero,
+.public-raffle[data-public-skin="azul-profundo"] .public-hero,
+.public-raffle[data-public-skin="naranja-energia"] .public-hero,
+.public-raffle[data-public-skin="rojo-pasion"] .public-hero,
+.public-raffle[data-public-skin="dorado-premium"] .public-hero,
+.public-raffle[data-public-skin="turquesa-marino"] .public-hero {
+  background: var(--skin-hero);
+}
+
+.public-raffle[data-public-skin="purpura-real"],
+.admin-ecosystem[data-public-skin="purpura-real"],
+:root[data-admin-skin="purpura-real"],
+:root[data-public-active-skin="purpura-real"] {
+  --background: oklch(0.16 0.065 305);
+  --foreground: oklch(0.98 0.01 90);
+  --ink: oklch(0.98 0.01 90);
+  --card: oklch(0.22 0.07 305);
+  --card-foreground: oklch(0.98 0.01 90);
+  --popover: oklch(0.21 0.06 305);
+  --popover-foreground: oklch(0.98 0.01 90);
+  --primary: oklch(0.84 0.17 88);
+  --primary-foreground: oklch(0.19 0.06 305);
+  --secondary: oklch(0.23 0.065 305);
+  --secondary-foreground: oklch(0.98 0.01 90);
+  --muted: oklch(0.26 0.055 305);
+  --muted-foreground: oklch(0.82 0.025 300);
+  --accent: oklch(0.31 0.1 310);
+  --accent-foreground: oklch(0.94 0.08 88);
+  --border: oklch(0.5 0.12 315 / 45%);
+  --input: oklch(0.42 0.09 310);
+  --ring: oklch(0.84 0.17 88);
+  --brand: oklch(0.84 0.17 88);
+  --brand-foreground: oklch(0.19 0.06 305);
+  --brand-soft: oklch(0.31 0.1 310);
+  --brand-gradient-from: #ffc400;
+  --brand-gradient-to: #ef9c00;
+  --skin-page:
+    radial-gradient(circle at 50% 0%, rgba(159, 42, 185, 0.5), transparent 35%),
+    linear-gradient(145deg, #12001f, #3d0758);
+  --skin-surface: #fff9ef;
+  --skin-surface-ink: #211533;
+  --skin-surface-muted: #73667b;
+}
+
+.public-raffle[data-public-skin="purpura-real"] .public-hero {
+  background:
+    radial-gradient(circle at 50% 5%, oklch(0.52 0.24 325 / 55%), transparent 35%),
+    repeating-conic-gradient(
+      from -12deg at 62% 45%,
+      oklch(0.32 0.12 310 / 30%) 0 5deg,
+      transparent 5deg 11deg
+    ),
+    linear-gradient(145deg, oklch(0.12 0.055 292), oklch(0.25 0.1 315));
+}
+
+.public-raffle[data-public-skin="purpura-real"] .elegant-title {
+  display: none;
+}
+
+.public-raffle[data-public-skin="purpura-real"] .fiesta-title {
+  display: inline;
+  color: oklch(0.99 0.01 90);
+  font-size: 1.06em;
+  text-shadow:
+    0 3px 0 oklch(0.2 0.09 305),
+    0 0 30px oklch(0.72 0.2 325 / 40%);
+}
+
+.public-raffle[data-public-skin="purpura-real"] .public-confetti {
+  display: block;
+  position: absolute;
+  inset: 0;
+  opacity: 0.75;
+  background-image:
+    radial-gradient(circle, var(--brand) 0 3px, transparent 4px),
+    radial-gradient(circle, color-mix(in srgb, var(--brand) 55%, white) 0 2px, transparent 3px),
+    linear-gradient(35deg, transparent 46%, var(--brand) 47% 54%, transparent 55%);
+  background-size:
+    170px 145px,
+    230px 190px,
+    210px 180px;
+  background-position:
+    18px 20px,
+    80px 35px,
+    120px 10px;
+  mask-image: linear-gradient(to bottom, black, transparent 82%);
+}
+
+.public-raffle[data-public-skin="purpura-real"] nav {
+  background: oklch(0.14 0.055 300 / 88%);
+}
+
+.public-raffle[data-public-skin="purpura-real"] .public-ticket,
+.public-raffle[data-public-skin="purpura-real"] .public-board,
+.public-raffle[data-public-skin="purpura-real"] #como > div,
+.public-raffle[data-public-skin="purpura-real"] .public-prizes .bg-white,
+.public-raffle[data-public-skin="purpura-real"] section.grid > .bg-white {
+  background: oklch(0.985 0.018 88);
+  color: oklch(0.2 0.055 300);
+}
+
+.public-raffle[data-public-skin="purpura-real"] .public-prizes {
+  background:
+    linear-gradient(oklch(0.18 0.07 305 / 94%), oklch(0.2 0.08 310 / 94%)),
+    radial-gradient(circle at top, #6b137c, transparent 60%);
+}
+
+.public-raffle[data-public-skin="purpura-real"] .public-prizes .grid > div {
+  border: 0;
+  box-shadow: 0 12px 25px -16px #000;
+}
+
+.public-raffle[data-public-skin="purpura-real"] .public-prizes .grid > div:nth-child(1) {
+  background: color-mix(in srgb, var(--brand) 100%, var(--skin-surface));
+  color: var(--brand-foreground);
+}
+.public-raffle[data-public-skin="purpura-real"] .public-prizes .grid > div:nth-child(2) {
+  background: color-mix(in srgb, var(--brand) 88%, var(--skin-surface));
+  color: var(--brand-foreground);
+}
+.public-raffle[data-public-skin="purpura-real"] .public-prizes .grid > div:nth-child(3) {
+  background: color-mix(in srgb, var(--brand) 76%, var(--skin-surface));
+  color: var(--brand-foreground);
+}
+.public-raffle[data-public-skin="purpura-real"] .public-prizes .grid > div:nth-child(4) {
+  background: color-mix(in srgb, var(--brand) 64%, var(--skin-surface));
+  color: var(--brand-foreground);
+}
+.public-raffle[data-public-skin="purpura-real"] .public-prizes .grid > div:nth-child(5) {
+  background: color-mix(in srgb, var(--brand) 52%, var(--skin-surface));
+  color: var(--skin-surface-ink);
+}
+.public-raffle[data-public-skin="purpura-real"] .public-prizes .grid > div p,
+.public-raffle[data-public-skin="purpura-real"] .public-prizes .grid > div div {
+  color: inherit;
+}
+
+.public-raffle[data-public-skin="purpura-real"] .public-prizes .grid > div .prize-rank {
+  border: 2px solid color-mix(in srgb, white 24%, transparent);
+  color: #ffffff;
+  background: linear-gradient(145deg, #5b1778, #351044);
+  box-shadow:
+    0 6px 14px -8px #17001f,
+    inset 0 1px 0 color-mix(in srgb, white 24%, transparent);
+}
+
+.public-raffle[data-public-skin="purpura-real"] .public-prizes .grid > div:first-child .prize-rank {
+  color: #2a0d35;
+  background: #fff8df;
+  border-color: #fffdf5;
+  box-shadow:
+    0 0 0 3px #57166f,
+    0 7px 16px -9px #17001f;
+}
+
+.public-raffle[data-public-skin="oscuro-moderno"] .public-prizes .grid > div .prize-rank {
+  border: 2px solid #f4d37b;
+  color: #17120a;
+  background: linear-gradient(145deg, #f5ce69, #d7a52f);
+  box-shadow:
+    0 8px 18px -10px #000000,
+    inset 0 1px 0 #fff1bd;
+}
+
+.public-raffle[data-public-skin="oscuro-moderno"]
+  .public-prizes
+  .grid
+  > div:first-child
+  .prize-rank {
+  color: #ffffff;
+  background: #171d26;
+  border-color: #2c3440;
+  box-shadow:
+    0 0 0 3px #f0bd48,
+    0 8px 18px -10px #000000;
+}
+
+.public-raffle[data-public-skin="oscuro-moderno"] .stat-card--warning > p:first-child {
+  color: #f4c85c;
+}
+
+.public-raffle[data-public-skin="oscuro-moderno"] .stat-card--destructive > p:first-child {
+  color: #e2ac2c;
+}
+
+.public-raffle[data-public-skin]:not([data-public-skin="oscuro-moderno"])
+  .stat-card--warning
+  > p:first-child {
+  color: var(--brand);
+}
+
+.public-raffle[data-public-skin="purpura-real"] .public-board {
+  box-shadow:
+    0 22px 55px -25px oklch(0.05 0.03 300 / 80%),
+    0 0 0 3px oklch(0.84 0.17 88 / 18%);
+}
+
+.public-raffle[data-public-skin="purpura-real"] .public-cta {
+  background: linear-gradient(115deg, #f4a900, #ffd82e 48%, #ef9c00);
+  color: #26102f;
+}
+
+.public-raffle[data-public-skin="oscuro-moderno"],
+.admin-ecosystem[data-public-skin="oscuro-moderno"],
+:root[data-admin-skin="oscuro-moderno"],
+:root[data-public-active-skin="oscuro-moderno"] {
+  --background: oklch(0.13 0.025 290);
+  --foreground: oklch(0.96 0.01 85);
+  --ink: oklch(0.96 0.01 85);
+  --card: oklch(0.19 0.035 295);
+  --card-foreground: oklch(0.96 0.01 85);
+  --popover: oklch(0.19 0.035 295);
+  --popover-foreground: oklch(0.96 0.01 85);
+  --secondary: oklch(0.21 0.03 295);
+  --secondary-foreground: oklch(0.96 0.01 85);
+  --muted: oklch(0.23 0.025 295);
+  --muted-foreground: oklch(0.74 0.025 290);
+  --border: oklch(0.42 0.045 295 / 55%);
+  --input: oklch(0.35 0.04 295);
+  --brand: oklch(0.78 0.13 82);
+  --brand-foreground: oklch(0.15 0.025 290);
+  --brand-soft: oklch(0.27 0.055 80);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --brand-gradient-from: #f0c75e;
+  --brand-gradient-to: #ad7612;
+  --skin-page: linear-gradient(145deg, #0b1017, #242b34);
+  --skin-surface: #1b222c;
+  --skin-surface-ink: #f6f7f8;
+  --skin-surface-muted: #a9b0b8;
+}
+
+.public-raffle[data-public-skin="oscuro-moderno"] .public-hero {
+  background:
+    radial-gradient(circle at 70% 20%, oklch(0.35 0.08 300 / 35%), transparent 38%),
+    linear-gradient(145deg, oklch(0.11 0.02 290), oklch(0.19 0.04 300));
+}
+
+.public-raffle[data-public-skin="oscuro-moderno"] nav {
+  background: oklch(0.11 0.02 290 / 88%);
+}
+
+:is(
+  .public-raffle[data-public-skin],
+  .public-ticket-page[data-public-skin],
+  .admin-ecosystem[data-public-skin],
+  :root[data-admin-skin],
+  :root[data-public-active-skin]
+) {
+  --success: var(--brand);
+  --success-foreground: var(--brand-foreground);
+  --warning: var(--brand-gradient-from);
+  --warning-foreground: var(--brand-foreground);
+  --destructive: var(--brand-gradient-to);
+  --destructive-foreground: var(--brand-foreground);
+}
+
+:root[data-public-active-skin] [role="dialog"] {
+  color: var(--card-foreground);
+  background: var(--card);
+  border-color: color-mix(in srgb, var(--brand) 35%, var(--border));
+}
+
+:root[data-public-active-skin] [role="dialog"] :is(h1, h2, h3, strong) {
+  color: inherit;
+}
+
+.confirmation-ticket-image {
+  border: 1px solid color-mix(in srgb, var(--brand) 34%, var(--border));
+  background:
+    radial-gradient(
+      circle at 90% 0%,
+      color-mix(in srgb, var(--brand) 13%, transparent),
+      transparent 38%
+    ),
+    var(--card);
+}
+
+.public-raffle[data-public-skin] :is(.number-cell, .public-board, .public-ticket) {
+  font-variant-numeric: tabular-nums;
+}
+
+.public-raffle[data-public-skin] .number-cell--available {
+  color: var(--skin-surface-ink);
+  background: var(--skin-surface);
+}
+
+.public-raffle[data-public-skin] :is(button, a, input, select, textarea) {
+  text-rendering: optimizeLegibility;
+}
+
+.public-raffle[data-public-skin] .bg-white,
+.public-raffle[data-public-skin] .public-ticket,
+.public-raffle[data-public-skin] .public-board,
+.public-raffle[data-public-skin] #como > div {
+  background-color: var(--skin-surface);
+  color: var(--skin-surface-ink);
+}
+
+.public-raffle[data-public-skin] .bg-white .text-ink,
+.public-raffle[data-public-skin] .public-ticket .text-ink,
+.public-raffle[data-public-skin] .public-board .text-ink,
+.public-raffle[data-public-skin] #como > div .text-ink {
+  color: var(--skin-surface-ink);
+}
+
+.public-raffle[data-public-skin] .bg-white .text-muted-foreground,
+.public-raffle[data-public-skin] .public-ticket .text-muted-foreground,
+.public-raffle[data-public-skin] .public-board .text-muted-foreground,
+.public-raffle[data-public-skin] #como > div .text-muted-foreground {
+  color: var(--skin-surface-muted);
+}
+
+.public-raffle[data-public-skin] h1,
+.public-raffle[data-public-skin] h2,
+.public-raffle[data-public-skin] h3 {
+  text-wrap: balance;
+}
+
+.public-raffle[data-public-skin] .public-cta {
+  background-image: linear-gradient(135deg, var(--brand-gradient-from), var(--brand-gradient-to));
+  color: var(--brand-foreground);
+}
+
+.public-raffle[data-public-skin] .public-cta .bg-white {
+  background: var(--skin-surface);
+  color: var(--brand);
+}
+
+.admin-ecosystem[data-public-skin] {
+  min-height: 100vh;
+  color: var(--foreground);
+  background: var(--skin-page);
+  background-attachment: fixed;
+  transition:
+    color 180ms ease,
+    background 240ms ease;
+}
+
+.admin-ecosystem[data-public-skin] .admin-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: color-mix(in srgb, var(--card) 92%, var(--brand) 8%);
+  box-shadow:
+    inset 0 3px 0 var(--brand),
+    0 10px 30px -24px color-mix(in srgb, var(--brand) 65%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.admin-ecosystem[data-public-skin] .admin-content {
+  animation: admin-skin-enter 220ms ease-out;
+}
+
+.admin-ecosystem[data-public-skin] :is(.bg-card, .bg-background, .bg-secondary) {
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+.admin-ecosystem[data-public-skin] :is(input, select, textarea):focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+.admin-ecosystem[data-public-skin] .text-gold {
+  color: var(--brand);
+}
+
+.admin-ecosystem[data-public-skin] .border-gold,
+.admin-ecosystem[data-public-skin] .border-gold\/40 {
+  border-color: color-mix(in srgb, var(--brand) 55%, transparent);
+}
+
+@keyframes admin-skin-enter {
+  from {
+    opacity: 0.65;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .public-raffle,
+  .public-ticket-page,
+  .admin-ecosystem {
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  .public-raffle :is(h1, h2, h3, p, span),
+  .public-ticket-page :is(h1, h2, h3, p, span),
+  .admin-ecosystem :is(h1, h2, h3, p, span) {
+    overflow-wrap: anywhere;
+  }
+  .public-raffle[data-public-skin="purpura-real"] .public-hero-copy {
+    text-align: center;
+  }
+  .public-raffle[data-public-skin="purpura-real"] .public-hero-copy > div,
+  .public-raffle[data-public-skin="purpura-real"] .public-hero-copy > span {
+    justify-content: center;
+  }
+}
+
+.public-ticket-page[data-public-skin="purpura-real"] {
+  --brand: oklch(0.84 0.17 88);
+  --brand-foreground: oklch(0.19 0.06 305);
+  --border: oklch(0.5 0.12 315 / 45%);
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% 0%, oklch(0.5 0.22 325 / 45%), transparent 35%),
+    linear-gradient(145deg, oklch(0.12 0.055 292), oklch(0.25 0.1 315));
+}
+
+.public-ticket-page[data-public-skin="oscuro-moderno"] {
+  --brand: oklch(0.78 0.13 82);
+  --brand-foreground: oklch(0.15 0.025 290);
+  min-height: 100vh;
+  background: linear-gradient(145deg, oklch(0.1 0.02 290), oklch(0.2 0.04 300));
+}
+
+.public-ticket-page {
+  background: var(--skin-page);
+}
+
+.public-ticket-page[data-public-skin] .ticket-share-card {
+  background: var(--skin-surface);
+  color: var(--skin-surface-ink);
+  border-color: color-mix(in srgb, var(--brand) 45%, transparent);
+}
+
+.public-ticket-page[data-public-skin] .ticket-share-card .text-foreground {
+  color: var(--skin-surface-ink);
+}
+
+.public-ticket-page[data-public-skin] .ticket-share-card .text-muted-foreground {
+  color: var(--skin-surface-muted);
+}
+
+.public-ticket-page[data-public-skin] .ticket-share-header {
+  background-image: linear-gradient(135deg, var(--brand-gradient-from), var(--brand-gradient-to));
+  color: var(--brand-foreground);
+}
+
+.public-ticket-page[data-public-skin] .ticket-details {
+  background: color-mix(in srgb, var(--skin-surface) 92%, var(--brand) 8%);
+}
+
+.public-ticket-page[data-public-skin] .ticket-verification {
+  background: color-mix(in srgb, var(--skin-surface) 96%, var(--brand) 4%);
+}
+
+.public-ticket-page[data-public-skin] .ticket-action-secondary {
+  border: 1px solid color-mix(in srgb, var(--brand) 62%, transparent);
+  color: var(--brand-foreground);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, white 12%, transparent), transparent),
+    linear-gradient(135deg, var(--brand-gradient-to), var(--brand-gradient-from));
+  box-shadow: 0 12px 24px -18px var(--brand);
+}
+
+.public-ticket-page[data-public-skin] .ticket-action-secondary:hover {
+  filter: brightness(1.04);
+}
+
+.ticket-number-orbit {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  width: 168px;
+  height: 168px;
+  place-items: center;
+  border: 3px solid color-mix(in srgb, var(--brand) 72%, white);
+  border-radius: 50%;
+  color: var(--brand-foreground);
+  background:
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--brand-gradient-from) 78%, var(--brand-gradient-to)) 0 45%,
+      transparent 46%
+    ),
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--brand) 48%, var(--skin-surface)) 0 63%,
+      transparent 64%
+    ),
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--brand) 20%, var(--skin-surface)) 0 77%,
+      transparent 78%
+    );
+  box-shadow:
+    0 18px 38px -22px color-mix(in srgb, var(--brand) 90%, transparent),
+    inset 0 0 0 5px color-mix(in srgb, white 18%, transparent);
+}
+
+.ticket-number-orbit::before,
+.ticket-number-orbit::after {
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  content: "";
+}
+
+.ticket-number-orbit::before {
+  inset: 12px;
+  border: 2px dashed color-mix(in srgb, var(--brand-foreground) 55%, transparent);
+}
+
+.ticket-number-orbit::after {
+  inset: 29px;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--brand-gradient-from) 88%, white),
+    var(--brand-gradient-to)
+  );
+  box-shadow: inset 0 5px 10px color-mix(in srgb, white 22%, transparent);
+}
+
+.ticket-number-orbit > span {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-display);
+  font-size: 4.25rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.08em;
+  text-shadow: 0 2px 5px color-mix(in srgb, black 26%, transparent);
+  transform: translateX(-0.04em);
+}
+
+.public-ticket-page[data-public-skin] .ticket-status {
+  border: 1px solid color-mix(in srgb, var(--brand) 50%, transparent);
+  color: var(--skin-surface-ink);
+  background: color-mix(in srgb, var(--skin-surface) 72%, var(--brand) 28%);
+}
+
+.public-ticket-page[data-public-skin] .ticket-status--sold {
+  color: var(--brand-foreground);
+  background: linear-gradient(135deg, var(--brand-gradient-from), var(--brand-gradient-to));
+  box-shadow: 0 9px 22px -14px var(--brand);
+}
+
+.public-ticket-page[data-public-skin] .ticket-status--winner {
+  color: var(--brand-foreground);
+  background:
+    linear-gradient(135deg, transparent, color-mix(in srgb, white 18%, transparent)),
+    linear-gradient(135deg, var(--brand-gradient-from), var(--brand-gradient-to));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent);
+}
+
+.public-ticket-page[data-public-skin] .ticket-status--void {
+  opacity: 0.72;
+  filter: grayscale(0.45);
+}
+
+.public-raffle[data-public-skin] .number-cell--occupied {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--brand) 48%, var(--skin-surface));
+  color: var(--skin-surface-ink);
+  background:
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--brand) 18%, var(--skin-surface)) 0 35%,
+      transparent 36%
+    ),
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--brand) 42%, var(--skin-surface)) 0 58%,
+      transparent 59%
+    ),
+    var(--skin-surface);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--brand) 12%, transparent);
+}
+
+.public-raffle[data-public-skin] .number-cell--occupied::before {
+  position: absolute;
+  width: 72%;
+  height: 72%;
+  border: 1px dashed color-mix(in srgb, var(--brand) 68%, transparent);
+  border-radius: 50%;
+  content: "";
+}
+
+.public-raffle[data-public-skin] .number-cell--occupied > span {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 70%;
+  height: 70%;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--brand-foreground);
+  background: linear-gradient(145deg, var(--brand-gradient-from), var(--brand-gradient-to));
+  font-size: clamp(0.62rem, 2.4vw, 1rem);
+  box-shadow:
+    0 5px 12px -7px var(--brand),
+    inset 0 1px 2px color-mix(in srgb, white 30%, transparent);
+}
+
+.public-raffle[data-public-skin] .number-cell--reservado > span {
+  opacity: 0.78;
+}
+
+.public-raffle[data-public-skin] .number-cell--vendido {
+  filter: saturate(0.62);
+}
+
+.public-raffle[data-public-skin] .number-cell--vendido > span {
+  text-decoration: line-through;
+}
+
+.public-raffle[data-public-skin] .number-cell--ganador {
+  border-color: var(--brand);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent),
+    inset 0 0 0 2px color-mix(in srgb, var(--brand) 15%, transparent);
 }

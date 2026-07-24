@@ -6,8 +6,9 @@ export function formatCOP(n: number | null | undefined): string {
 export { padNumber, formatTicketNumber } from "./raffle-domain";
 
 /** @deprecated Pass raffle digits to padNumber for new code. */
-export function pad2(n: number): string {
-  return n.toString().padStart(2, "0");
+export function pad2(n: number | null | undefined): string {
+  const safe = Number.isFinite(Number(n)) ? Number(n) : 0;
+  return safe.toString().padStart(2, "0");
 }
 
 export function formatDate(iso: string | null | undefined): string {

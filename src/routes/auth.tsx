@@ -9,6 +9,7 @@ import { Lock } from "lucide-react";
 import { getSiteUrl } from "@/lib/site-url";
 import { isAdminSetupPending } from "@/lib/raffle.functions";
 import { useServerFn } from "@tanstack/react-start";
+import { getPublicSkinDefinition, type PublicSkin } from "@/lib/public-skins";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -25,6 +26,7 @@ function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
   const [signupAllowed, setSignupAllowed] = useState(false);
+  const [skin, setSkin] = useState<PublicSkin>("verde-esmeralda");
   const checkSetup = useServerFn(isAdminSetupPending);
 
   useEffect(() => {
@@ -38,6 +40,28 @@ function AuthPage() {
       .then(setSignupAllowed)
       .catch(() => setSignupAllowed(false));
   }, [checkSetup]);
+
+  useEffect(() => {
+    supabase
+      .from("raffles")
+      .select("public_skin")
+      .eq("activa", true)
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.public_skin) setSkin(data.public_skin as PublicSkin);
+      });
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.publicActiveSkin = skin;
+    document
+      .querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+      ?.setAttribute("content", getPublicSkinDefinition(skin).colors[0]);
+    return () => {
+      delete document.documentElement.dataset.publicActiveSkin;
+    };
+  }, [skin]);
 
   async function handle(fd: FormData) {
     setLoading(true);
@@ -70,7 +94,10 @@ function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-purple-gradient flex items-center justify-center px-4">
+    <div
+      className="public-ticket-page min-h-screen flex items-center justify-center px-4"
+      data-public-skin={skin}
+    >
       <div className="w-full max-w-sm rounded-2xl border border-gold/30 bg-card p-8 ticket-shadow">
         <div className="text-center mb-6">
           <Lock className="h-8 w-8 text-gold mx-auto" />

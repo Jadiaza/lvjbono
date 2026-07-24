@@ -63,6 +63,9 @@ export type Database = {
           premio_mayor: number;
           premio_seco1: number;
           premio_seco2: number;
+          public_skin: string;
+          staged_payments: boolean;
+          installment_amount: number | null;
           serie: string | null;
           updated_at: string;
           valor_boleta: number;
@@ -84,6 +87,9 @@ export type Database = {
           premio_mayor?: number;
           premio_seco1?: number;
           premio_seco2?: number;
+          public_skin?: string;
+          staged_payments?: boolean;
+          installment_amount?: number | null;
           serie?: string | null;
           updated_at?: string;
           valor_boleta?: number;
@@ -105,6 +111,9 @@ export type Database = {
           premio_mayor?: number;
           premio_seco1?: number;
           premio_seco2?: number;
+          public_skin?: string;
+          staged_payments?: boolean;
+          installment_amount?: number | null;
           serie?: string | null;
           updated_at?: string;
           valor_boleta?: number;
@@ -125,11 +134,13 @@ export type Database = {
           monto_recibido: number | null;
           nombre: string | null;
           numero: number;
+          numero_alterno: number | null;
           observaciones: string | null;
           premio_ganado: string | null;
           raffle_id: string;
           referencia_pago: string | null;
           telefono: string | null;
+          total_abonado: number;
           updated_at: string;
           validado_at: string | null;
           validado_por: string | null;
@@ -147,11 +158,13 @@ export type Database = {
           monto_recibido?: number | null;
           nombre?: string | null;
           numero: number;
+          numero_alterno?: number | null;
           observaciones?: string | null;
           premio_ganado?: string | null;
           raffle_id: string;
           referencia_pago?: string | null;
           telefono?: string | null;
+          total_abonado?: number;
           updated_at?: string;
           validado_at?: string | null;
           validado_por?: string | null;
@@ -169,11 +182,13 @@ export type Database = {
           monto_recibido?: number | null;
           nombre?: string | null;
           numero?: number;
+          numero_alterno?: number | null;
           observaciones?: string | null;
           premio_ganado?: string | null;
           raffle_id?: string;
           referencia_pago?: string | null;
           telefono?: string | null;
+          total_abonado?: number;
           updated_at?: string;
           validado_at?: string | null;
           validado_por?: string | null;
@@ -188,6 +203,283 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      ticket_payments: {
+        Row: {
+          amount: number;
+          created_at: string;
+          id: string;
+          notes: string | null;
+          paid_at: string;
+          payment_method: string | null;
+          reference: string;
+          ticket_id: string;
+          validated_by: string | null;
+        };
+        Insert: {
+          amount: number;
+          created_at?: string;
+          id?: string;
+          notes?: string | null;
+          paid_at?: string;
+          payment_method?: string | null;
+          reference: string;
+          ticket_id: string;
+          validated_by?: string | null;
+        };
+        Update: {
+          amount?: number;
+          created_at?: string;
+          id?: string;
+          notes?: string | null;
+          paid_at?: string;
+          payment_method?: string | null;
+          reference?: string;
+          ticket_id?: string;
+          validated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ticket_payments_ticket_id_fkey";
+            columns: ["ticket_id"];
+            isOneToOne: false;
+            referencedRelation: "tickets";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      raffle_draw_stages: {
+        Row: {
+          completed_at: string | null;
+          created_at: string;
+          draw_at: string;
+          id: string;
+          minimum_paid: number;
+          name: string;
+          prize_amount: number;
+          raffle_id: string;
+          result_number: number | null;
+          updated_at: string;
+          winner_ticket_id: string | null;
+        };
+        Insert: {
+          completed_at?: string | null;
+          created_at?: string;
+          draw_at: string;
+          id?: string;
+          minimum_paid: number;
+          name: string;
+          prize_amount?: number;
+          raffle_id: string;
+          result_number?: number | null;
+          updated_at?: string;
+          winner_ticket_id?: string | null;
+        };
+        Update: {
+          completed_at?: string | null;
+          created_at?: string;
+          draw_at?: string;
+          id?: string;
+          minimum_paid?: number;
+          name?: string;
+          prize_amount?: number;
+          raffle_id?: string;
+          result_number?: number | null;
+          updated_at?: string;
+          winner_ticket_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "raffle_draw_stages_raffle_id_fkey";
+            columns: ["raffle_id"];
+            isOneToOne: false;
+            referencedRelation: "raffles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "raffle_draw_stages_winner_ticket_id_fkey";
+            columns: ["winner_ticket_id"];
+            isOneToOne: false;
+            referencedRelation: "tickets";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      sponsor_reminder_settings: {
+        Row: {
+          raffle_id: string;
+          enabled: boolean;
+          days_before: number;
+          days_after: number;
+          default_due_day: number | null;
+          message_template: string;
+          updated_at: string;
+        };
+        Insert: {
+          raffle_id: string;
+          enabled?: boolean;
+          days_before?: number;
+          days_after?: number;
+          default_due_day?: number | null;
+          message_template?: string;
+          updated_at?: string;
+        };
+        Update: {
+          raffle_id?: string;
+          enabled?: boolean;
+          days_before?: number;
+          days_after?: number;
+          default_due_day?: number | null;
+          message_template?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      sponsor_reminders: {
+        Row: {
+          id: string;
+          raffle_id: string;
+          ticket_id: string;
+          scheduled_for: string;
+          kind: string;
+          status: string;
+          channel: string;
+          message: string;
+          sent_at: string | null;
+          attempts: number;
+          error_message: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          raffle_id: string;
+          ticket_id: string;
+          scheduled_for: string;
+          kind: string;
+          status?: string;
+          channel?: string;
+          message: string;
+          sent_at?: string | null;
+          attempts?: number;
+          error_message?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          status?: string;
+          sent_at?: string | null;
+          attempts?: number;
+          error_message?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      sponsorship_plans: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          monthly_amount: number;
+          due_day: number;
+          starts_on: string;
+          ends_on: string | null;
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          monthly_amount: number;
+          due_day?: number;
+          starts_on?: string;
+          ends_on?: string | null;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          name?: string;
+          description?: string | null;
+          monthly_amount?: number;
+          due_day?: number;
+          starts_on?: string;
+          ends_on?: string | null;
+          active?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      sponsors: {
+        Row: {
+          id: string;
+          plan_id: string;
+          name: string;
+          phone: string;
+          city: string | null;
+          email: string | null;
+          monthly_amount: number;
+          next_due_on: string;
+          status: string;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          plan_id: string;
+          name: string;
+          phone: string;
+          city?: string | null;
+          email?: string | null;
+          monthly_amount: number;
+          next_due_on: string;
+          status?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          name?: string;
+          phone?: string;
+          city?: string | null;
+          email?: string | null;
+          monthly_amount?: number;
+          next_due_on?: string;
+          status?: string;
+          notes?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      sponsor_contributions: {
+        Row: {
+          id: string;
+          sponsor_id: string;
+          amount: number;
+          reference: string | null;
+          paid_at: string;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          sponsor_id: string;
+          amount: number;
+          reference?: string | null;
+          paid_at?: string;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          amount?: number;
+          reference?: string | null;
+          paid_at?: string;
+          notes?: string | null;
+        };
+        Relationships: [];
       };
       user_roles: {
         Row: {
@@ -247,6 +539,10 @@ export type Database = {
     };
     Functions: {
       bootstrap_first_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
+      backfill_alternate_numbers: {
+        Args: { _raffle_id: string };
+        Returns: number;
+      };
       get_public_tickets: {
         Args: { _raffle_id: string };
         Returns: {
@@ -254,6 +550,18 @@ export type Database = {
           numero: number;
           estado: Database["public"]["Enums"]["ticket_estado"];
           premio_ganado: string | null;
+        }[];
+      };
+      get_public_raffle_stages: {
+        Args: { _raffle_id: string };
+        Returns: {
+          completed_at: string | null;
+          draw_at: string;
+          id: string;
+          minimum_paid: number;
+          name: string;
+          prize_amount: number;
+          result_number: number | null;
         }[];
       };
       has_role: {
@@ -268,6 +576,26 @@ export type Database = {
         Args: { _raffle_id: string; _mayor: number; _seco1: number; _seco2: number };
         Returns: Json;
       };
+      add_ticket_payment: {
+        Args: {
+          _amount: number;
+          _notes: string | null;
+          _reference: string;
+          _ticket_id: string;
+        };
+        Returns: {
+          ticket_status: Database["public"]["Enums"]["ticket_estado"];
+          total_paid: number;
+        }[];
+      };
+      register_stage_draw: {
+        Args: { _result: number; _stage_id: string };
+        Returns: Json;
+      };
+      queue_sponsor_reminders: {
+        Args: { _raffle_id: string; _due_at?: string | null };
+        Returns: number;
+      };
       reserve_ticket: {
         Args: {
           _raffle_id: string;
@@ -278,7 +606,7 @@ export type Database = {
           _email: string;
           _medio_pago: string;
         };
-        Returns: { codigo_verificacion: string; numero: number }[];
+        Returns: { codigo_verificacion: string; numero: number; numero_alterno: number | null }[];
       };
       set_active_raffle: { Args: { _raffle_id: string; _active: boolean }; Returns: undefined };
     };

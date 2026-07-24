@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { toPng } from "html-to-image";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -14,10 +15,12 @@ import {
   Calendar,
   Sparkles,
   CheckCircle2,
+  Menu,
+  X,
 } from "lucide-react";
 
 import { getRaffleData, reservarNumero } from "@/lib/raffle.functions";
-import { formatCOP, padNumber, formatDate, buildWhatsAppUrl } from "@/lib/format";
+import { formatCOP, padNumber, formatDate } from "@/lib/format";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +33,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Link } from "@tanstack/react-router";
+import { getPublicSkinDefinition } from "@/lib/public-skins";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -67,12 +72,33 @@ function HomePage() {
   });
 
   const [selected, setSelected] = useState<number | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [confirmed, setConfirmed] = useState<{ codigo: string; numero: number } | null>(null);
+  const [sharingConfirmed, setSharingConfirmed] = useState(false);
+  const confirmedTicketRef = useRef<HTMLDivElement>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+  const [confirmed, setConfirmed] = useState<{
+    codigo: string;
+    numero: number;
+    numeroAlterno: number | null;
+  } | null>(null);
 
   const raffle = data?.raffle;
   const setupRequired = data?.setupRequired === true;
   const tickets: TicketRow[] = (data?.tickets ?? []) as TicketRow[];
+  const stages = data?.stages ?? [];
+
+  useEffect(() => {
+    if (!raffle?.public_skin) return;
+    document.documentElement.dataset.publicActiveSkin = raffle.public_skin;
+    document
+      .querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+      ?.setAttribute("content", getPublicSkinDefinition(raffle.public_skin).colors[0]);
+    return () => {
+      delete document.documentElement.dataset.publicActiveSkin;
+    };
+  }, [raffle?.public_skin]);
 
   const stats = useMemo(() => {
     const disp = tickets.filter((t) => t.estado === "disponible").length;
@@ -83,6 +109,10 @@ function HomePage() {
 
   async function handleReservar(fd: FormData) {
     if (selected == null || !raffle) return;
+    if (!turnstileToken) {
+      toast.error("Confirma que no eres un robot.");
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = {
@@ -97,16 +127,56 @@ function HomePage() {
           | "daviplata"
           | "bre_b"
           | "transferencia",
+        turnstileToken,
       };
       const res = await reservar({ data: payload });
       setConfirmed(res);
       setSelected(null);
+      setTurnstileToken(null);
+      setTurnstileResetKey((value) => value + 1);
       qc.invalidateQueries({ queryKey: ["raffle-public"] });
       toast.success(`¡Reservaste el número ${padNumber(res.numero, raffle.digitos as 2 | 3)}!`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al reservar");
+      setTurnstileToken(null);
+      setTurnstileResetKey((value) => value + 1);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function shareConfirmedTicket() {
+    if (!confirmed || !confirmedTicketRef.current) return;
+    setSharingConfirmed(true);
+    try {
+      const dataUrl = await toPng(confirmedTicketRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: getComputedStyle(confirmedTicketRef.current).backgroundColor || "#ffffff",
+      });
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `boleta-${padded(confirmed.numero)}.png`, {
+        type: "image/png",
+      });
+      const shareData = {
+        files: [file],
+        title: `Boleta ${padded(confirmed.numero)}`,
+      };
+      if (navigator.share && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+        return;
+      }
+      const download = document.createElement("a");
+      download.href = dataUrl;
+      download.download = file.name;
+      download.click();
+      toast.success("Imagen descargada. Adjúntala directamente en WhatsApp.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      console.error("[shareConfirmedTicket] Could not generate image", error);
+      toast.error("No fue posible generar la imagen de la boleta.");
+    } finally {
+      setSharingConfirmed(false);
     }
   }
 
@@ -153,17 +223,18 @@ function HomePage() {
     raffle.premio_seco2 +
     raffle.premio_aprox_ant +
     raffle.premio_aprox_pos;
-  const waMessage = confirmed
-    ? `Hola! Reservé el número ${padded(confirmed.numero)} en "${raffle.nombre}". Aquí va mi comprobante de pago. Código: ${confirmed.codigo}`
-    : "";
+  const publicSkin = raffle.public_skin ?? "purpura-real";
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div
+      className="public-raffle min-h-screen bg-background text-foreground"
+      data-public-skin={publicSkin}
+    >
       {/* NAV */}
       <nav className="sticky top-0 z-30 bg-background/80 backdrop-blur border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 min-h-16 py-2 flex flex-wrap items-center justify-between gap-2">
           <a href="#top" className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-xl bg-brand grid place-items-center text-white">
+            <div className="h-9 w-9 rounded-xl bg-brand grid place-items-center text-brand-foreground">
               <Ticket className="h-5 w-5" strokeWidth={2.5} />
             </div>
             <span className="font-bold text-lg tracking-tight text-ink">¡Qué Locura de Rifa!</span>
@@ -178,43 +249,95 @@ function HomePage() {
             <a href="#como" className="hover:text-ink">
               Cómo juega
             </a>
+            <Link to="/resultados" className="hover:text-ink">
+              Resultados
+            </Link>
           </div>
+          <button
+            type="button"
+            className="md:hidden ml-auto grid h-10 w-10 place-items-center rounded-lg border border-border bg-white text-ink"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            aria-expanded={mobileMenuOpen}
+            aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
           <a
             href="#tablero"
-            className="inline-flex items-center gap-2 rounded-full bg-brand text-white text-sm font-semibold px-5 py-2.5 hover:opacity-90 transition"
+            className="hidden md:inline-flex items-center gap-2 rounded-full bg-brand text-brand-foreground text-sm font-semibold px-5 py-2.5 hover:opacity-90 transition"
           >
             Comprar boleta <ArrowRight className="h-4 w-4" />
           </a>
+          {mobileMenuOpen && (
+            <div className="md:hidden basis-full flex flex-col gap-1 border-t border-border pt-2 text-sm font-medium">
+              <a
+                href="#premios"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-lg px-3 py-2.5 hover:bg-secondary"
+              >
+                Premios
+              </a>
+              <a
+                href="#tablero"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-lg px-3 py-2.5 hover:bg-secondary"
+              >
+                Talonario
+              </a>
+              <a
+                href="#como"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-lg px-3 py-2.5 hover:bg-secondary"
+              >
+                Cómo juega
+              </a>
+              <Link
+                to="/resultados"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-lg px-3 py-2.5 hover:bg-secondary"
+              >
+                Resultados anteriores
+              </Link>
+            </div>
+          )}
         </div>
       </nav>
 
       {/* HERO */}
-      <header id="top" className="bg-hero-mesh">
+      <header id="top" className="public-hero bg-hero-mesh">
+        <div className="public-confetti" aria-hidden="true" />
         <div className="max-w-6xl mx-auto px-4 py-16 md:py-24 grid md:grid-cols-2 gap-10 items-center">
-          <div>
+          <div className="public-hero-copy">
             <span className="inline-flex items-center gap-2 rounded-full bg-brand-soft text-brand text-xs font-semibold px-3 py-1.5 uppercase tracking-wider">
               <Sparkles className="h-3.5 w-3.5" /> Talonario digital
             </span>
             <h1 className="mt-4 text-4xl md:text-6xl font-extrabold tracking-tight text-ink leading-[1.05]">
-              Compra tu boleta,
-              <br />
-              gana desde tu <span className="text-brand">celular</span>.
+              <span className="elegant-title">
+                Compra tu boleta,
+                <br />
+                gana desde tu <span className="text-brand">celular</span>.
+              </span>
+              <span className="fiesta-title">
+                ¡QUÉ LOCURA
+                <br />
+                <span className="text-brand">DE RIFA!</span>
+              </span>
             </h1>
             <p className="mt-5 text-lg text-muted-foreground max-w-lg">
               Solución rápida y transparente para participar en{" "}
               <span className="font-semibold text-ink">{raffle.nombre}</span>. Elige tu número del
               {padded(0)} al {padded(maxNumber)}, paga en línea y recibe tu ticket digital con QR.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <a
                 href="#tablero"
-                className="inline-flex items-center gap-2 rounded-full bg-brand text-white font-semibold px-6 py-3 hover:opacity-90 transition soft-shadow"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand text-brand-foreground font-semibold px-6 py-3 hover:opacity-90 transition soft-shadow sm:w-auto"
               >
                 Elegir mi número <ArrowRight className="h-4 w-4" />
               </a>
               <a
                 href="#como"
-                className="inline-flex items-center gap-2 rounded-full bg-white text-ink border border-border font-semibold px-6 py-3 hover:bg-secondary transition"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-white text-ink border border-border font-semibold px-6 py-3 hover:bg-secondary transition sm:w-auto"
               >
                 Ver cómo juega
               </a>
@@ -232,31 +355,31 @@ function HomePage() {
 
           {/* Ticket ilustrativo */}
           <div className="relative">
-            <div className="mx-auto max-w-sm rounded-3xl bg-white ticket-shadow overflow-hidden">
-              <div className="bg-gold-gradient p-6 text-white">
+            <div className="public-ticket mx-auto max-w-sm rounded-3xl bg-white ticket-shadow overflow-hidden">
+              <div className="bg-gold-gradient p-6 text-primary-foreground">
                 <p className="text-xs uppercase tracking-[0.3em] opacity-80">Boleta virtual</p>
                 <p className="font-bold text-2xl mt-1">{raffle.nombre}</p>
                 <p className="text-xs opacity-90 mt-1">
                   {raffle.loteria ?? "Lotería"} · {formatDate(raffle.fecha_sorteo)}
                 </p>
               </div>
-              <div className="p-6 grid grid-cols-[1fr_auto] items-center gap-4">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 p-4 sm:gap-4 sm:p-6">
                 <div>
                   <p className="text-xs uppercase tracking-widest text-muted-foreground">
                     Tu número
                   </p>
-                  <p className="text-7xl font-extrabold text-brand leading-none tracking-tighter">
+                  <p className="text-6xl font-extrabold text-brand leading-none tracking-tighter sm:text-7xl">
                     ##
                   </p>
                   <p className="mt-2 text-xs text-muted-foreground">
                     Elígelo en el talonario abajo
                   </p>
                 </div>
-                <div className="h-24 w-24 rounded-lg bg-brand-soft grid place-items-center">
-                  <QrCode className="h-14 w-14 text-brand" strokeWidth={1.5} />
+                <div className="grid h-20 w-20 place-items-center rounded-lg bg-brand-soft sm:h-24 sm:w-24">
+                  <QrCode className="h-12 w-12 text-brand sm:h-14 sm:w-14" strokeWidth={1.5} />
                 </div>
               </div>
-              <div className="border-t border-dashed border-border p-4 flex justify-between text-xs text-muted-foreground">
+              <div className="flex flex-col gap-1 border-t border-dashed border-border p-4 text-xs text-muted-foreground sm:flex-row sm:justify-between">
                 <span>Nequi · Daviplata · Bre-B</span>
                 <span className="text-brand font-semibold">{formatCOP(raffle.valor_boleta)}</span>
               </div>
@@ -269,7 +392,7 @@ function HomePage() {
       </header>
 
       {/* FEATURES */}
-      <section className="max-w-6xl mx-auto px-4 py-16 grid grid-cols-2 md:grid-cols-4 gap-8">
+      <section className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-16 sm:grid-cols-2 md:grid-cols-4">
         <Feature
           icon={<Ticket className="h-8 w-8" strokeWidth={2} />}
           title="Página web"
@@ -293,7 +416,7 @@ function HomePage() {
       </section>
 
       {/* PREMIOS */}
-      <section id="premios" className="bg-secondary/40 border-y border-border">
+      <section id="premios" className="public-prizes bg-secondary/40 border-y border-border">
         <div className="max-w-6xl mx-auto px-4 py-16">
           <div className="text-center max-w-xl mx-auto mb-10">
             <span className="inline-flex items-center gap-2 rounded-full bg-white border border-border text-brand text-xs font-semibold px-3 py-1.5 uppercase tracking-wider">
@@ -318,7 +441,7 @@ function HomePage() {
       </section>
 
       {/* STATS */}
-      <section className="max-w-6xl mx-auto px-4 pt-16 grid grid-cols-3 gap-3 text-center">
+      <section className="mx-auto grid max-w-6xl grid-cols-1 gap-3 px-4 pt-16 text-center min-[380px]:grid-cols-3">
         <StatCard value={stats.disp} label="Disponibles" tone="brand" />
         <StatCard value={stats.res} label="Reservados" tone="warning" />
         <StatCard value={stats.vend} label="Vendidos" tone="destructive" />
@@ -337,7 +460,40 @@ function HomePage() {
             Toca cualquier número disponible para reservarlo.
           </p>
         </div>
-        <div className="rounded-3xl bg-white border border-border soft-shadow p-4 md:p-6 max-w-3xl mx-auto">
+        {raffle.staged_payments && (
+          <div className="mx-auto mb-6 max-w-3xl rounded-3xl border border-brand/30 bg-brand-soft/55 p-5">
+            <h3 className="font-display text-xl text-brand">Dos números, una sola boleta</h3>
+            <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+              <p>
+                🎯 <strong>Eliges</strong> tu número principal para el sorteo mayor.
+              </p>
+              <p>
+                🎁 Recibes un <strong>número alterno</strong> para los premios por etapas.
+              </p>
+              <p>
+                💳 Puedes abonar desde <strong>{formatCOP(raffle.installment_amount)}</strong> y
+                mantenerte al día.
+              </p>
+            </div>
+            {stages.length > 0 && (
+              <div className="mt-4 grid gap-2">
+                {stages.map((stage) => (
+                  <div
+                    key={stage.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-secondary/60 px-3 py-2 text-xs"
+                  >
+                    <strong>{stage.name}</strong>
+                    <span>
+                      {formatDate(stage.draw_at)} · Requiere {formatCOP(stage.minimum_paid)} ·
+                      Premio {formatCOP(stage.prize_amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        <div className="public-board rounded-3xl bg-white border border-border soft-shadow p-4 md:p-6 max-w-3xl mx-auto">
           {setupRequired && (
             <div
               role="alert"
@@ -415,7 +571,7 @@ function HomePage() {
 
       {/* CTA */}
       <section className="max-w-6xl mx-auto px-4 pb-16">
-        <div className="rounded-3xl bg-gold-gradient p-10 md:p-14 text-center text-white soft-shadow">
+        <div className="public-cta rounded-3xl bg-gold-gradient p-10 md:p-14 text-center text-white soft-shadow">
           <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight">
             ¿Listo para probar tu suerte?
           </h3>
@@ -437,11 +593,23 @@ function HomePage() {
           <Link to="/auth" className="hover:text-brand">
             Acceso administrador
           </Link>
+          <Link to="/resultados" className="hover:text-brand">
+            Resultados anteriores
+          </Link>
         </div>
       </footer>
 
       {/* Dialog reservar */}
-      <Dialog open={selected != null} onOpenChange={(o) => !o && setSelected(null)}>
+      <Dialog
+        open={selected != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelected(null);
+            setTurnstileToken(null);
+            setTurnstileResetKey((value) => value + 1);
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
@@ -464,7 +632,7 @@ function HomePage() {
               <Label htmlFor="nombre">Nombre completo *</Label>
               <Input id="nombre" name="nombre" required minLength={2} maxLength={80} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="telefono">Teléfono *</Label>
                 <Input
@@ -490,7 +658,7 @@ function HomePage() {
               <RadioGroup
                 name="medio_pago"
                 defaultValue="nequi"
-                className="grid grid-cols-2 gap-2 mt-1"
+                className="mt-1 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2"
               >
                 {raffle.nequi && <PayOpt id="nequi" label="Nequi" />}
                 {raffle.daviplata && <PayOpt id="daviplata" label="Daviplata" />}
@@ -498,10 +666,11 @@ function HomePage() {
                 <PayOpt id="transferencia" label="Transferencia" />
               </RadioGroup>
             </div>
+            <TurnstileWidget onToken={setTurnstileToken} resetKey={turnstileResetKey} />
             <Button
               type="submit"
-              disabled={submitting}
-              className="w-full rounded-full bg-brand text-white font-semibold h-11 hover:opacity-90"
+              disabled={submitting || !turnstileToken}
+              className="w-full rounded-full bg-brand text-brand-foreground font-semibold h-11 hover:opacity-90"
             >
               {submitting ? "Reservando…" : "Reservar mi número"}
             </Button>
@@ -512,37 +681,58 @@ function HomePage() {
       {/* Dialog confirmación */}
       <Dialog open={!!confirmed} onOpenChange={(o) => !o && setConfirmed(null)}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="mx-auto mb-2 h-14 w-14 rounded-full bg-brand-soft grid place-items-center">
-              <CheckCircle2 className="h-8 w-8 text-brand" />
+          <div
+            ref={confirmedTicketRef}
+            className="confirmation-ticket-image rounded-2xl bg-card p-4 text-card-foreground"
+          >
+            <DialogHeader>
+              <div className="mx-auto mb-2 h-14 w-14 rounded-full bg-brand-soft grid place-items-center">
+                <CheckCircle2 className="h-8 w-8 text-brand" />
+              </div>
+              <DialogTitle className="text-2xl font-bold text-center">
+                ¡Reserva registrada!
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                Tu número{" "}
+                <strong className="text-ink">{confirmed ? padded(confirmed.numero) : ""}</strong>{" "}
+                quedó reservado. Realiza el pago y envía el comprobante para confirmarla.
+              </DialogDescription>
+              {confirmed?.numeroAlterno != null && (
+                <div className="mx-auto mt-3 rounded-2xl border border-brand/30 bg-brand-soft/60 px-5 py-3 text-center">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                    Tu número alterno
+                  </p>
+                  <p className="font-display text-4xl text-brand">
+                    {String(confirmed.numeroAlterno).padStart(3, "0")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Participará en los premios pequeños cuando estés al día.
+                  </p>
+                </div>
+              )}
+            </DialogHeader>
+            <div className="space-y-2 text-sm">
+              {raffle.nequi && <PayLine label="Nequi" value={raffle.nequi} />}
+              {raffle.daviplata && <PayLine label="Daviplata" value={raffle.daviplata} />}
+              {raffle.bre_b && <PayLine label="Bre-B" value={raffle.bre_b} />}
+              <p className="text-xs text-center text-muted-foreground pt-1">
+                Valor a pagar:{" "}
+                <span className="text-brand font-bold">{formatCOP(raffle.valor_boleta)}</span>
+              </p>
             </div>
-            <DialogTitle className="text-2xl font-bold text-center">
-              ¡Reserva registrada!
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              Tu número{" "}
-              <strong className="text-ink">{confirmed ? padded(confirmed.numero) : ""}</strong>{" "}
-              quedó reservado. Realiza el pago y envía el comprobante para confirmarla.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 text-sm">
-            {raffle.nequi && <PayLine label="Nequi" value={raffle.nequi} />}
-            {raffle.daviplata && <PayLine label="Daviplata" value={raffle.daviplata} />}
-            {raffle.bre_b && <PayLine label="Bre-B" value={raffle.bre_b} />}
-            <p className="text-xs text-center text-muted-foreground pt-1">
-              Valor a pagar:{" "}
-              <span className="text-brand font-bold">{formatCOP(raffle.valor_boleta)}</span>
+            <p className="mt-3 border-t border-dashed border-border pt-3 text-center font-mono text-[10px] text-muted-foreground">
+              Código: {confirmed?.codigo}
             </p>
           </div>
-          {raffle.whatsapp_admin && confirmed && (
-            <a
-              href={buildWhatsAppUrl(raffle.whatsapp_admin, waMessage)}
-              target="_blank"
-              rel="noreferrer"
-              className="block text-center rounded-full bg-brand py-3 text-white font-semibold hover:opacity-90"
+          {confirmed && (
+            <button
+              type="button"
+              onClick={shareConfirmedTicket}
+              disabled={sharingConfirmed}
+              className="block w-full rounded-full bg-brand py-3 text-center font-semibold text-brand-foreground hover:opacity-90 disabled:opacity-60"
             >
-              Enviar comprobante por WhatsApp
-            </a>
+              {sharingConfirmed ? "Generando imagen…" : "Compartir imagen de la boleta"}
+            </button>
           )}
           {confirmed && (
             <Link
@@ -604,10 +794,10 @@ function PrizeCard({
 }) {
   return (
     <div
-      className={`rounded-2xl border p-5 text-center ${highlight ? "bg-gold-gradient text-white border-transparent soft-shadow" : "bg-white border-border"}`}
+      className={`rounded-2xl border p-5 text-center ${highlight ? "bg-gold-gradient text-primary-foreground border-transparent soft-shadow" : "bg-white border-border"}`}
     >
       <div
-        className={`mx-auto h-10 w-10 rounded-full grid place-items-center font-bold text-sm ${highlight ? "bg-white/20 text-white" : "bg-brand-soft text-brand"}`}
+        className={`prize-rank mx-auto grid h-10 w-10 place-items-center rounded-full font-bold text-xs ${highlight ? "bg-white/20 text-primary-foreground" : "bg-brand-soft text-brand"}`}
       >
         {rank}
       </div>
@@ -634,16 +824,12 @@ function StatCard({
 }) {
   const tones: Record<string, string> = {
     brand: "text-brand",
-    warning: "text-warning-foreground bg-warning/20",
-    destructive: "text-destructive",
+    warning: "text-brand",
+    destructive: "text-brand",
   };
   return (
-    <div className="rounded-2xl bg-white border border-border p-4">
-      <p
-        className={`text-3xl font-extrabold ${tone === "warning" ? "text-warning-foreground" : tones[tone]}`}
-      >
-        {value}
-      </p>
+    <div className={`stat-card stat-card--${tone} rounded-2xl bg-white border border-border p-4`}>
+      <p className={`text-3xl font-extrabold ${tones[tone]}`}>{value}</p>
       <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
     </div>
   );
@@ -659,25 +845,23 @@ function NumberCell({
   onClick: () => void;
 }) {
   const base =
-    "aspect-square flex items-center justify-center rounded-xl font-bold text-base md:text-lg transition-all";
+    "number-cell aspect-square flex items-center justify-center rounded-xl font-bold text-base md:text-lg transition-all";
   if (ticket.estado === "disponible") {
     return (
       <button
         onClick={onClick}
-        className={`${base} bg-white border-2 border-border text-ink hover:border-brand hover:bg-brand hover:text-white hover:scale-105 active:scale-95`}
+        className={`${base} number-cell--available bg-white border-2 border-border text-ink hover:border-brand hover:bg-brand hover:text-brand-foreground hover:scale-105 active:scale-95`}
       >
         {padNumber(ticket.numero, digits)}
       </button>
     );
   }
-  const styles: Record<string, string> = {
-    reservado: "bg-warning/40 text-warning-foreground cursor-not-allowed",
-    vendido: "bg-muted text-muted-foreground cursor-not-allowed line-through",
-    ganador: "bg-brand text-white ring-2 ring-brand/30 ring-offset-2 ring-offset-background",
-  };
   return (
-    <div className={`${base} ${styles[ticket.estado]}`} title={ticket.estado}>
-      {padNumber(ticket.numero, digits)}
+    <div
+      className={`${base} number-cell--occupied number-cell--${ticket.estado} cursor-not-allowed`}
+      title={ticket.estado}
+    >
+      <span>{padNumber(ticket.numero, digits)}</span>
     </div>
   );
 }
@@ -712,7 +896,7 @@ function PayOpt({ id, label }: { id: string; label: string }) {
   return (
     <label
       htmlFor={`pay-${id}`}
-      className="flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 cursor-pointer has-[:checked]:border-brand has-[:checked]:bg-brand-soft"
+      className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 cursor-pointer has-[:checked]:border-brand has-[:checked]:bg-brand-soft"
     >
       <RadioGroupItem value={id} id={`pay-${id}`} />
       <span className="text-sm font-medium">{label}</span>

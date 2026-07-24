@@ -63,6 +63,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { httpEquiv: "Cache-Control", content: "no-cache, no-store, must-revalidate" },
+      { httpEquiv: "Pragma", content: "no-cache" },
+      { httpEquiv: "Expires", content: "0" },
       { name: "theme-color", content: "#f5c518" },
       { title: "¡Qué Locura de Rifa! · 100 números, 5 oportunidades de ganar" },
       {
@@ -122,10 +125,42 @@ function RootComponent() {
     });
     return () => sub.subscription.unsubscribe();
   }, [router, queryClient]);
+  useEffect(() => {
+    async function clearApplicationCaches() {
+      try {
+        if ("caches" in window) {
+          const keys = await window.caches.keys();
+          await Promise.all(keys.map((key) => window.caches.delete(key)));
+        }
+        if ("serviceWorker" in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((registration) => registration.unregister()));
+        }
+      } catch (error) {
+        console.warn("[cache-refresh] No fue posible limpiar toda la caché de la PWA", error);
+      }
+    }
+    const refreshRestoredPage = (event: PageTransitionEvent) => {
+      if (event.persisted) window.location.reload();
+    };
+    void clearApplicationCaches();
+    window.addEventListener("pageshow", refreshRestoredPage);
+    return () => window.removeEventListener("pageshow", refreshRestoredPage);
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
-      <Toaster position="top-center" richColors theme="dark" />
+      <Toaster
+        position="top-center"
+        theme="system"
+        toastOptions={{
+          style: {
+            color: "var(--card-foreground)",
+            background: "var(--card)",
+            borderColor: "var(--brand)",
+          },
+        }}
+      />
     </QueryClientProvider>
   );
 }

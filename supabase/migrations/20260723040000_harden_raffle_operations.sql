@@ -6,6 +6,7 @@ ALTER TABLE public.tickets ADD CONSTRAINT tickets_numero_check CHECK (numero BET
 
 DROP TRIGGER IF EXISTS raffles_seed_tickets ON public.raffles;
 DROP TRIGGER IF EXISTS trg_seed_raffle_tickets ON public.raffles;
+DROP TRIGGER IF EXISTS raffles_seed_tickets_once ON public.raffles;
 
 CREATE OR REPLACE FUNCTION public.seed_raffle_tickets()
 RETURNS trigger

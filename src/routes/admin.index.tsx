@@ -26,6 +26,7 @@ export const Route = createFileRoute("/admin/")({
 type T = {
   id: string;
   numero: number;
+  numero_alterno: number | null;
   estado: string;
   nombre: string | null;
   telefono: string | null;
@@ -34,6 +35,7 @@ type T = {
   medio_pago: string | null;
   valor_pagado: number | null;
   monto_recibido: number | null;
+  total_abonado: number;
   referencia_pago: string | null;
   fecha_compra: string | null;
   observaciones: string | null;
@@ -78,16 +80,20 @@ function AdminTickets() {
     reservados: tickets.filter((t) => t.estado === "reservado").length,
     vendidos: tickets.filter((t) => t.estado === "vendido" || t.estado === "ganador").length,
     ingresos: tickets
-      .filter((t) => t.estado === "vendido" || t.estado === "ganador")
-      .reduce((s, t) => s + (t.monto_recibido ?? t.valor_pagado ?? 0), 0),
+      .filter((t) => t.estado !== "disponible")
+      .reduce((s, t) => s + (t.total_abonado ?? t.monto_recibido ?? 0), 0),
     pendientes: tickets
       .filter((t) => t.estado === "reservado")
-      .reduce((s, t) => s + (t.valor_pagado ?? 0), 0),
+      .reduce((s, t) => s + Math.max(0, (t.valor_pagado ?? 0) - (t.total_abonado ?? 0)), 0),
   };
 
   function openValidar(t: T) {
     setValidar(t);
-    setForm({ referencia: "", monto: t.valor_pagado ?? 0, obs: "" });
+    const balance = Math.max(0, (t.valor_pagado ?? 0) - (t.total_abonado ?? 0));
+    const suggested = data?.raffle?.staged_payments
+      ? Math.min(balance, data.raffle.installment_amount ?? balance)
+      : balance;
+    setForm({ referencia: "", monto: suggested, obs: "" });
   }
 
   async function submitValidar() {
@@ -110,7 +116,11 @@ function AdminTickets() {
           observaciones: form.obs || null,
         },
       });
-      toast.success("Pago validado y boleta confirmada");
+      toast.success(
+        form.monto + (validar.total_abonado ?? 0) >= (validar.valor_pagado ?? 0)
+          ? "Pago completado y boleta confirmada"
+          : "Abono registrado correctamente",
+      );
       setValidar(null);
       qc.invalidateQueries({ queryKey: ["admin-tickets", selectedId] });
     } catch (e) {
@@ -135,6 +145,7 @@ function AdminTickets() {
     const rows = [
       [
         "Numero",
+        "NumeroAlterno",
         "Estado",
         "Nombre",
         "Telefono",
@@ -151,6 +162,7 @@ function AdminTickets() {
         .filter((t) => t.estado !== "disponible")
         .map((t) => [
           pad2(t.numero),
+          t.numero_alterno == null ? "" : String(t.numero_alterno).padStart(3, "0"),
           t.estado,
           t.nombre ?? "",
           t.telefono ?? "",
@@ -158,7 +170,7 @@ function AdminTickets() {
           t.email ?? "",
           t.medio_pago ?? "",
           String(t.valor_pagado ?? ""),
-          String(t.monto_recibido ?? ""),
+          String(t.total_abonado ?? t.monto_recibido ?? ""),
           t.referencia_pago ?? "",
           t.fecha_compra ?? "",
           t.codigo_verificacion,
@@ -229,6 +241,7 @@ function AdminTickets() {
           <thead className="bg-secondary/50">
             <tr className="text-left">
               <Th>#</Th>
+              {data.raffle.staged_payments && <Th>Alterno</Th>}
               <Th>Estado</Th>
               <Th>Nombre</Th>
               <Th>Teléfono</Th>
@@ -244,6 +257,11 @@ function AdminTickets() {
             {filtered.map((t) => (
               <tr key={t.id} className="border-t border-border hover:bg-secondary/30">
                 <td className="px-3 py-2 font-display text-gold">{pad2(t.numero)}</td>
+                {data.raffle.staged_payments && (
+                  <td className="px-3 py-2 font-display text-brand">
+                    {t.numero_alterno == null ? "—" : String(t.numero_alterno).padStart(3, "0")}
+                  </td>
+                )}
                 <td className="px-3 py-2">
                   <EstadoBadge estado={t.estado} />
                 </td>
@@ -253,8 +271,15 @@ function AdminTickets() {
                 <td className="px-3 py-2">{t.medio_pago ?? "—"}</td>
                 <td className="px-3 py-2 font-mono text-xs">{t.referencia_pago ?? "—"}</td>
                 <td className="px-3 py-2 text-xs">
-                  {t.monto_recibido != null ? (
-                    formatCOP(t.monto_recibido)
+                  {t.total_abonado > 0 ? (
+                    <span>
+                      {formatCOP(t.total_abonado)}
+                      {t.valor_pagado != null && t.total_abonado < t.valor_pagado && (
+                        <small className="block text-muted-foreground">
+                          Saldo {formatCOP(t.valor_pagado - t.total_abonado)}
+                        </small>
+                      )}
+                    </span>
                   ) : t.valor_pagado != null ? (
                     <span className="text-muted-foreground">{formatCOP(t.valor_pagado)}</span>
                   ) : (

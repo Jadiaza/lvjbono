@@ -1,16 +1,37 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- rental tables are ahead of generated Supabase types */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
+import { PUBLIC_SKIN_IDS } from "@/lib/public-skins";
 
 function getPublicClient() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const url = process.env.SUPABASE_URL?.replace(/^\uFEFF/, "").trim();
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY?.replace(/^\uFEFF/, "").trim();
   if (!url || !key) throw new Error("El servicio no está configurado temporalmente.");
   return createClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
   });
+}
+
+async function verifyTurnstileToken(token: string): Promise<void> {
+  const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
+  if (!secret) {
+    console.error("[Turnstile] Missing TURNSTILE_SECRET_KEY");
+    throw new Error("La verificación antirrobot no está configurada.");
+  }
+
+  const body = new FormData();
+  body.set("secret", secret);
+  body.set("response", token);
+  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    method: "POST",
+    body,
+  });
+  if (!response.ok) throw new Error("No fue posible comprobar la verificación antirrobot.");
+  const result = (await response.json()) as { success?: boolean };
+  if (!result.success) throw new Error("La verificación antirrobot venció. Inténtalo nuevamente.");
 }
 
 // ============ PÚBLICO ============
@@ -26,32 +47,71 @@ export const getRaffleData = createServerFn({ method: "GET" }).handler(async () 
   const { data: raffle, error: raffleError } = await s
     .from("raffles")
     .select(
-      "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos",
+      "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount",
     )
     .eq("activa", true)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (raffleError) throw new Error("No fue posible cargar la rifa.");
-  if (!raffle) return { raffle: null, tickets: [], setupRequired: false };
+  if (raffleError) {
+    console.error("[getRaffleData] raffle query failed", {
+      code: raffleError.code,
+      message: raffleError.message,
+      details: raffleError.details,
+      hint: raffleError.hint,
+    });
+    throw new Error("No fue posible cargar la rifa.");
+  }
+  if (!raffle) return { raffle: null, tickets: [], stages: [], setupRequired: false };
 
   const { data: tickets, error: ticketsError } = await s.rpc("get_public_tickets", {
     _raffle_id: raffle.id,
   });
   if (ticketsError) {
+    console.error("[getRaffleData] public ticket query failed", {
+      code: ticketsError.code,
+      message: ticketsError.message,
+      details: ticketsError.details,
+      hint: ticketsError.hint,
+    });
     if (ticketsError.code === "PGRST202") {
-      console.error("[getRaffleData] public ticket RPC is not installed");
-      return { raffle, tickets: [], setupRequired: true };
+      return { raffle, tickets: [], stages: [], setupRequired: true };
     }
     throw new Error("No fue posible cargar el talonario.");
   }
 
+  const { data: stages, error: stagesError } = raffle.staged_payments
+    ? await s.rpc("get_public_raffle_stages", { _raffle_id: raffle.id })
+    : { data: [], error: null };
+  if (stagesError) throw new Error("No fue posible cargar la programación de sorteos.");
+
   return {
     raffle,
     tickets: (tickets ?? []).sort((a, b) => a.numero - b.numero),
+    stages: stages ?? [],
     setupRequired: false,
   };
+});
+
+export const getPublicDrawResults = createServerFn({ method: "GET" }).handler(async () => {
+  const s = getPublicClient();
+  const { data: draws, error } = await s
+    .from("draws")
+    .select("id, raffle_id, premio_mayor_num, seco1_num, seco2_num, ganadores, created_at")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw new Error("No fue posible cargar los resultados anteriores.");
+
+  const raffleIds = [...new Set((draws ?? []).map((draw) => draw.raffle_id))];
+  const { data: raffles } = raffleIds.length
+    ? await s.from("raffles").select("id, nombre, serie, digitos, loteria").in("id", raffleIds)
+    : { data: [] };
+  const raffleMap = new Map((raffles ?? []).map((raffle) => [raffle.id, raffle]));
+  return (draws ?? []).map((draw) => ({
+    ...draw,
+    raffle: raffleMap.get(draw.raffle_id) ?? null,
+  }));
 });
 
 export const reservarNumero = createServerFn({ method: "POST" })
@@ -65,10 +125,12 @@ export const reservarNumero = createServerFn({ method: "POST" })
         ciudad: z.string().trim().min(2).max(60),
         email: z.string().trim().email().max(120).optional().or(z.literal("")),
         medio_pago: z.enum(["nequi", "daviplata", "bre_b", "transferencia"]),
+        turnstileToken: z.string().min(10),
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
+    await verifyTurnstileToken(data.turnstileToken);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Validar rifa activa
     const { data: raffle } = await supabaseAdmin
@@ -96,7 +158,11 @@ export const reservarNumero = createServerFn({ method: "POST" })
     const updated = rows?.[0];
     if (!updated) throw new Error("Ese número ya no está disponible. Elige otro.");
 
-    return { codigo: updated.codigo_verificacion, numero: updated.numero };
+    return {
+      codigo: updated.codigo_verificacion,
+      numero: updated.numero,
+      numeroAlterno: updated.numero_alterno,
+    };
   });
 
 export const getBoletaByCodigo = createServerFn({ method: "GET" })
@@ -106,7 +172,7 @@ export const getBoletaByCodigo = createServerFn({ method: "GET" })
     const { data: t, error: ticketError } = await supabaseAdmin
       .from("tickets")
       .select(
-        "numero, estado, nombre, telefono, ciudad, email, medio_pago, valor_pagado, fecha_compra, codigo_verificacion, premio_ganado, raffle_id",
+        "id, numero, numero_alterno, estado, nombre, telefono, ciudad, email, medio_pago, valor_pagado, total_abonado, fecha_compra, codigo_verificacion, premio_ganado, raffle_id",
       )
       .eq("codigo_verificacion", data.codigo)
       .maybeSingle();
@@ -114,11 +180,27 @@ export const getBoletaByCodigo = createServerFn({ method: "GET" })
     if (!t) return null;
     const { data: r, error: raffleError } = await supabaseAdmin
       .from("raffles")
-      .select("nombre, digitos, fecha_sorteo, loteria, whatsapp_admin, nequi, daviplata, bre_b")
+      .select(
+        "nombre, digitos, valor_boleta, fecha_sorteo, loteria, whatsapp_admin, nequi, daviplata, bre_b, public_skin, staged_payments, installment_amount",
+      )
       .eq("id", t.raffle_id)
       .maybeSingle();
     if (raffleError) throw new Error("No fue posible consultar la rifa.");
-    return { ticket: t, raffle: r };
+    const [{ data: payments }, { data: stages }] = await Promise.all([
+      supabaseAdmin
+        .from("ticket_payments")
+        .select("id, amount, reference, paid_at")
+        .eq("ticket_id", t.id)
+        .order("paid_at"),
+      supabaseAdmin
+        .from("raffle_draw_stages")
+        .select(
+          "id, name, draw_at, minimum_paid, prize_amount, result_number, winner_ticket_id, completed_at",
+        )
+        .eq("raffle_id", t.raffle_id)
+        .order("draw_at"),
+    ]);
+    return { ticket: t, raffle: r, payments: payments ?? [], stages: stages ?? [] };
   });
 
 // ============ ADMIN ============
@@ -136,15 +218,55 @@ async function assertAdmin(ctx: {
   if (!data) throw new Error("Forbidden: se requiere rol admin.");
 }
 
+async function getAdminAccess(ctx: {
+  supabase: ReturnType<typeof createClient<Database>>;
+  userId: string;
+}) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: role } = await ctx.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", ctx.userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  if (role) return { role: "admin" as const, raffleIds: [] as string[], rental: null };
+
+  const now = new Date().toISOString();
+  const { data: rentals } = await (supabaseAdmin as any)
+    .from("raffle_rentals")
+    .select("id, raffle_id, responsable, starts_at, ends_at")
+    .eq("user_id", ctx.userId)
+    .eq("active", true)
+    .lte("starts_at", now)
+    .gt("ends_at", now);
+  const activeRentals = rentals ?? [];
+  if (!activeRentals.length) throw new Error("Tu alquiler no está activo o ya venció.");
+  return {
+    role: "organizer" as const,
+    raffleIds: activeRentals.map((r: { raffle_id: string }) => r.raffle_id),
+    rental: activeRentals[0],
+  };
+}
+
+async function assertRaffleAccess(
+  ctx: { supabase: ReturnType<typeof createClient<Database>>; userId: string },
+  raffleId: string,
+) {
+  const access = await getAdminAccess(ctx);
+  if (access.role !== "admin" && !access.raffleIds.includes(raffleId)) {
+    throw new Error("No tienes acceso a esta rifa.");
+  }
+  return access;
+}
+
 export const adminListRaffles = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context);
+    const access = await getAdminAccess(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: raffles } = await supabaseAdmin
-      .from("raffles")
-      .select("*")
-      .order("created_at", { ascending: false });
+    let raffleQuery = supabaseAdmin.from("raffles").select("*");
+    if (access.role !== "admin") raffleQuery = raffleQuery.in("id", access.raffleIds);
+    const { data: raffles } = await raffleQuery.order("created_at", { ascending: false });
     const list = raffles ?? [];
     // Enrich with counts
     const enriched = await Promise.all(
@@ -158,7 +280,7 @@ export const adminListRaffles = createServerFn({ method: "GET" })
         return { ...r, counts, total: (agg ?? []).length };
       }),
     );
-    return { raffles: enriched };
+    return { raffles: enriched, access };
   });
 
 export const adminCreateRaffle = createServerFn({ method: "POST" })
@@ -178,7 +300,27 @@ export const adminCreateRaffle = createServerFn({ method: "POST" })
         premio_seco2: z.number().int().min(0).default(80000),
         premio_aprox_ant: z.number().int().min(0).default(10000),
         premio_aprox_pos: z.number().int().min(0).default(10000),
+        public_skin: z.enum(PUBLIC_SKIN_IDS).default("purpura-real"),
+        staged_payments: z.boolean().default(false),
+        installment_amount: z.number().int().min(1).optional().nullable(),
+        stages: z.array(z.unknown()).max(24).default([]),
       })
+      .transform((data) => ({
+        ...data,
+        stages:
+          data.digitos === 3 && data.staged_payments
+            ? z
+                .array(
+                  z.object({
+                    name: z.string().trim().min(2).max(80),
+                    draw_at: z.string().min(10),
+                    minimum_paid: z.number().int().min(1),
+                    prize_amount: z.number().int().min(0),
+                  }),
+                )
+                .parse(data.stages)
+            : [],
+      }))
       .parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -198,15 +340,45 @@ export const adminCreateRaffle = createServerFn({ method: "POST" })
           fecha_sorteo: data.fecha_sorteo || null,
           loteria: data.loteria || null,
           premio_mayor: data.premio_mayor,
-          premio_seco1: data.premio_seco1,
-          premio_seco2: data.premio_seco2,
-          premio_aprox_ant: data.premio_aprox_ant,
-          premio_aprox_pos: data.premio_aprox_pos,
+          premio_seco1: data.digitos === 3 && data.staged_payments ? 0 : data.premio_seco1,
+          premio_seco2: data.digitos === 3 && data.staged_payments ? 0 : data.premio_seco2,
+          premio_aprox_ant: data.digitos === 3 && data.staged_payments ? 0 : data.premio_aprox_ant,
+          premio_aprox_pos: data.digitos === 3 && data.staged_payments ? 0 : data.premio_aprox_pos,
+          public_skin: data.public_skin,
+          staged_payments: data.digitos === 3 && data.staged_payments,
+          installment_amount:
+            data.digitos === 3 && data.staged_payments
+              ? (data.installment_amount ?? Math.ceil(data.valor_boleta / 3))
+              : null,
           activa: false,
         })
         .select("id")
         .single();
       if (error) throw new Error(error.message);
+      if (data.digitos === 3 && data.staged_payments) {
+        if (!data.fecha_sorteo || data.stages.length === 0) {
+          await supabaseAdmin.from("raffles").delete().eq("id", r.id);
+          throw new Error("Configura la fecha final y al menos un premio mensual.");
+        }
+        const finalDate = new Date(`${data.fecha_sorteo}T23:59:59`);
+        if (data.stages.some((stage) => new Date(stage.draw_at) >= finalDate)) {
+          await supabaseAdmin.from("raffles").delete().eq("id", r.id);
+          throw new Error("Los premios mensuales deben jugar antes del premio final.");
+        }
+        const { error: stagesError } = await supabaseAdmin.from("raffle_draw_stages").insert(
+          data.stages.map((stage) => ({
+            raffle_id: r.id,
+            name: stage.name,
+            draw_at: stage.draw_at,
+            minimum_paid: stage.minimum_paid,
+            prize_amount: stage.prize_amount,
+          })),
+        );
+        if (stagesError) {
+          await supabaseAdmin.from("raffles").delete().eq("id", r.id);
+          throw new Error("No fue posible crear la programación mensual.");
+        }
+      }
       created.push(r.id);
     }
     return { ids: created };
@@ -252,14 +424,17 @@ export const adminListTickets = createServerFn({ method: "GET" })
       .parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    const access = await getAdminAccess(context);
+    const requestedRaffleId =
+      data?.raffleId ?? (access.role === "organizer" ? access.raffleIds[0] : undefined);
+    if (requestedRaffleId) await assertRaffleAccess(context, requestedRaffleId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let raffle: Database["public"]["Tables"]["raffles"]["Row"] | null = null;
-    if (data?.raffleId) {
+    if (requestedRaffleId) {
       const { data: r } = await supabaseAdmin
         .from("raffles")
         .select("*")
-        .eq("id", data.raffleId)
+        .eq("id", requestedRaffleId)
         .maybeSingle();
       raffle = r;
     } else {
@@ -297,8 +472,14 @@ export const adminUpdateTicket = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: ticketAccess } = await supabaseAdmin
+      .from("tickets")
+      .select("raffle_id")
+      .eq("id", data.ticketId)
+      .single();
+    if (!ticketAccess) throw new Error("Boleta no encontrada.");
+    await assertRaffleAccess(context, ticketAccess.raffle_id);
     const patch: Database["public"]["Tables"]["tickets"]["Update"] = {};
     if (data.estado !== undefined) patch.estado = data.estado;
     if (data.nombre !== undefined) patch.nombre = data.nombre;
@@ -311,7 +492,8 @@ export const adminUpdateTicket = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// Validar y confirmar pago (reservado -> vendido)
+// Registrar un pago o abono. En rifas por etapas permanece reservado
+// hasta completar el valor total; los abonos habilitan sorteos intermedios.
 export const adminConfirmarPago = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: unknown) =>
@@ -325,42 +507,52 @@ export const adminConfirmarPago = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: t } = await supabaseAdmin
       .from("tickets")
-      .select("id, estado, valor_pagado, raffle_id")
+      .select("id, estado, valor_pagado, total_abonado, raffle_id")
       .eq("id", data.ticketId)
       .maybeSingle();
     if (!t) throw new Error("Boleta no encontrada");
+    await assertRaffleAccess(context, t.raffle_id);
     if (t.estado !== "reservado") throw new Error("Solo se pueden validar boletas reservadas");
-    const esperado = t.valor_pagado ?? 0;
-    if (esperado > 0 && data.monto_recibido < esperado) {
-      throw new Error(
-        `El monto recibido ($${data.monto_recibido.toLocaleString("es-CO")}) es menor al valor de la boleta ($${esperado.toLocaleString("es-CO")}).`,
-      );
+    const { data: result, error } = await context.supabase.rpc("add_ticket_payment", {
+      _ticket_id: data.ticketId,
+      _amount: data.monto_recibido,
+      _reference: data.referencia_pago,
+      _notes: data.observaciones ?? null,
+    });
+    if (error) {
+      if (error.message.includes("payment_exceeds_balance"))
+        throw new Error("El abono supera el saldo pendiente.");
+      if (error.message.includes("full_payment_required"))
+        throw new Error("Esta rifa requiere el pago completo.");
+      throw new Error("No fue posible registrar el abono.");
     }
-    const { error } = await supabaseAdmin
-      .from("tickets")
-      .update({
-        estado: "vendido",
-        referencia_pago: data.referencia_pago,
-        monto_recibido: data.monto_recibido,
-        observaciones: data.observaciones ?? null,
-        validado_por: context.userId,
-        validado_at: new Date().toISOString(),
-      })
-      .eq("id", data.ticketId);
-    if (error) throw new Error(error.message);
-    return { ok: true };
+    return {
+      ok: true,
+      totalPaid: result?.[0]?.total_paid ?? t.total_abonado + data.monto_recibido,
+      status: result?.[0]?.ticket_status ?? t.estado,
+    };
   });
 
 export const adminAnularTicket = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: unknown) => z.object({ ticketId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: ticketAccess } = await supabaseAdmin
+      .from("tickets")
+      .select("raffle_id")
+      .eq("id", data.ticketId)
+      .single();
+    if (!ticketAccess) throw new Error("Boleta no encontrada.");
+    await assertRaffleAccess(context, ticketAccess.raffle_id);
+    const { error: paymentsError } = await supabaseAdmin
+      .from("ticket_payments")
+      .delete()
+      .eq("ticket_id", data.ticketId);
+    if (paymentsError) throw new Error("No fue posible eliminar el historial de abonos.");
     const { error } = await supabaseAdmin
       .from("tickets")
       .update({
@@ -376,6 +568,8 @@ export const adminAnularTicket = createServerFn({ method: "POST" })
         premio_ganado: null,
         referencia_pago: null,
         monto_recibido: null,
+        total_abonado: 0,
+        numero_alterno: null,
         validado_por: null,
         validado_at: null,
       })
@@ -405,6 +599,9 @@ export const adminUpdateRaffle = createServerFn({ method: "POST" })
         premio_seco2: z.number().int().min(0).optional(),
         premio_aprox_ant: z.number().int().min(0).optional(),
         premio_aprox_pos: z.number().int().min(0).optional(),
+        public_skin: z.enum(PUBLIC_SKIN_IDS).optional(),
+        staged_payments: z.boolean().optional(),
+        installment_amount: z.number().int().min(1).nullable().optional(),
       })
       .parse(d),
   )
@@ -421,7 +618,296 @@ export const adminUpdateRaffle = createServerFn({ method: "POST" })
     }
     const { error } = await supabaseAdmin.from("raffles").update(patch).eq("id", id);
     if (error) throw new Error(error.message);
+    if (patch.staged_payments === true) {
+      const { error: alternateError } = await context.supabase.rpc("backfill_alternate_numbers", {
+        _raffle_id: id,
+      });
+      if (alternateError)
+        throw new Error("Se guardó la modalidad, pero no fue posible asignar números alternos.");
+    }
     return { ok: true };
+  });
+
+export const adminListStages = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) => z.object({ raffleId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: stages, error } = await supabaseAdmin
+      .from("raffle_draw_stages")
+      .select("*")
+      .eq("raffle_id", data.raffleId)
+      .order("draw_at");
+    if (error) throw new Error("No fue posible consultar las etapas.");
+    return { stages: stages ?? [] };
+  });
+
+export const adminGetReminderCenter = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) => z.object({ raffleId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: settings }, { data: reminders }, { data: tickets }] = await Promise.all([
+      supabaseAdmin
+        .from("sponsor_reminder_settings")
+        .select("*")
+        .eq("raffle_id", data.raffleId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("sponsor_reminders")
+        .select("*")
+        .eq("raffle_id", data.raffleId)
+        .order("scheduled_for"),
+      supabaseAdmin
+        .from("tickets")
+        .select("id, numero, nombre, telefono, total_abonado")
+        .eq("raffle_id", data.raffleId),
+    ]);
+    const people = new Map((tickets ?? []).map((ticket) => [ticket.id, ticket]));
+    return {
+      settings,
+      reminders: (reminders ?? []).map((reminder) => ({
+        ...reminder,
+        ticket: people.get(reminder.ticket_id) ?? null,
+      })),
+    };
+  });
+
+export const adminGetSponsorshipCenter = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: plans, error: plansError }, { data: sponsors, error: sponsorsError }] =
+      await Promise.all([
+        supabaseAdmin.from("sponsorship_plans").select("*").order("created_at", {
+          ascending: false,
+        }),
+        supabaseAdmin.from("sponsors").select("*").order("next_due_on"),
+      ]);
+    if (plansError || sponsorsError) throw new Error("No fue posible cargar el Plan Padrino.");
+    return { plans: plans ?? [], sponsors: sponsors ?? [] };
+  });
+
+export const adminCreateSponsorshipPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) =>
+    z
+      .object({
+        name: z.string().trim().min(2).max(100),
+        description: z.string().trim().max(500).optional(),
+        monthlyAmount: z.number().int().min(1000),
+        dueDay: z.number().int().min(1).max(28),
+        startsOn: z.string().min(10),
+        endsOn: z.string().min(10).optional().nullable(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: plan, error } = await supabaseAdmin
+      .from("sponsorship_plans")
+      .insert({
+        name: data.name,
+        description: data.description || null,
+        monthly_amount: data.monthlyAmount,
+        due_day: data.dueDay,
+        starts_on: data.startsOn,
+        ends_on: data.endsOn || null,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error("No fue posible crear el plan.");
+    return plan;
+  });
+
+export const adminCreateSponsor = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) =>
+    z
+      .object({
+        planId: z.string().uuid(),
+        name: z.string().trim().min(2).max(100),
+        phone: z.string().trim().min(7).max(20),
+        city: z.string().trim().max(80).optional(),
+        email: z.string().trim().email().optional().or(z.literal("")),
+        monthlyAmount: z.number().int().min(1000),
+        nextDueOn: z.string().min(10),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("sponsors").insert({
+      plan_id: data.planId,
+      name: data.name,
+      phone: data.phone,
+      city: data.city || null,
+      email: data.email || null,
+      monthly_amount: data.monthlyAmount,
+      next_due_on: data.nextDueOn,
+    });
+    if (error) throw new Error("No fue posible registrar el padrino.");
+    return { ok: true };
+  });
+
+export const adminRegisterSponsorContribution = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) =>
+    z
+      .object({
+        sponsorId: z.string().uuid(),
+        amount: z.number().int().min(1),
+        reference: z.string().trim().max(80).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: sponsor } = await supabaseAdmin
+      .from("sponsors")
+      .select("next_due_on")
+      .eq("id", data.sponsorId)
+      .single();
+    if (!sponsor) throw new Error("Padrino no encontrado.");
+    const next = new Date(`${sponsor.next_due_on}T12:00:00`);
+    next.setMonth(next.getMonth() + 1);
+    const { error: paymentError } = await supabaseAdmin.from("sponsor_contributions").insert({
+      sponsor_id: data.sponsorId,
+      amount: data.amount,
+      reference: data.reference || null,
+    });
+    if (paymentError) throw new Error("No fue posible registrar el aporte.");
+    await supabaseAdmin
+      .from("sponsors")
+      .update({
+        next_due_on: next.toISOString().slice(0, 10),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.sponsorId);
+    return { ok: true };
+  });
+
+export const adminSaveReminderSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) =>
+    z
+      .object({
+        raffleId: z.string().uuid(),
+        enabled: z.boolean(),
+        daysBefore: z.number().int().min(0).max(30),
+        daysAfter: z.number().int().min(0).max(30),
+        messageTemplate: z.string().trim().min(20).max(1000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("sponsor_reminder_settings").upsert({
+      raffle_id: data.raffleId,
+      enabled: data.enabled,
+      days_before: data.daysBefore,
+      days_after: data.daysAfter,
+      message_template: data.messageTemplate,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw new Error("No fue posible guardar la programación.");
+    return { ok: true };
+  });
+
+export const adminQueueSponsorReminders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) =>
+    z
+      .object({
+        raffleId: z.string().uuid(),
+        dueAt: z.string().datetime().optional().nullable(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: count, error } = await context.supabase.rpc("queue_sponsor_reminders", {
+      _raffle_id: data.raffleId,
+      _due_at: data.dueAt ?? null,
+    });
+    if (error) throw new Error("No fue posible generar los recordatorios.");
+    return { count: count ?? 0 };
+  });
+
+export const adminMarkReminderSent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) => z.object({ reminderId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("sponsor_reminders")
+      .update({
+        status: "sent",
+        sent_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.reminderId);
+    if (error) throw new Error("No fue posible actualizar el recordatorio.");
+    return { ok: true };
+  });
+
+export const adminSaveStage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) =>
+    z
+      .object({
+        id: z.string().uuid().optional(),
+        raffleId: z.string().uuid(),
+        name: z.string().trim().min(2).max(80),
+        drawAt: z.string().min(10),
+        minimumPaid: z.number().int().min(1),
+        prizeAmount: z.number().int().min(0),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const values = {
+      raffle_id: data.raffleId,
+      name: data.name,
+      draw_at: data.drawAt,
+      minimum_paid: data.minimumPaid,
+      prize_amount: data.prizeAmount,
+    };
+    const query = data.id
+      ? supabaseAdmin.from("raffle_draw_stages").update(values).eq("id", data.id)
+      : supabaseAdmin.from("raffle_draw_stages").insert(values);
+    const { error } = await query;
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const adminRegisterStageDraw = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) =>
+    z.object({ stageId: z.string().uuid(), result: z.number().int().min(0) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: result, error } = await context.supabase.rpc("register_stage_draw", {
+      _stage_id: data.stageId,
+      _result: data.result,
+    });
+    if (error) {
+      if (error.message.includes("stage_not_closed"))
+        throw new Error("La etapa todavía no ha llegado a su fecha y hora de cierre.");
+      throw new Error("No fue posible registrar el sorteo alterno.");
+    }
+    return result;
   });
 
 // Registrar sorteo
@@ -538,6 +1024,67 @@ export const adminRegistrarSorteo = createServerFn({ method: "POST" })
     */
   });
 
+export const adminRegisterFinalStageDraw = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) =>
+    z.object({ raffleId: z.string().uuid(), result: z.number().int().min(0) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: raffle } = await supabaseAdmin
+      .from("raffles")
+      .select("id, digitos, staged_payments, valor_boleta, premio_mayor")
+      .eq("id", data.raffleId)
+      .maybeSingle();
+    if (!raffle?.staged_payments) throw new Error("Esta rifa no usa premio final por etapas.");
+    const modulus = 10 ** raffle.digitos;
+    const number = ((data.result % modulus) + modulus) % modulus;
+    const { data: ticket } = await supabaseAdmin
+      .from("tickets")
+      .select("id, nombre, telefono, ciudad, estado, total_abonado")
+      .eq("raffle_id", data.raffleId)
+      .eq("numero", number)
+      .maybeSingle();
+    const sold =
+      !!ticket &&
+      ["vendido", "ganador"].includes(ticket.estado) &&
+      ticket.total_abonado >= raffle.valor_boleta;
+    await supabaseAdmin
+      .from("tickets")
+      .update({ estado: "vendido", premio_ganado: null })
+      .eq("raffle_id", data.raffleId)
+      .eq("estado", "ganador");
+    if (sold && ticket) {
+      await supabaseAdmin
+        .from("tickets")
+        .update({ estado: "ganador", premio_ganado: "Premio final" })
+        .eq("id", ticket.id);
+    }
+    const winner = {
+      premio: "Premio final",
+      numero: number,
+      monto: raffle.premio_mayor,
+      acumulado: false,
+      nombre: ticket?.nombre ?? null,
+      telefono: ticket?.telefono ?? null,
+      ciudad: ticket?.ciudad ?? null,
+      vendido: sold,
+    };
+    const { error } = await supabaseAdmin.from("draws").upsert(
+      {
+        raffle_id: data.raffleId,
+        premio_mayor_num: number,
+        seco1_num: 0,
+        seco2_num: 0,
+        ganadores: [winner],
+      },
+      { onConflict: "raffle_id" },
+    );
+    if (error) throw new Error("No fue posible registrar el premio final.");
+    return { ganadores: [winner] };
+  });
+
 export const adminGetSorteo = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .validator((d: unknown) => z.object({ raffleId: z.string().uuid() }).parse(d))
@@ -549,7 +1096,22 @@ export const adminGetSorteo = createServerFn({ method: "GET" })
       .select("*")
       .eq("raffle_id", data.raffleId)
       .maybeSingle();
-    return draw;
+    if (!draw) return null;
+    const raw = Array.isArray(draw.ganadores) ? draw.ganadores : [];
+    const ganadores = raw.map((item) => {
+      const value = item && typeof item === "object" && !Array.isArray(item) ? item : {};
+      return {
+        premio: String(value.premio ?? value.prize ?? "Premio"),
+        numero: Number(value.numero ?? value.number ?? 0),
+        monto: Number(value.monto ?? value.amount ?? 0),
+        acumulado: Boolean(value.acumulado ?? value.paid === false),
+        nombre: typeof value.nombre === "string" ? value.nombre : null,
+        telefono: typeof value.telefono === "string" ? value.telefono : null,
+        ciudad: typeof value.ciudad === "string" ? value.ciudad : null,
+        vendido: Boolean(value.vendido),
+      };
+    });
+    return { ...draw, ganadores };
   });
 
 // Otorgar rol admin al primer usuario (auto-bootstrap)
@@ -558,7 +1120,13 @@ export const adminSelfBootstrap = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { data: granted, error } = await context.supabase.rpc("bootstrap_first_admin");
     if (error) throw new Error("No fue posible validar permisos administrativos.");
-    return { granted: granted === true, alreadyHasAdmin: granted !== true };
+    if (granted === true) return { granted: true, role: "admin" as const };
+    try {
+      const access = await getAdminAccess(context);
+      return { granted: true, role: access.role, rental: access.rental };
+    } catch {
+      return { granted: false, role: null, rental: null };
+    }
     /*
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Si aún no hay admins, este usuario se convierte en admin.
@@ -581,4 +1149,161 @@ export const adminSelfBootstrap = createServerFn({ method: "POST" })
       .maybeSingle();
     return { granted: !!existing, alreadyHasAdmin: true };
     */
+  });
+
+export const adminGetRentalCenter = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: rentals, error }, { data: raffles }, { data: usersData }] = await Promise.all([
+      (supabaseAdmin as any)
+        .from("raffle_rentals")
+        .select(
+          "id, raffle_id, user_id, responsable, prepaid_amount, starts_at, ends_at, active, notes, created_at",
+        )
+        .order("created_at", { ascending: false }),
+      supabaseAdmin.from("raffles").select("id, nombre, serie").order("created_at", {
+        ascending: false,
+      }),
+      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    ]);
+    if (error)
+      throw new Error("No fue posible cargar los alquileres. Ejecuta la migración pendiente.");
+    const raffleMap = new Map((raffles ?? []).map((raffle) => [raffle.id, raffle]));
+    const userMap = new Map(
+      (usersData?.users ?? []).map((user) => [
+        user.id,
+        { email: user.email ?? null, lastSignInAt: user.last_sign_in_at ?? null },
+      ]),
+    );
+    return {
+      raffles: raffles ?? [],
+      rentals: (rentals ?? []).map((rental: any) => ({
+        ...rental,
+        raffle: raffleMap.get(rental.raffle_id) ?? null,
+        account: userMap.get(rental.user_id) ?? null,
+        currentlyActive:
+          rental.active &&
+          new Date(rental.starts_at) <= new Date() &&
+          new Date(rental.ends_at) > new Date(),
+      })),
+    };
+  });
+
+export const adminCreateRental = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) =>
+    z
+      .object({
+        raffleId: z.string().uuid(),
+        email: z.string().trim().email(),
+        password: z.string().min(8).max(72),
+        responsable: z.string().trim().min(2).max(120),
+        startsAt: z.string().min(10),
+        endsAt: z.string().min(10),
+        prepaidAmount: z.number().int().min(0),
+        notes: z.string().trim().max(500).optional(),
+      })
+      .refine((data) => new Date(data.endsAt) > new Date(data.startsAt), {
+        message: "La fecha final debe ser posterior a la fecha inicial.",
+        path: ["endsAt"],
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: created, error: userError } = await supabaseAdmin.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: { responsable: data.responsable },
+    });
+    if (userError || !created.user) {
+      throw new Error(
+        userError?.message.includes("already")
+          ? "Ya existe un usuario con ese correo."
+          : "No fue posible crear el usuario.",
+      );
+    }
+    const { error: roleError } = await (supabaseAdmin as any).from("user_roles").insert({
+      user_id: created.user.id,
+      role: "organizer",
+    });
+    const { error: rentalError } = await (supabaseAdmin as any).from("raffle_rentals").insert({
+      raffle_id: data.raffleId,
+      user_id: created.user.id,
+      responsable: data.responsable,
+      prepaid_amount: data.prepaidAmount,
+      starts_at: data.startsAt,
+      ends_at: data.endsAt,
+      notes: data.notes || null,
+    });
+    if (roleError || rentalError) {
+      await supabaseAdmin.auth.admin.deleteUser(created.user.id);
+      throw new Error(
+        "No fue posible asignar el alquiler. Verifica que la migración esté aplicada.",
+      );
+    }
+    await (supabaseAdmin as any)
+      .from("raffles")
+      .update({ responsable: data.responsable })
+      .eq("id", data.raffleId);
+    return { ok: true };
+  });
+
+export const adminSetRentalActive = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) =>
+    z.object({ rentalId: z.string().uuid(), active: z.boolean() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await (supabaseAdmin as any)
+      .from("raffle_rentals")
+      .update({ active: data.active })
+      .eq("id", data.rentalId);
+    if (error) throw new Error("No fue posible actualizar el alquiler.");
+    return { ok: true };
+  });
+
+export const adminResetRentalPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) =>
+    z.object({ userId: z.string().uuid(), password: z.string().min(8).max(72) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rental } = await (supabaseAdmin as any)
+      .from("raffle_rentals")
+      .select("id")
+      .eq("user_id", data.userId)
+      .maybeSingle();
+    if (!rental) throw new Error("El usuario no pertenece a un alquiler.");
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+      password: data.password,
+    });
+    if (error) throw new Error("No fue posible restablecer la contraseña.");
+    return { ok: true };
+  });
+
+export const adminDeleteRentalUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    if (data.userId === context.userId) throw new Error("No puedes eliminar tu propia cuenta.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rental } = await (supabaseAdmin as any)
+      .from("raffle_rentals")
+      .select("id")
+      .eq("user_id", data.userId)
+      .maybeSingle();
+    if (!rental) throw new Error("El usuario no pertenece a un alquiler.");
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (error) throw new Error("No fue posible eliminar el usuario.");
+    return { ok: true };
   });
