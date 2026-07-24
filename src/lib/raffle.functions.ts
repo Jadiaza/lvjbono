@@ -1118,14 +1118,18 @@ export const adminGetSorteo = createServerFn({ method: "GET" })
 export const adminSelfBootstrap = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: granted, error } = await context.supabase.rpc("bootstrap_first_admin");
-    if (error) throw new Error("No fue posible validar permisos administrativos.");
-    if (granted === true) return { granted: true, role: "admin" as const };
+    // Resolve existing admins and active organizers before first-admin bootstrap.
     try {
       const access = await getAdminAccess(context);
       return { granted: true, role: access.role, rental: access.rental };
     } catch {
-      return { granted: false, role: null, rental: null };
+      const { data: granted, error } = await context.supabase.rpc("bootstrap_first_admin");
+      if (error) throw new Error("No fue posible validar los permisos de tu cuenta.");
+      return {
+        granted: granted === true,
+        role: granted === true ? ("admin" as const) : null,
+        rental: null,
+      };
     }
     /*
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

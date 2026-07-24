@@ -249,8 +249,8 @@ function HomePage() {
             <a href="#como" className="hover:text-ink">
               Cómo juega
             </a>
-            <Link to="/resultados" className="hover:text-ink">
-              Resultados
+            <Link to="/resultados" className="inline-flex items-center gap-1.5 hover:text-ink">
+              <Dices className="h-4 w-4" /> Resultados anteriores
             </Link>
           </div>
           <button
@@ -294,9 +294,9 @@ function HomePage() {
               <Link
                 to="/resultados"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-lg px-3 py-2.5 hover:bg-secondary"
+                className="inline-flex items-center gap-2 rounded-lg px-3 py-2.5 hover:bg-secondary"
               >
-                Resultados anteriores
+                <Dices className="h-4 w-4 text-brand" /> Resultados anteriores
               </Link>
             </div>
           )}
@@ -592,9 +592,6 @@ function HomePage() {
           <p>© {new Date().getFullYear()} ¡Qué Locura de Rifa! · Talonario 100% virtual</p>
           <Link to="/auth" className="hover:text-brand">
             Acceso administrador
-          </Link>
-          <Link to="/resultados" className="hover:text-brand">
-            Resultados anteriores
           </Link>
         </div>
       </footer>
