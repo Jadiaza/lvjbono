@@ -67,13 +67,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { httpEquiv: "Pragma", content: "no-cache" },
       { httpEquiv: "Expires", content: "0" },
       { name: "theme-color", content: "#f5c518" },
-      { title: "¡Qué Locura de Rifa! · 100 números, 5 oportunidades de ganar" },
+      { title: "Rifaya · 100 números, 5 oportunidades de ganar" },
       {
         name: "description",
         content:
           "Rifa virtual: 100 números del 00 al 99, boleta $10.000. Premio Mayor $300.000, secos y aproximaciones. ¡Compra tu boleta desde donde estés!",
       },
-      { property: "og:title", content: "¡Qué Locura de Rifa!" },
+      { property: "og:title", content: "Rifaya" },
       {
         property: "og:description",
         content: "100 números, 5 oportunidades de ganar. Total en premios $500.000.",

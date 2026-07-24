@@ -39,13 +39,13 @@ import { TurnstileWidget } from "@/components/turnstile-widget";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "¡Qué Locura de Rifa! — Talonario digital 00 al 99" },
+      { title: "Rifaya — Talonario digital 00 al 99" },
       {
         name: "description",
         content:
           "Rifa 100% virtual del 00 al 99. Boleta $10.000, premios por $500.000. Elige tu número, paga por Nequi / Daviplata / Bre-B y recibe tu ticket digital con QR.",
       },
-      { property: "og:title", content: "¡Qué Locura de Rifa!" },
+      { property: "og:title", content: "Rifaya" },
       {
         property: "og:description",
         content: "Talonario digital · Tickets con QR · Sorteo transparente",
@@ -234,10 +234,14 @@ function HomePage() {
       <nav className="sticky top-0 z-30 bg-background/80 backdrop-blur border-b border-border">
         <div className="max-w-6xl mx-auto px-4 min-h-16 py-2 flex flex-wrap items-center justify-between gap-2">
           <a href="#top" className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-xl bg-brand grid place-items-center text-brand-foreground">
-              <Ticket className="h-5 w-5" strokeWidth={2.5} />
+            <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-xl bg-white p-1 shadow-sm">
+              <img
+                src="/brand/rifaya-logo.png"
+                alt="Rifaya"
+                className="h-full w-full object-contain"
+              />
             </div>
-            <span className="font-bold text-lg tracking-tight text-ink">¡Qué Locura de Rifa!</span>
+            <span className="font-bold text-lg tracking-tight text-ink">Rifaya</span>
           </a>
           <div className="hidden md:flex items-center gap-7 text-sm font-medium text-muted-foreground">
             <a href="#premios" className="hover:text-ink">
@@ -318,9 +322,9 @@ function HomePage() {
                 gana desde tu <span className="text-brand">celular</span>.
               </span>
               <span className="fiesta-title">
-                ¡QUÉ LOCURA
+                RIFAYA
                 <br />
-                <span className="text-brand">DE RIFA!</span>
+                <span className="text-brand">RIFAS QUE CONECTAN</span>
               </span>
             </h1>
             <p className="mt-5 text-lg text-muted-foreground max-w-lg">
@@ -589,7 +593,7 @@ function HomePage() {
 
       <footer className="border-t border-border">
         <div className="max-w-6xl mx-auto px-4 py-8 flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} ¡Qué Locura de Rifa! · Talonario 100% virtual</p>
+          <p>© {new Date().getFullYear()} Rifaya · Talonario 100% virtual</p>
           <Link to="/auth" className="hover:text-brand">
             Acceso administrador
           </Link>

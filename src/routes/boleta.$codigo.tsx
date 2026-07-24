@@ -15,7 +15,7 @@ export const Route = createFileRoute("/boleta/$codigo")({
   },
   head: () => ({
     meta: [
-      { title: "Mi boleta · ¡Qué Locura de Rifa!" },
+      { title: "Mi boleta · Rifaya" },
       { name: "description", content: "Boleta virtual de participación." },
       { name: "robots", content: "noindex" },
     ],

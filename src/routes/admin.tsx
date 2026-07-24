@@ -19,7 +19,9 @@ import { useSelectedRaffle } from "@/hooks/use-selected-raffle";
 import { getPublicSkinDefinition } from "@/lib/public-skins";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Admin · Rifa" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({
+    meta: [{ title: "Rifaya · Administración" }, { name: "robots", content: "noindex" }],
+  }),
   component: AdminLayout,
 });
 
@@ -110,7 +112,7 @@ function AdminLayout() {
         <div className="mx-auto flex min-h-14 max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 sm:flex-nowrap">
           <div className="flex items-center gap-4 min-w-0">
             <Link to="/admin" className="font-display text-xl text-gold shrink-0">
-              Admin · Rifa
+              Rifaya · Administración
             </Link>
             <nav className="hidden sm:flex gap-1 text-sm">
               <Link

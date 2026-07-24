@@ -13,10 +13,7 @@ import { getPublicSkinDefinition, type PublicSkin } from "@/lib/public-skins";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
-    meta: [
-      { title: "Acceso administrador · ¡Qué Locura de Rifa!" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Acceso administrador · Rifaya" }, { name: "robots", content: "noindex" }],
   }),
   component: AuthPage,
 });
