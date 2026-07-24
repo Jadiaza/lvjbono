@@ -105,7 +105,10 @@ export const getPublicDrawResults = createServerFn({ method: "GET" }).handler(as
 
   const raffleIds = [...new Set((draws ?? []).map((draw) => draw.raffle_id))];
   const { data: raffles } = raffleIds.length
-    ? await s.from("raffles").select("id, nombre, serie, digitos, loteria").in("id", raffleIds)
+    ? await s
+        .from("raffles")
+        .select("id, nombre, serie, digitos, loteria, public_skin")
+        .in("id", raffleIds)
     : { data: [] };
   const raffleMap = new Map((raffles ?? []).map((raffle) => [raffle.id, raffle]));
   return (draws ?? []).map((draw) => ({

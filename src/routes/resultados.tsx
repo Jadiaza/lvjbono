@@ -4,14 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, CircleCheck, Dices, Gift, TicketX, Trophy } from "lucide-react";
 import { getPublicDrawResults } from "@/lib/raffle.functions";
 import { formatCOP, padNumber } from "@/lib/format";
+import { getPublicSkinDefinition } from "@/lib/public-skins";
 
-type PublicWinner = {
-  premio?: string;
-  numero?: number;
-  monto?: number;
-  vendido?: boolean;
-};
-
+type PublicWinner = { premio?: string; numero?: number; monto?: number; vendido?: boolean };
+type SkinColors = [string, string, string, string];
 type PublicDraw = {
   id: string;
   premio_mayor_num: number;
@@ -22,6 +18,7 @@ type PublicDraw = {
     serie: string | null;
     digitos: number;
     loteria: string | null;
+    public_skin: string | null;
   } | null;
 };
 
@@ -29,8 +26,8 @@ const prizeOrder = [
   "Premio Mayor",
   "Seco 1",
   "Seco 2",
-  "Aproximaci�n Anterior",
-  "Aproximaci�n Posterior",
+  "Aproximaci\u00f3n Anterior",
+  "Aproximaci\u00f3n Posterior",
 ];
 
 export const Route = createFileRoute("/resultados")({
@@ -42,31 +39,28 @@ function WinnerBall({
   winner,
   digits,
   featured,
+  colors,
 }: {
   winner: PublicWinner;
   digits: 2 | 3;
   featured: boolean;
+  colors: SkinColors;
 }) {
   const number = padNumber(Number(winner.numero ?? 0), digits);
+  const ballBackground = featured
+    ? `radial-gradient(circle at 32% 25%, ${colors[3]} 0 8%, ${colors[2]} 30%, ${colors[1]} 68%, ${colors[0]} 100%)`
+    : `radial-gradient(circle at 32% 25%, white 0 5%, ${colors[2]} 24%, ${colors[1]} 61%, color-mix(in srgb, ${colors[0]} 76%, black) 100%)`;
   return (
     <div className="flex min-w-0 flex-col items-center text-center">
       <p className="mb-3 min-h-9 text-xs font-extrabold uppercase leading-tight tracking-wide text-white/90 sm:text-sm">
         {winner.premio ?? "Premio"}
       </p>
       <div
-        className={`relative grid aspect-square w-full max-w-32 place-items-center rounded-full border-4 shadow-[inset_-12px_-16px_22px_rgba(0,0,0,.24),inset_8px_8px_16px_rgba(255,255,255,.38),0_14px_24px_rgba(0,0,0,.28)] sm:max-w-36 ${
-          featured ? "border-amber-100" : "border-white/55"
-        }`}
-        style={{
-          background: featured
-            ? "radial-gradient(circle at 32% 25%, #fff4a8 0 8%, #ffd02f 30%, #f39b08 68%, #b85b00 100%)"
-            : "radial-gradient(circle at 32% 25%, #dff9ff 0 8%, #50c5ef 30%, #1268c4 68%, #06347b 100%)",
-        }}
+        className="relative grid aspect-square w-full max-w-32 place-items-center rounded-full border-4 border-white/60 shadow-[inset_-12px_-16px_22px_rgba(0,0,0,.24),inset_8px_8px_16px_rgba(255,255,255,.38),0_14px_24px_rgba(0,0,0,.28)] sm:max-w-36"
+        style={{ background: ballBackground }}
       >
         <span className="absolute left-[23%] top-[14%] h-[17%] w-[28%] rotate-[-28deg] rounded-full bg-white/35 blur-[2px]" />
-        <strong
-          className={`relative z-10 font-display text-4xl tracking-tight drop-shadow-sm sm:text-5xl ${featured ? "text-slate-950" : "text-white"}`}
-        >
+        <strong className="relative z-10 font-display text-4xl tracking-tight text-white drop-shadow-[0_2px_2px_rgba(0,0,0,.55)] sm:text-5xl">
           {number}
         </strong>
       </div>
@@ -81,7 +75,7 @@ function WinnerBall({
         ) : (
           <TicketX className="h-3.5 w-3.5" />
         )}
-        {winner.vendido ? "Boleta vendida" : "N�mero no vendido"}
+        {winner.vendido ? "Boleta vendida" : "N\u00famero no vendido"}
       </span>
     </div>
   );
@@ -119,12 +113,12 @@ function ResultsPage() {
             Resultados de sorteos anteriores
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Consulta los cinco n�meros premiados de cada sorteo.
+            Consulta los cinco n&uacute;meros premiados de cada sorteo.
           </p>
         </div>
 
         {isLoading && (
-          <p className="mt-10 text-center text-muted-foreground">Cargando resultados�</p>
+          <p className="mt-10 text-center text-muted-foreground">Cargando resultados...</p>
         )}
         {isError && (
           <p className="mt-10 text-center text-destructive">
@@ -134,16 +128,18 @@ function ResultsPage() {
         {!isLoading && !isError && data.length === 0 && (
           <div className="mx-auto mt-8 max-w-2xl rounded-2xl border border-dashed border-border p-10 text-center">
             <Gift className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h2 className="mt-4 text-lg font-semibold">A�n no hay resultados de sorteos</h2>
+            <h2 className="mt-4 text-lg font-semibold">A&uacute;n no hay resultados de sorteos</h2>
             <p className="text-sm text-muted-foreground">
-              Vuelve m�s tarde para ver las balotas ganadoras.
+              Vuelve m&aacute;s tarde para ver las balotas ganadoras.
             </p>
           </div>
         )}
 
         <div className="mt-8 grid gap-8">
           {(data as PublicDraw[]).map((draw) => {
-            const digits = draw.raffle?.digitos === 3 ? 3 : 2;
+            const digits: 2 | 3 = draw.raffle?.digitos === 3 ? 3 : 2;
+            const skin = getPublicSkinDefinition(draw.raffle?.public_skin);
+            const colors = skin.colors;
             const rawWinners = Array.isArray(draw.ganadores)
               ? (draw.ganadores as PublicWinner[])
               : [];
@@ -155,7 +151,12 @@ function ResultsPage() {
             return (
               <article
                 key={draw.id}
-                className="overflow-hidden rounded-[2rem] border border-brand/30 bg-[linear-gradient(145deg,#102a72,#154eb3_55%,#0a2d7b)] shadow-xl"
+                data-public-skin={skin.id}
+                className="overflow-hidden rounded-[2rem] border shadow-xl"
+                style={{
+                  borderColor: colors[2],
+                  background: `linear-gradient(145deg, color-mix(in srgb, ${colors[0]} 72%, #080b14), color-mix(in srgb, ${colors[1]} 68%, #080b14) 55%, color-mix(in srgb, ${colors[0]} 78%, #080b14))`,
+                }}
               >
                 <div className="border-b border-white/15 bg-black/10 px-5 py-5 text-center text-white sm:px-8">
                   <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">
@@ -168,11 +169,14 @@ function ResultsPage() {
                   </p>
                   <h2 className="mt-1 text-2xl font-extrabold sm:text-3xl">
                     {draw.raffle?.nombre ?? "Rifa"}
-                    {draw.raffle?.serie ? ` � ${draw.raffle.serie}` : ""}
+                    {draw.raffle?.serie ? ` - ${draw.raffle.serie}` : ""}
                   </h2>
                   <p className="mt-1 text-sm text-white/75">
-                    Resultado oficial � {draw.raffle?.loteria ?? "Sorteo"}
+                    Resultado oficial - {draw.raffle?.loteria ?? "Sorteo"}
                   </p>
+                  <span className="mt-3 inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white/80">
+                    Skin: {skin.name}
+                  </span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-8 px-4 py-8 sm:px-8 lg:grid-cols-5 lg:gap-5 lg:py-10">
                   {winners.map((winner, index) => (
@@ -181,6 +185,7 @@ function ResultsPage() {
                       winner={winner}
                       digits={digits}
                       featured={winner.premio === "Premio Mayor"}
+                      colors={colors}
                     />
                   ))}
                 </div>
