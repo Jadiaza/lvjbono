@@ -13,7 +13,10 @@ export function pad2(n: number | null | undefined): string {
 
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
-  const d = new Date(iso);
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  const d = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    : new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" });
 }

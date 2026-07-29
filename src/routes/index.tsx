@@ -329,7 +329,7 @@ function HomePage() {
             </h1>
             <p className="mt-5 text-lg text-muted-foreground max-w-lg">
               Solución rápida y transparente para participar en{" "}
-              <span className="font-semibold text-ink">{raffle.nombre}</span>. Elige tu número del
+              <span className="font-semibold text-ink">{raffle.nombre}</span>. Elige tu número del{" "}
               {padded(0)} al {padded(maxNumber)}, paga en línea y recibe tu ticket digital con QR.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
