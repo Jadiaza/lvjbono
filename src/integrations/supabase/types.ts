@@ -11,6 +11,8 @@ export type Database = {
       draws: {
         Row: {
           created_at: string;
+          draw_date: string;
+          draw_number: string;
           ganadores: Json;
           id: string;
           premio_mayor_num: number;
@@ -20,6 +22,8 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
+          draw_date: string;
+          draw_number: string;
           ganadores: Json;
           id?: string;
           premio_mayor_num: number;
@@ -29,6 +33,8 @@ export type Database = {
         };
         Update: {
           created_at?: string;
+          draw_date?: string;
+          draw_number?: string;
           ganadores?: Json;
           id?: string;
           premio_mayor_num?: number;
@@ -573,7 +579,14 @@ export type Database = {
       };
       is_admin_setup_pending: { Args: Record<PropertyKey, never>; Returns: boolean };
       register_draw: {
-        Args: { _raffle_id: string; _mayor: number; _seco1: number; _seco2: number };
+        Args: {
+          _draw_date: string;
+          _draw_number: string;
+          _mayor: number;
+          _raffle_id: string;
+          _seco1: number;
+          _seco2: number;
+        };
         Returns: Json;
       };
       add_ticket_payment: {

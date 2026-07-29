@@ -98,7 +98,10 @@ export const getPublicDrawResults = createServerFn({ method: "GET" }).handler(as
   const s = getPublicClient();
   const { data: draws, error } = await s
     .from("draws")
-    .select("id, raffle_id, premio_mayor_num, seco1_num, seco2_num, ganadores, created_at")
+    .select(
+      "id, raffle_id, premio_mayor_num, seco1_num, seco2_num, ganadores, draw_date, draw_number, created_at",
+    )
+    .order("draw_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(50);
   if (error) throw new Error("No fue posible cargar los resultados anteriores.");
@@ -923,6 +926,8 @@ export const adminRegistrarSorteo = createServerFn({ method: "POST" })
         premioMayor: z.number().int().min(0),
         seco1: z.number().int().min(0),
         seco2: z.number().int().min(0),
+        drawDate: z.string().date(),
+        drawNumber: z.string().trim().min(1).max(40),
       })
       .parse(d),
   )
@@ -933,6 +938,8 @@ export const adminRegistrarSorteo = createServerFn({ method: "POST" })
       _mayor: data.premioMayor,
       _seco1: data.seco1,
       _seco2: data.seco2,
+      _draw_date: data.drawDate,
+      _draw_number: data.drawNumber,
     });
     if (atomicError) throw new Error("No fue posible registrar el sorteo.");
     return { ganadores: atomicResult };
@@ -1030,7 +1037,14 @@ export const adminRegistrarSorteo = createServerFn({ method: "POST" })
 export const adminRegisterFinalStageDraw = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: unknown) =>
-    z.object({ raffleId: z.string().uuid(), result: z.number().int().min(0) }).parse(d),
+    z
+      .object({
+        raffleId: z.string().uuid(),
+        result: z.number().int().min(0),
+        drawDate: z.string().date(),
+        drawNumber: z.string().trim().min(1).max(40),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
@@ -1074,16 +1088,15 @@ export const adminRegisterFinalStageDraw = createServerFn({ method: "POST" })
       ciudad: ticket?.ciudad ?? null,
       vendido: sold,
     };
-    const { error } = await supabaseAdmin.from("draws").upsert(
-      {
-        raffle_id: data.raffleId,
-        premio_mayor_num: number,
-        seco1_num: 0,
-        seco2_num: 0,
-        ganadores: [winner],
-      },
-      { onConflict: "raffle_id" },
-    );
+    const { error } = await supabaseAdmin.from("draws").insert({
+      raffle_id: data.raffleId,
+      premio_mayor_num: number,
+      seco1_num: 0,
+      seco2_num: 0,
+      ganadores: [winner],
+      draw_date: data.drawDate,
+      draw_number: data.drawNumber,
+    });
     if (error) throw new Error("No fue posible registrar el premio final.");
     return { ganadores: [winner] };
   });
@@ -1094,11 +1107,14 @@ export const adminGetSorteo = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: draw } = await supabaseAdmin
+    const { data: draws } = await supabaseAdmin
       .from("draws")
       .select("*")
       .eq("raffle_id", data.raffleId)
-      .maybeSingle();
+      .order("draw_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(50);
+    const draw = draws?.[0];
     if (!draw) return null;
     const raw = Array.isArray(draw.ganadores) ? draw.ganadores : [];
     const ganadores = raw.map((item) => {
@@ -1114,7 +1130,15 @@ export const adminGetSorteo = createServerFn({ method: "GET" })
         vendido: Boolean(value.vendido),
       };
     });
-    return { ...draw, ganadores };
+    const historial = (draws ?? []).map((item) => ({
+      id: item.id,
+      drawDate: item.draw_date,
+      drawNumber: item.draw_number,
+      premioMayor: item.premio_mayor_num,
+      seco1: item.seco1_num,
+      seco2: item.seco2_num,
+    }));
+    return { ...draw, ganadores, historial };
   });
 
 // Otorgar rol admin al primer usuario (auto-bootstrap)

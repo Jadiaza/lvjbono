@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, CircleCheck, Dices, Gift, TicketX, Trophy } from "lucide-react";
 import { getPublicDrawResults } from "@/lib/raffle.functions";
-import { formatCOP, padNumber } from "@/lib/format";
+import { formatCOP, formatDate, padNumber } from "@/lib/format";
 import { getPublicSkinDefinition } from "@/lib/public-skins";
 
 type PublicWinner = { premio?: string; numero?: number; monto?: number; vendido?: boolean };
@@ -13,6 +13,8 @@ type PublicDraw = {
   premio_mayor_num: number;
   ganadores: unknown;
   created_at: string;
+  draw_date: string;
+  draw_number: string;
   raffle: {
     nombre: string;
     serie: string | null;
@@ -31,7 +33,7 @@ const prizeOrder = [
 ];
 
 export const Route = createFileRoute("/resultados")({
-  head: () => ({ meta: [{ title: "Resultados de sorteos anteriores" }] }),
+  head: () => ({ meta: [{ title: "Resultados de sorteos" }] }),
   component: ResultsPage,
 });
 
@@ -92,6 +94,9 @@ function ResultsPage() {
     queryFn: () => getResults(),
   });
 
+  const draws = data as PublicDraw[];
+  const latestDraw = draws[0];
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
@@ -110,10 +115,10 @@ function ResultsPage() {
             <Trophy className="h-4 w-4" /> Balotas ganadoras
           </span>
           <h1 className="mt-4 text-3xl font-extrabold text-ink sm:text-4xl">
-            Resultados de sorteos anteriores
+            {latestDraw ? `Resultado sorteo ${latestDraw.draw_number}` : "Resultados de sorteos"}
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Consulta los cinco n&uacute;meros premiados de cada sorteo.
+            Consulta el último número ganador y el histórico de sorteos anteriores.
           </p>
         </div>
 
@@ -136,7 +141,7 @@ function ResultsPage() {
         )}
 
         <div className="mt-8 grid gap-8">
-          {(data as PublicDraw[]).map((draw) => {
+          {draws.slice(0, 1).map((draw) => {
             const digits: 2 | 3 = draw.raffle?.digitos === 3 ? 3 : 2;
             const skin = getPublicSkinDefinition(draw.raffle?.public_skin);
             const colors = skin.colors;
@@ -160,17 +165,15 @@ function ResultsPage() {
               >
                 <div className="border-b border-white/15 bg-black/10 px-5 py-5 text-center text-white sm:px-8">
                   <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">
-                    {new Date(draw.created_at).toLocaleDateString("es-CO", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
+                    {formatDate(draw.draw_date)}
                   </p>
                   <h2 className="mt-1 text-2xl font-extrabold sm:text-3xl">
+                    Resultado sorteo {draw.draw_number}
+                  </h2>
+                  <p className="mt-1 font-semibold text-white/90">
                     {draw.raffle?.nombre ?? "Rifa"}
                     {draw.raffle?.serie ? ` - ${draw.raffle.serie}` : ""}
-                  </h2>
+                  </p>
                   <p className="mt-1 text-sm text-white/75">
                     Resultado oficial - {draw.raffle?.loteria ?? "Sorteo"}
                   </p>
@@ -193,6 +196,64 @@ function ResultsPage() {
             );
           })}
         </div>
+
+        {draws.length > 1 && (
+          <section className="mt-12">
+            <div className="text-center">
+              <h2 className="text-2xl font-extrabold text-ink sm:text-3xl">
+                Resultados anteriores
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Histórico de los últimos sorteos registrados.
+              </p>
+            </div>
+            <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+              <div className="hidden grid-cols-[1fr_1fr_2fr] bg-ink px-5 py-3 text-xs font-bold uppercase tracking-wider text-white sm:grid">
+                <span>Sorteo</span>
+                <span>Fecha</span>
+                <span>Resultado</span>
+              </div>
+              <div className="divide-y divide-border">
+                {draws.slice(1).map((draw) => {
+                  const digits: 2 | 3 = draw.raffle?.digitos === 3 ? 3 : 2;
+                  const winners = Array.isArray(draw.ganadores)
+                    ? (draw.ganadores as PublicWinner[])
+                    : [];
+                  return (
+                    <article
+                      key={draw.id}
+                      className="grid gap-2 px-5 py-4 sm:grid-cols-[1fr_1fr_2fr] sm:items-center"
+                    >
+                      <div>
+                        <span className="text-xs font-bold uppercase text-muted-foreground sm:hidden">
+                          Sorteo:{" "}
+                        </span>
+                        <strong className="text-brand">{draw.draw_number}</strong>
+                      </div>
+                      <div className="text-sm">
+                        <span className="font-bold uppercase text-muted-foreground sm:hidden">
+                          Fecha:{" "}
+                        </span>
+                        {formatDate(draw.draw_date)}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {winners.map((winner, index) => (
+                          <span
+                            key={`${winner.premio}-${index}`}
+                            className="inline-grid min-h-9 min-w-9 place-items-center rounded-full bg-brand px-2 text-sm font-extrabold text-white"
+                            title={winner.premio}
+                          >
+                            {padNumber(Number(winner.numero ?? 0), digits)}
+                          </span>
+                        ))}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
       </section>
     </main>
   );

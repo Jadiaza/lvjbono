@@ -15,12 +15,15 @@ import {
   Calendar,
   Sparkles,
   CheckCircle2,
+  Copy,
+  Download,
+  MessageCircle,
   Menu,
   X,
 } from "lucide-react";
 
 import { getRaffleData, reservarNumero } from "@/lib/raffle.functions";
-import { formatCOP, padNumber, formatDate } from "@/lib/format";
+import { buildWhatsAppUrl, formatCOP, padNumber, formatDate } from "@/lib/format";
 import {
   Dialog,
   DialogContent,
@@ -145,39 +148,78 @@ function HomePage() {
     }
   }
 
-  async function shareConfirmedTicket() {
-    if (!confirmed || !confirmedTicketRef.current) return;
+  async function generateConfirmedTicketImage() {
+    if (!confirmed || !confirmedTicketRef.current) return null;
+    const dataUrl = await toPng(confirmedTicketRef.current, {
+      cacheBust: true,
+      pixelRatio: 2,
+      backgroundColor: getComputedStyle(confirmedTicketRef.current).backgroundColor || "#ffffff",
+    });
+    const blob = await (await fetch(dataUrl)).blob();
+    const file = new File([blob], `boleta-${padded(confirmed.numero)}.png`, {
+      type: "image/png",
+    });
+    return { dataUrl, file };
+  }
+
+  async function downloadConfirmedTicket() {
     setSharingConfirmed(true);
     try {
-      const dataUrl = await toPng(confirmedTicketRef.current, {
-        cacheBust: true,
-        pixelRatio: 2,
-        backgroundColor: getComputedStyle(confirmedTicketRef.current).backgroundColor || "#ffffff",
-      });
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], `boleta-${padded(confirmed.numero)}.png`, {
-        type: "image/png",
-      });
+      const generated = await generateConfirmedTicketImage();
+      if (!generated) return;
+      const download = document.createElement("a");
+      download.href = generated.dataUrl;
+      download.download = generated.file.name;
+      download.click();
+      toast.success("Imagen de la boleta descargada.");
+    } catch (error) {
+      console.error("[downloadConfirmedTicket] Could not generate image", error);
+      toast.error("No fue posible descargar la imagen de la boleta.");
+    } finally {
+      setSharingConfirmed(false);
+    }
+  }
+
+  async function sendConfirmedTicketToWhatsApp() {
+    if (!confirmed || !raffle) return;
+    setSharingConfirmed(true);
+    try {
+      const generated = await generateConfirmedTicketImage();
+      if (!generated) return;
+      const ticketUrl = `${window.location.origin}/boleta/${confirmed.codigo}`;
       const shareData = {
-        files: [file],
+        files: [generated.file],
         title: `Boleta ${padded(confirmed.numero)}`,
+        text: `Boleta ${padded(confirmed.numero)} de ${raffle.nombre}. ${ticketUrl}`,
       };
       if (navigator.share && navigator.canShare?.(shareData)) {
         await navigator.share(shareData);
         return;
       }
       const download = document.createElement("a");
-      download.href = dataUrl;
-      download.download = file.name;
+      download.href = generated.dataUrl;
+      download.download = generated.file.name;
       download.click();
-      toast.success("Imagen descargada. Adjúntala directamente en WhatsApp.");
+      window.open(
+        buildWhatsAppUrl(raffle.whatsapp_admin ?? "", shareData.text),
+        "_blank",
+        "noopener",
+      );
+      toast.success("Imagen descargada. Adjunta en el chat de WhatsApp.");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      console.error("[shareConfirmedTicket] Could not generate image", error);
-      toast.error("No fue posible generar la imagen de la boleta.");
+      console.error("[sendConfirmedTicketToWhatsApp] Could not share image", error);
+      toast.error("No fue posible compartir la boleta.");
     } finally {
       setSharingConfirmed(false);
     }
+  }
+
+  async function copyConfirmedTicketUrl() {
+    if (!confirmed) return;
+    const ticketUrl = `${window.location.origin}/boleta/${confirmed.codigo}`;
+    await navigator.clipboard.writeText(ticketUrl);
+    toast.success("Enlace de la boleta copiado.");
   }
 
   if (isLoading) {
@@ -690,9 +732,7 @@ function HomePage() {
               <div className="mx-auto mb-2 h-14 w-14 rounded-full bg-brand-soft grid place-items-center">
                 <CheckCircle2 className="h-8 w-8 text-brand" />
               </div>
-              <DialogTitle className="text-2xl font-bold text-center">
-                ¡Reserva registrada!
-              </DialogTitle>
+              <DialogTitle className="text-2xl font-bold text-center">Boleta digital</DialogTitle>
               <DialogDescription className="text-center">
                 Tu número{" "}
                 <strong className="text-ink">{confirmed ? padded(confirmed.numero) : ""}</strong>{" "}
@@ -712,6 +752,21 @@ function HomePage() {
                 </div>
               )}
             </DialogHeader>
+            <div className="my-4 rounded-2xl border border-brand/30 bg-brand-soft/50 p-4 text-center">
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                {raffle.nombre}
+              </p>
+              <p className="mt-1 font-display text-6xl text-brand">
+                {confirmed ? padded(confirmed.numero) : ""}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Sorteo {formatDate(raffle.fecha_sorteo)}
+                {raffle.loteria ? ` · ${raffle.loteria}` : ""}
+              </p>
+              <span className="mt-2 inline-flex rounded-full bg-warning/15 px-3 py-1 text-xs font-bold text-warning">
+                Reservada · pendiente de confirmación
+              </span>
+            </div>
             <div className="space-y-2 text-sm">
               {raffle.nequi && <PayLine label="Nequi" value={raffle.nequi} />}
               {raffle.daviplata && <PayLine label="Daviplata" value={raffle.daviplata} />}
@@ -726,15 +781,37 @@ function HomePage() {
             </p>
           </div>
           {confirmed && (
-            <button
-              type="button"
-              onClick={shareConfirmedTicket}
-              disabled={sharingConfirmed}
-              className="block w-full rounded-full bg-brand py-3 text-center font-semibold text-brand-foreground hover:opacity-90 disabled:opacity-60"
-            >
-              {sharingConfirmed ? "Generando imagen…" : "Compartir imagen de la boleta"}
-            </button>
-          )}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 rounded-xl border border-border bg-secondary/40 p-2">
+                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                  {`${window.location.origin}/boleta/${confirmed.codigo}`}
+                </span>
+                <Button type="button" size="sm" variant="outline" onClick={copyConfirmedTicketUrl}>
+                  <Copy className="mr-1.5 h-4 w-4" /> Copiar enlace
+                </Button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={downloadConfirmedTicket}
+                  disabled={sharingConfirmed}
+                  className="rounded-full"
+                >
+                  <Download className="mr-2 h-4 w-4" /> Descargar imagen
+                </Button>
+                <Button
+                  type="button"
+                  onClick={sendConfirmedTicketToWhatsApp}
+                  disabled={sharingConfirmed}
+                  className="rounded-full bg-[#25D366] font-semibold text-white hover:bg-[#20bd5a]"
+                >
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  {sharingConfirmed ? "Generando…" : "Enviar por WhatsApp"}
+                </Button>
+              </div>
+            </div>
+          )}{" "}
           {confirmed && (
             <Link
               to="/boleta/$codigo"

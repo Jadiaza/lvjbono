@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
-import { ImageDown, MessageCircle, Share2, Users } from "lucide-react";
+import { Download, ImageDown, MessageCircle, Users } from "lucide-react";
 import { toast } from "sonner";
 import { buildWhatsAppUrl, formatCOP, formatDate, padNumber } from "@/lib/format";
 import { RaffleShareCard } from "@/components/raffle-share-card";
@@ -97,37 +97,58 @@ export function AdminSalesTools({
     ].join("\n");
   }
 
-  async function sharePoster() {
-    if (!posterRef.current) return;
+  async function generatePosterImage() {
+    if (!posterRef.current) return null;
+    const dataUrl = await toPng(posterRef.current, {
+      cacheBust: true,
+      pixelRatio: raffle.digitos === 3 ? 1 : 1.5,
+    });
+    const blob = await (await fetch(dataUrl)).blob();
+    const file = new File(
+      [blob],
+      `carton-${raffle.nombre.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}.png`,
+      { type: "image/png" },
+    );
+    return { dataUrl, file };
+  }
+
+  async function downloadPoster() {
     setGenerating(true);
     try {
-      const dataUrl = await toPng(posterRef.current, {
-        cacheBust: true,
-        pixelRatio: raffle.digitos === 3 ? 1 : 1.5,
-      });
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File(
-        [blob],
-        `carton-${raffle.nombre.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}.png`,
-        { type: "image/png" },
-      );
-      const shareData = {
-        files: [file],
-        title: raffle.nombre,
-        text: `Carton actualizado de ${raffle.nombre}`,
-      };
+      const generated = await generatePosterImage();
+      if (!generated) return;
+      const link = document.createElement("a");
+      link.href = generated.dataUrl;
+      link.download = generated.file.name;
+      link.click();
+      toast.success("Cartón descargado en el dispositivo.");
+    } catch {
+      toast.error("No fue posible descargar la imagen del cartón.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function sendPosterToWhatsApp() {
+    setGenerating(true);
+    try {
+      const generated = await generatePosterImage();
+      if (!generated) return;
+      const text = `Cartón actualizado de ${raffle.nombre}`;
+      const shareData = { files: [generated.file], title: raffle.nombre, text };
       if (navigator.share && navigator.canShare?.(shareData)) {
         await navigator.share(shareData);
-      } else {
-        const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = file.name;
-        link.click();
-        toast.success("Carton descargado. Puedes adjuntarlo en WhatsApp.");
+        return;
       }
+      const link = document.createElement("a");
+      link.href = generated.dataUrl;
+      link.download = generated.file.name;
+      link.click();
+      window.open(buildWhatsAppUrl("", text), "_blank", "noopener");
+      toast.success("Cartón descargado. Adjunta en el chat de WhatsApp.");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      toast.error("No fue posible generar la imagen del carton.");
+      toast.error("No fue posible compartir la imagen del cartón.");
     } finally {
       setGenerating(false);
     }
@@ -216,27 +237,30 @@ export function AdminSalesTools({
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[94vh] max-w-[96vw] overflow-hidden">
+        <DialogContent className="grid max-h-[94dvh] max-w-[96vw] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Carton para compartir por WhatsApp</DialogTitle>
             <DialogDescription>
               Incluye los numeros y estados actuales con el skin de esta rifa.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[62vh] overflow-auto rounded-xl border border-border bg-secondary/30 p-3">
+          <div className="min-h-0 overflow-auto rounded-xl border border-border bg-secondary/30 p-3">
             <RaffleShareCard ref={posterRef} raffle={shareRaffle} tickets={tickets} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cerrar
             </Button>
+            <Button variant="outline" onClick={downloadPoster} disabled={generating}>
+              <Download className="mr-2 h-4 w-4" /> Descargar PNG
+            </Button>
             <Button
-              onClick={sharePoster}
+              onClick={sendPosterToWhatsApp}
               disabled={generating}
-              className="bg-gold-gradient text-primary-foreground"
+              className="bg-[#25D366] font-semibold text-white hover:bg-[#20bd5a]"
             >
-              <Share2 className="mr-2 h-4 w-4" />{" "}
-              {generating ? "Generando..." : "Compartir o descargar PNG"}
+              <MessageCircle className="mr-2 h-4 w-4" />
+              {generating ? "Generando..." : "Enviar por WhatsApp"}
             </Button>
           </DialogFooter>
         </DialogContent>

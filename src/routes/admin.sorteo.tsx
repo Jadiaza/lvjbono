@@ -11,7 +11,7 @@ import {
   adminRegisterStageDraw,
   adminRegisterFinalStageDraw,
 } from "@/lib/raffle.functions";
-import { formatCOP, pad2 } from "@/lib/format";
+import { formatCOP, formatDate, pad2 } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,20 @@ type Ganador = {
   telefono: string | null;
   ciudad: string | null;
   vendido: boolean;
+};
+
+type SorteoData = {
+  draw_date: string;
+  draw_number: string;
+  ganadores: Ganador[];
+  historial: Array<{
+    id: string;
+    drawDate: string;
+    drawNumber: string;
+    premioMayor: number;
+    seco1: number;
+    seco2: number;
+  }>;
 };
 
 function AdminSorteo() {
@@ -61,7 +75,13 @@ function AdminSorteo() {
     enabled: !!raffle?.staged_payments,
   });
 
-  const [f, setF] = useState({ mayor: "", seco1: "", seco2: "" });
+  const [f, setF] = useState({
+    fecha: "",
+    numeroSorteo: "",
+    mayor: "",
+    seco1: "",
+    seco2: "",
+  });
   const [loading, setLoading] = useState(false);
   const [stageSaving, setStageSaving] = useState(false);
   const [stageForm, setStageForm] = useState({
@@ -129,7 +149,12 @@ function AdminSorteo() {
     try {
       if (raffle.staged_payments) {
         await registerFinalStage({
-          data: { raffleId: raffle.id, result: Number(f.mayor) },
+          data: {
+            raffleId: raffle.id,
+            result: Number(f.mayor),
+            drawDate: f.fecha,
+            drawNumber: f.numeroSorteo,
+          },
         });
       } else {
         await registrar({
@@ -138,6 +163,8 @@ function AdminSorteo() {
             premioMayor: Number(f.mayor),
             seco1: Number(f.seco1),
             seco2: Number(f.seco2),
+            drawDate: f.fecha,
+            drawNumber: f.numeroSorteo,
           },
         });
       }
@@ -151,7 +178,9 @@ function AdminSorteo() {
   }
 
   if (!raffle) return <p className="text-muted-foreground">No hay rifa.</p>;
-  const ganadores = ((sorteo as { ganadores: Ganador[] } | null)?.ganadores ?? []) as Ganador[];
+  const sorteoData = sorteo as SorteoData | null;
+  const ganadores = sorteoData?.ganadores ?? [];
+  const historial = sorteoData?.historial ?? [];
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -266,6 +295,24 @@ function AdminSorteo() {
         </p>
         <form onSubmit={submit} className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
+            <Label>Fecha del sorteo</Label>
+            <Input
+              required
+              type="date"
+              value={f.fecha}
+              onChange={(e) => setF({ ...f, fecha: e.target.value })}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Número del sorteo</Label>
+            <Input
+              required
+              value={f.numeroSorteo}
+              onChange={(e) => setF({ ...f, numeroSorteo: e.target.value })}
+              placeholder="Ej: 001"
+            />
+          </div>
+          <div>
             <Label>{raffle.staged_payments ? "Resultado del premio final" : "Premio Mayor"}</Label>
             <Input
               required
@@ -311,7 +358,10 @@ function AdminSorteo() {
 
       {ganadores.length > 0 && (
         <div className="rounded-xl border border-gold/40 bg-card p-6">
-          <h3 className="font-display text-xl text-gold">Resultados del sorteo</h3>
+          <h3 className="font-display text-xl text-gold">
+            Resultado sorteo {sorteoData?.draw_number}
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">{formatDate(sorteoData?.draw_date)}</p>
           <div className="mt-4 space-y-3">
             {ganadores.map((g, i) => (
               <div
@@ -343,6 +393,39 @@ function AdminSorteo() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {historial.length > 0 && (
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="border-b border-border p-5">
+            <h3 className="font-display text-xl text-gold">Histórico de sorteos</h3>
+            <p className="text-sm text-muted-foreground">
+              Últimos resultados registrados para esta rifa.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-secondary/60 text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-5 py-3">Sorteo</th>
+                  <th className="px-5 py-3">Fecha</th>
+                  <th className="px-5 py-3">Resultado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {historial.map((item) => (
+                  <tr key={item.id}>
+                    <td className="px-5 py-3 font-semibold text-gold">{item.drawNumber}</td>
+                    <td className="px-5 py-3">{formatDate(item.drawDate)}</td>
+                    <td className="px-5 py-3 font-display text-lg">
+                      {pad2(item.premioMayor)} · {pad2(item.seco1)} · {pad2(item.seco2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
