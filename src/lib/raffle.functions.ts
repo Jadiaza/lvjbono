@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
 import { PUBLIC_SKIN_IDS } from "@/lib/public-skins";
+import { normalizePublicRaffleSlug } from "@/lib/public-raffle-url";
 
 function getPublicClient() {
   const url = process.env.SUPABASE_URL?.replace(/^\uFEFF/, "").trim();
@@ -136,7 +137,20 @@ export const getRaffleDataBySlug = createServerFn({ method: "GET" })
     raffleQuery = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(data.slug)
       ? raffleQuery.eq("id", data.slug)
       : raffleQuery.ilike("slug", data.slug);
-    const { data: raffle } = await raffleQuery.maybeSingle();
+    let { data: raffle } = await raffleQuery.maybeSingle();
+    if (!raffle && !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(data.slug)) {
+      const { data: activeRaffles } = await (supabaseAdmin as any)
+        .from("raffles")
+        .select(
+          "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount, slug, responsable",
+        )
+        .eq("activa", true);
+      const requestedSlug = normalizePublicRaffleSlug(data.slug);
+      raffle = (activeRaffles ?? []).find(
+        (candidate: any) =>
+          !candidate.slug && normalizePublicRaffleSlug(candidate.serie) === requestedSlug,
+      );
+    }
     if (!raffle) return { raffle: null, tickets: [], stages: [], setupRequired: false };
 
     const { data: rentals } = await (supabaseAdmin as any)

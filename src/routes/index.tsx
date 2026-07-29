@@ -41,6 +41,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Link } from "@tanstack/react-router";
 import { getPublicSkinDefinition } from "@/lib/public-skins";
+import { getPublicRaffleSlug } from "@/lib/public-raffle-url";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 
 export const Route = createFileRoute("/")({
@@ -116,7 +117,7 @@ function CatalogHome() {
         ) : data.length ? (
           <div className="mt-7 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {(data as CatalogRaffle[]).map((raffle) => {
-              const publicPath = raffle.slug ?? raffle.id;
+              const publicPath = getPublicRaffleSlug(raffle);
               return (
                 <article
                   key={raffle.id}
@@ -216,6 +217,8 @@ export function RafflePublicPage({ slug }: { slug: string }) {
     codigo: string;
     numero: number;
     numeroAlterno: number | null;
+    nombre: string;
+    telefono: string;
   } | null>(null);
 
   const raffle = data?.raffle;
@@ -264,7 +267,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
         turnstileToken,
       };
       const res = await reservar({ data: payload });
-      setConfirmed(res);
+      setConfirmed({ ...res, nombre: payload.nombre, telefono: payload.telefono });
       setSelected(null);
       setTurnstileToken(null);
       setTurnstileResetKey((value) => value + 1);
@@ -321,7 +324,12 @@ export function RafflePublicPage({ slug }: { slug: string }) {
       const shareData = {
         files: [generated.file],
         title: `Boleta ${padded(confirmed.numero)}`,
-        text: `Boleta ${padded(confirmed.numero)} de ${raffle.nombre}. ${ticketUrl}`,
+        text: [
+          `Boleta ${padded(confirmed.numero)} de ${raffle.nombre}`,
+          `Nombre: ${confirmed.nombre}`,
+          `Teléfono: ${confirmed.telefono}`,
+          `Ver boleta: ${ticketUrl}`,
+        ].join("\n"),
       };
       if (navigator.share && navigator.canShare?.(shareData)) {
         await navigator.share(shareData);
@@ -897,6 +905,20 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               <span className="mt-2 inline-flex rounded-full bg-warning/15 px-3 py-1 text-xs font-bold text-warning">
                 Reservada · pendiente de confirmación
               </span>
+            </div>
+            <div className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-border bg-secondary/40 p-3 text-sm">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Nombre
+                </p>
+                <p className="font-semibold text-ink">{confirmed?.nombre}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Teléfono
+                </p>
+                <p className="font-semibold text-ink">{confirmed?.telefono}</p>
+              </div>
             </div>
             <div className="space-y-2 text-sm">
               {raffle.nequi && <PayLine label="Nequi" value={raffle.nequi} />}

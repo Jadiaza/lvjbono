@@ -36,6 +36,7 @@ import {
 import { useSelectedRaffle } from "@/hooks/use-selected-raffle";
 import { formatCOP } from "@/lib/format";
 import { PUBLIC_SKINS, type PublicSkin } from "@/lib/public-skins";
+import { getPublicRaffleSlug } from "@/lib/public-raffle-url";
 import { RaffleShareCard } from "@/components/raffle-share-card";
 
 export const Route = createFileRoute("/admin/rifa")({
@@ -620,7 +621,7 @@ function RaffleCard({
   const vendidos = r.counts.vendido + r.counts.ganador;
 
   function whatsappMessage() {
-    const raffleUrl = `${window.location.origin}/`;
+    const raffleUrl = `${window.location.origin}/${getPublicRaffleSlug(r)}`;
     return [
       `🎟️ *${form.nombre.toUpperCase()}*`,
       form.serie ? `🔖 Serie: *${form.serie}*` : null,
@@ -672,7 +673,7 @@ function RaffleCard({
         title: r.nombre,
         text: includeWhatsappMessage
           ? whatsappMessage()
-          : `🎟️ Participa en ${r.nombre}. Elige tu número en ${window.location.origin}`,
+          : `🎟️ Participa en ${r.nombre}. Elige tu número en ${window.location.origin}/${getPublicRaffleSlug(r)}`,
       };
       if (navigator.share && navigator.canShare?.(shareData)) {
         await navigator.share(shareData);
