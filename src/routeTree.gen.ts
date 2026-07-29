@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResultadosRouteImport } from './routes/resultados'
+import { Route as RestablecerContrasenaRouteImport } from './routes/restablecer-contrasena'
+import { Route as RecuperarContrasenaRouteImport } from './routes/recuperar-contrasena'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as SlugRouteImport } from './routes/$slug'
@@ -25,6 +27,16 @@ import { Route as AdminAlquileresRouteImport } from './routes/admin.alquileres'
 const ResultadosRoute = ResultadosRouteImport.update({
   id: '/resultados',
   path: '/resultados',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RestablecerContrasenaRoute = RestablecerContrasenaRouteImport.update({
+  id: '/restablecer-contrasena',
+  path: '/restablecer-contrasena',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecuperarContrasenaRoute = RecuperarContrasenaRouteImport.update({
+  id: '/recuperar-contrasena',
+  path: '/recuperar-contrasena',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -88,6 +100,8 @@ export interface FileRoutesByFullPath {
   '/$slug': typeof SlugRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
+  '/recuperar-contrasena': typeof RecuperarContrasenaRoute
+  '/restablecer-contrasena': typeof RestablecerContrasenaRoute
   '/resultados': typeof ResultadosRoute
   '/admin/alquileres': typeof AdminAlquileresRoute
   '/admin/padrinos': typeof AdminPadrinosRoute
@@ -101,6 +115,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
+  '/recuperar-contrasena': typeof RecuperarContrasenaRoute
+  '/restablecer-contrasena': typeof RestablecerContrasenaRoute
   '/resultados': typeof ResultadosRoute
   '/admin/alquileres': typeof AdminAlquileresRoute
   '/admin/padrinos': typeof AdminPadrinosRoute
@@ -116,6 +132,8 @@ export interface FileRoutesById {
   '/$slug': typeof SlugRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
+  '/recuperar-contrasena': typeof RecuperarContrasenaRoute
+  '/restablecer-contrasena': typeof RestablecerContrasenaRoute
   '/resultados': typeof ResultadosRoute
   '/admin/alquileres': typeof AdminAlquileresRoute
   '/admin/padrinos': typeof AdminPadrinosRoute
@@ -132,6 +150,8 @@ export interface FileRouteTypes {
     | '/$slug'
     | '/admin'
     | '/auth'
+    | '/recuperar-contrasena'
+    | '/restablecer-contrasena'
     | '/resultados'
     | '/admin/alquileres'
     | '/admin/padrinos'
@@ -145,6 +165,8 @@ export interface FileRouteTypes {
     | '/'
     | '/$slug'
     | '/auth'
+    | '/recuperar-contrasena'
+    | '/restablecer-contrasena'
     | '/resultados'
     | '/admin/alquileres'
     | '/admin/padrinos'
@@ -159,6 +181,8 @@ export interface FileRouteTypes {
     | '/$slug'
     | '/admin'
     | '/auth'
+    | '/recuperar-contrasena'
+    | '/restablecer-contrasena'
     | '/resultados'
     | '/admin/alquileres'
     | '/admin/padrinos'
@@ -174,6 +198,8 @@ export interface RootRouteChildren {
   SlugRoute: typeof SlugRoute
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
+  RecuperarContrasenaRoute: typeof RecuperarContrasenaRoute
+  RestablecerContrasenaRoute: typeof RestablecerContrasenaRoute
   ResultadosRoute: typeof ResultadosRoute
   BoletaCodigoRoute: typeof BoletaCodigoRoute
 }
@@ -185,6 +211,20 @@ declare module '@tanstack/react-router' {
       path: '/resultados'
       fullPath: '/resultados'
       preLoaderRoute: typeof ResultadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/restablecer-contrasena': {
+      id: '/restablecer-contrasena'
+      path: '/restablecer-contrasena'
+      fullPath: '/restablecer-contrasena'
+      preLoaderRoute: typeof RestablecerContrasenaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recuperar-contrasena': {
+      id: '/recuperar-contrasena'
+      path: '/recuperar-contrasena'
+      fullPath: '/recuperar-contrasena'
+      preLoaderRoute: typeof RecuperarContrasenaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -292,6 +332,8 @@ const rootRouteChildren: RootRouteChildren = {
   SlugRoute: SlugRoute,
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
+  RecuperarContrasenaRoute: RecuperarContrasenaRoute,
+  RestablecerContrasenaRoute: RestablecerContrasenaRoute,
   ResultadosRoute: ResultadosRoute,
   BoletaCodigoRoute: BoletaCodigoRoute,
 }

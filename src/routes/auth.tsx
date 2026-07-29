@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -117,6 +117,14 @@ function AuthPage() {
           <div>
             <Label htmlFor="password">Contraseña</Label>
             <Input id="password" name="password" type="password" required minLength={6} />
+            {mode === "signin" && (
+              <Link
+                to="/recuperar-contrasena"
+                className="mt-1 block text-right text-xs text-gold hover:underline"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            )}
           </div>
           <Button
             type="submit"

@@ -104,7 +104,6 @@ export const getPublicRaffleCatalog = createServerFn({ method: "GET" }).handler(
         "id, nombre, serie, slug, responsable, fecha_sorteo, loteria, valor_boleta, premio_mayor, public_skin",
       )
       .eq("activa", true)
-      .not("slug", "is", null)
       .order("created_at", { ascending: false }),
     (supabaseAdmin as any).from("raffle_rentals").select("raffle_id, active, starts_at, ends_at"),
   ]);
@@ -128,14 +127,16 @@ export const getRaffleDataBySlug = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ slug: z.string().trim().min(2).max(80) }).parse(d))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: raffle } = await (supabaseAdmin as any)
+    let raffleQuery = (supabaseAdmin as any)
       .from("raffles")
       .select(
         "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount, slug, responsable",
       )
-      .eq("activa", true)
-      .ilike("slug", data.slug)
-      .maybeSingle();
+      .eq("activa", true);
+    raffleQuery = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(data.slug)
+      ? raffleQuery.eq("id", data.slug)
+      : raffleQuery.ilike("slug", data.slug);
+    const { data: raffle } = await raffleQuery.maybeSingle();
     if (!raffle) return { raffle: null, tickets: [], stages: [], setupRequired: false };
 
     const { data: rentals } = await (supabaseAdmin as any)

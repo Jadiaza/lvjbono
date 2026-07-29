@@ -66,7 +66,7 @@ type CatalogRaffle = {
   id: string;
   nombre: string;
   serie: string | null;
-  slug: string;
+  slug: string | null;
   responsable: string | null;
   fecha_sorteo: string | null;
   loteria: string | null;
@@ -115,45 +115,48 @@ function CatalogHome() {
           <p className="mt-8 text-muted-foreground">Cargando rifas…</p>
         ) : data.length ? (
           <div className="mt-7 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {(data as CatalogRaffle[]).map((raffle) => (
-              <article
-                key={raffle.id}
-                data-public-skin={raffle.public_skin ?? "purpura-real"}
-                className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm"
-              >
-                <div className="bg-brand p-6 text-brand-foreground">
-                  <p className="text-xs font-bold uppercase tracking-widest opacity-75">
-                    {raffle.serie ?? raffle.slug}
-                  </p>
-                  <h3 className="mt-2 text-2xl font-extrabold">{raffle.nombre}</h3>
-                  {raffle.responsable && (
-                    <p className="mt-1 text-sm opacity-80">Organiza: {raffle.responsable}</p>
-                  )}
-                </div>
-                <div className="space-y-3 p-6 text-sm">
-                  <p>
-                    <strong>Sorteo:</strong> {formatDate(raffle.fecha_sorteo)}
-                  </p>
-                  <p>
-                    <strong>Lotería:</strong> {raffle.loteria ?? "Por definir"}
-                  </p>
-                  <p>
-                    <strong>Boleta:</strong> {formatCOP(raffle.valor_boleta)}
-                  </p>
-                  <p>
-                    <strong>Premio mayor:</strong> {formatCOP(raffle.premio_mayor)}
-                  </p>
-                  <Link
-                    to="/$slug"
-                    params={{ slug: raffle.slug }}
-                    className="mt-4 block rounded-full bg-brand px-5 py-3 text-center font-bold text-brand-foreground"
-                  >
-                    Ver talonario y elegir número
-                  </Link>
-                  <p className="text-center text-xs text-muted-foreground">/{raffle.slug}</p>
-                </div>
-              </article>
-            ))}
+            {(data as CatalogRaffle[]).map((raffle) => {
+              const publicPath = raffle.slug ?? raffle.id;
+              return (
+                <article
+                  key={raffle.id}
+                  data-public-skin={raffle.public_skin ?? "purpura-real"}
+                  className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm"
+                >
+                  <div className="bg-brand p-6 text-brand-foreground">
+                    <p className="text-xs font-bold uppercase tracking-widest opacity-75">
+                      {raffle.serie ?? raffle.slug}
+                    </p>
+                    <h3 className="mt-2 text-2xl font-extrabold">{raffle.nombre}</h3>
+                    {raffle.responsable && (
+                      <p className="mt-1 text-sm opacity-80">Organiza: {raffle.responsable}</p>
+                    )}
+                  </div>
+                  <div className="space-y-3 p-6 text-sm">
+                    <p>
+                      <strong>Sorteo:</strong> {formatDate(raffle.fecha_sorteo)}
+                    </p>
+                    <p>
+                      <strong>Lotería:</strong> {raffle.loteria ?? "Por definir"}
+                    </p>
+                    <p>
+                      <strong>Boleta:</strong> {formatCOP(raffle.valor_boleta)}
+                    </p>
+                    <p>
+                      <strong>Premio mayor:</strong> {formatCOP(raffle.premio_mayor)}
+                    </p>
+                    <Link
+                      to="/$slug"
+                      params={{ slug: publicPath }}
+                      className="mt-4 block rounded-full bg-brand px-5 py-3 text-center font-bold text-brand-foreground"
+                    >
+                      Ver talonario y elegir número
+                    </Link>
+                    <p className="text-center text-xs text-muted-foreground">/{publicPath}</p>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <div className="mt-8 rounded-2xl border border-dashed border-border p-10 text-center text-muted-foreground">
