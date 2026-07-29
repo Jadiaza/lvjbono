@@ -96,6 +96,10 @@ function ResultsPage() {
 
   const draws = data as PublicDraw[];
   const latestDraw = draws[0];
+  const latestDrawLabel =
+    latestDraw?.draw_number && latestDraw.draw_number !== "Sin número"
+      ? `Resultado sorteo ${latestDraw.draw_number}`
+      : "Resultado anterior";
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -115,7 +119,7 @@ function ResultsPage() {
             <Trophy className="h-4 w-4" /> Balotas ganadoras
           </span>
           <h1 className="mt-4 text-3xl font-extrabold text-ink sm:text-4xl">
-            {latestDraw ? `Resultado sorteo ${latestDraw.draw_number}` : "Resultados de sorteos"}
+            {latestDraw ? latestDrawLabel : "Resultados de sorteos"}
           </h1>
           <p className="mt-2 text-muted-foreground">
             Consulta el último número ganador y el histórico de sorteos anteriores.
@@ -168,7 +172,9 @@ function ResultsPage() {
                     {formatDate(draw.draw_date)}
                   </p>
                   <h2 className="mt-1 text-2xl font-extrabold sm:text-3xl">
-                    Resultado sorteo {draw.draw_number}
+                    {draw.draw_number === "Sin número"
+                      ? "Resultado anterior"
+                      : `Resultado sorteo ${draw.draw_number}`}
                   </h2>
                   <p className="mt-1 font-semibold text-white/90">
                     {draw.raffle?.nombre ?? "Rifa"}
@@ -228,7 +234,9 @@ function ResultsPage() {
                         <span className="text-xs font-bold uppercase text-muted-foreground sm:hidden">
                           Sorteo:{" "}
                         </span>
-                        <strong className="text-brand">{draw.draw_number}</strong>
+                        <strong className="text-brand">
+                          {draw.draw_number === "Sin número" ? "Anterior" : draw.draw_number}
+                        </strong>
                       </div>
                       <div className="text-sm">
                         <span className="font-bold uppercase text-muted-foreground sm:hidden">

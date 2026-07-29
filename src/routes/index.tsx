@@ -22,7 +22,11 @@ import {
   X,
 } from "lucide-react";
 
-import { getRaffleData, reservarNumero } from "@/lib/raffle.functions";
+import {
+  getPublicRaffleCatalog,
+  getRaffleDataBySlug,
+  reservarNumero,
+} from "@/lib/raffle.functions";
 import { buildWhatsAppUrl, formatCOP, padNumber, formatDate } from "@/lib/format";
 import {
   Dialog,
@@ -55,22 +59,146 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
-  component: HomePage,
+  component: CatalogHome,
 });
 
+type CatalogRaffle = {
+  id: string;
+  nombre: string;
+  serie: string | null;
+  slug: string;
+  responsable: string | null;
+  fecha_sorteo: string | null;
+  loteria: string | null;
+  valor_boleta: number;
+  premio_mayor: number;
+  public_skin: string | null;
+};
+
+function CatalogHome() {
+  const getCatalog = useServerFn(getPublicRaffleCatalog);
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["public-raffle-catalog"],
+    queryFn: () => getCatalog(),
+    refetchInterval: 30000,
+  });
+
+  return (
+    <main className="min-h-screen bg-background text-foreground">
+      <section className="border-b border-border bg-card">
+        <div className="mx-auto max-w-6xl px-4 py-16 text-center sm:py-24">
+          <span className="rounded-full bg-brand-soft px-4 py-2 text-xs font-bold uppercase tracking-wider text-brand">
+            Rifaya · Talonarios digitales
+          </span>
+          <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-extrabold text-ink sm:text-6xl">
+            Rifas transparentes, fáciles de compartir y administrar
+          </h1>
+          <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground">
+            Cada organizador tiene su propia página, talonario en tiempo real, boleta digital y
+            herramientas para pagos, WhatsApp y resultados.
+          </p>
+        </div>
+      </section>
+      <section className="mx-auto max-w-6xl px-4 py-12">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-brand">
+              Disponibles ahora
+            </p>
+            <h2 className="mt-1 text-3xl font-extrabold text-ink">Rifas activas</h2>
+          </div>
+          <Link to="/resultados" className="text-sm font-semibold text-brand underline">
+            Ver resultados
+          </Link>
+        </div>
+        {isLoading ? (
+          <p className="mt-8 text-muted-foreground">Cargando rifas…</p>
+        ) : data.length ? (
+          <div className="mt-7 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {(data as CatalogRaffle[]).map((raffle) => (
+              <article
+                key={raffle.id}
+                data-public-skin={raffle.public_skin ?? "purpura-real"}
+                className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm"
+              >
+                <div className="bg-brand p-6 text-brand-foreground">
+                  <p className="text-xs font-bold uppercase tracking-widest opacity-75">
+                    {raffle.serie ?? raffle.slug}
+                  </p>
+                  <h3 className="mt-2 text-2xl font-extrabold">{raffle.nombre}</h3>
+                  {raffle.responsable && (
+                    <p className="mt-1 text-sm opacity-80">Organiza: {raffle.responsable}</p>
+                  )}
+                </div>
+                <div className="space-y-3 p-6 text-sm">
+                  <p>
+                    <strong>Sorteo:</strong> {formatDate(raffle.fecha_sorteo)}
+                  </p>
+                  <p>
+                    <strong>Lotería:</strong> {raffle.loteria ?? "Por definir"}
+                  </p>
+                  <p>
+                    <strong>Boleta:</strong> {formatCOP(raffle.valor_boleta)}
+                  </p>
+                  <p>
+                    <strong>Premio mayor:</strong> {formatCOP(raffle.premio_mayor)}
+                  </p>
+                  <Link
+                    to="/$slug"
+                    params={{ slug: raffle.slug }}
+                    className="mt-4 block rounded-full bg-brand px-5 py-3 text-center font-bold text-brand-foreground"
+                  >
+                    Ver talonario y elegir número
+                  </Link>
+                  <p className="text-center text-xs text-muted-foreground">/{raffle.slug}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-8 rounded-2xl border border-dashed border-border p-10 text-center text-muted-foreground">
+            No hay rifas públicas disponibles en este momento.
+          </div>
+        )}
+      </section>
+      <section className="border-t border-border bg-secondary/40">
+        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-12 text-center sm:grid-cols-3">
+          <div>
+            <h3 className="font-bold text-ink">Talonario en tiempo real</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Disponibilidad actualizada para cada rifa.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-bold text-ink">Boleta digital</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Enlace verificable e imagen para WhatsApp.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-bold text-ink">Gestión independiente</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Cada arrendatario administra únicamente su campaña.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
 type TicketRow = {
   numero: number;
   estado: "disponible" | "reservado" | "vendido" | "ganador";
   premio_ganado: string | null;
 };
 
-function HomePage() {
+export function RafflePublicPage({ slug }: { slug: string }) {
   const qc = useQueryClient();
-  const getData = useServerFn(getRaffleData);
+  const getData = useServerFn(getRaffleDataBySlug);
   const reservar = useServerFn(reservarNumero);
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["raffle-public"],
-    queryFn: () => getData(),
+    queryKey: ["raffle-public", slug],
+    queryFn: () => getData({ data: { slug } }),
     refetchInterval: 15000,
   });
 
@@ -88,7 +216,7 @@ function HomePage() {
   } | null>(null);
 
   const raffle = data?.raffle;
-  const setupRequired = data?.setupRequired === true;
+  const setupRequired = Boolean(data?.setupRequired);
   const tickets: TicketRow[] = (data?.tickets ?? []) as TicketRow[];
   const stages = data?.stages ?? [];
 

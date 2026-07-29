@@ -69,6 +69,8 @@ export type Database = {
           premio_mayor: number;
           premio_seco1: number;
           premio_seco2: number;
+          responsable: string | null;
+          slug: string | null;
           public_skin: string;
           staged_payments: boolean;
           installment_amount: number | null;
@@ -93,6 +95,8 @@ export type Database = {
           premio_mayor?: number;
           premio_seco1?: number;
           premio_seco2?: number;
+          responsable?: string | null;
+          slug?: string | null;
           public_skin?: string;
           staged_payments?: boolean;
           installment_amount?: number | null;
@@ -117,6 +121,8 @@ export type Database = {
           premio_mayor?: number;
           premio_seco1?: number;
           premio_seco2?: number;
+          responsable?: string | null;
+          slug?: string | null;
           public_skin?: string;
           staged_payments?: boolean;
           installment_amount?: number | null;

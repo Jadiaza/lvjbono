@@ -94,6 +94,81 @@ export const getRaffleData = createServerFn({ method: "GET" }).handler(async () 
   };
 });
 
+export const getPublicRaffleCatalog = createServerFn({ method: "GET" }).handler(async () => {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const now = new Date().toISOString();
+  const [{ data: raffles, error }, { data: rentals }] = await Promise.all([
+    (supabaseAdmin as any)
+      .from("raffles")
+      .select(
+        "id, nombre, serie, slug, responsable, fecha_sorteo, loteria, valor_boleta, premio_mayor, public_skin",
+      )
+      .eq("activa", true)
+      .not("slug", "is", null)
+      .order("created_at", { ascending: false }),
+    (supabaseAdmin as any).from("raffle_rentals").select("raffle_id, active, starts_at, ends_at"),
+  ]);
+  if (error) throw new Error("No fue posible cargar las rifas disponibles.");
+  const rentalsByRaffle = new Map<string, any[]>();
+  for (const rental of rentals ?? []) {
+    const current = rentalsByRaffle.get(rental.raffle_id) ?? [];
+    current.push(rental);
+    rentalsByRaffle.set(rental.raffle_id, current);
+  }
+  return (raffles ?? []).filter((raffle: any) => {
+    const assigned = rentalsByRaffle.get(raffle.id) ?? [];
+    return (
+      assigned.length === 0 ||
+      assigned.some((rental) => rental.active && rental.starts_at <= now && rental.ends_at > now)
+    );
+  });
+});
+
+export const getRaffleDataBySlug = createServerFn({ method: "GET" })
+  .validator((d: unknown) => z.object({ slug: z.string().trim().min(2).max(80) }).parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: raffle } = await (supabaseAdmin as any)
+      .from("raffles")
+      .select(
+        "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount, slug, responsable",
+      )
+      .eq("activa", true)
+      .ilike("slug", data.slug)
+      .maybeSingle();
+    if (!raffle) return { raffle: null, tickets: [], stages: [], setupRequired: false };
+
+    const { data: rentals } = await (supabaseAdmin as any)
+      .from("raffle_rentals")
+      .select("active, starts_at, ends_at")
+      .eq("raffle_id", raffle.id);
+    const now = new Date();
+    if (
+      rentals?.length &&
+      !rentals.some(
+        (rental: any) =>
+          rental.active && new Date(rental.starts_at) <= now && new Date(rental.ends_at) > now,
+      )
+    ) {
+      return { raffle: null, tickets: [], stages: [], setupRequired: false };
+    }
+
+    const s = getPublicClient();
+    const { data: tickets, error: ticketsError } = await s.rpc("get_public_tickets", {
+      _raffle_id: raffle.id,
+    });
+    if (ticketsError) throw new Error("No fue posible cargar el talonario.");
+    const { data: stages, error: stagesError } = raffle.staged_payments
+      ? await s.rpc("get_public_raffle_stages", { _raffle_id: raffle.id })
+      : { data: [], error: null };
+    if (stagesError) throw new Error("No fue posible cargar la programación de sorteos.");
+    return {
+      raffle,
+      tickets: (tickets ?? []).sort((a, b) => a.numero - b.numero),
+      stages: stages ?? [],
+      setupRequired: false,
+    };
+  });
 export const getPublicDrawResults = createServerFn({ method: "GET" }).handler(async () => {
   const s = getPublicClient();
   const { data: draws, error } = await s
@@ -116,6 +191,18 @@ export const getPublicDrawResults = createServerFn({ method: "GET" }).handler(as
   const raffleMap = new Map((raffles ?? []).map((raffle) => [raffle.id, raffle]));
   return (draws ?? []).map((draw) => ({
     ...draw,
+    ganadores: Array.isArray(draw.ganadores)
+      ? draw.ganadores.map((item) => {
+          const value = item && typeof item === "object" && !Array.isArray(item) ? item : {};
+          return {
+            premio: String(value.premio ?? value.prize ?? "Premio"),
+            numero: Number(value.numero ?? value.number ?? 0),
+            monto: Number(value.monto ?? value.amount ?? 0),
+            acumulado: Boolean(value.acumulado ?? value.paid === false),
+            vendido: Boolean(value.vendido),
+          };
+        })
+      : [],
     raffle: raffleMap.get(draw.raffle_id) ?? null,
   }));
 });
@@ -1194,7 +1281,7 @@ export const adminGetRentalCenter = createServerFn({ method: "GET" })
           "id, raffle_id, user_id, responsable, prepaid_amount, starts_at, ends_at, active, notes, created_at",
         )
         .order("created_at", { ascending: false }),
-      supabaseAdmin.from("raffles").select("id, nombre, serie").order("created_at", {
+      supabaseAdmin.from("raffles").select("id, nombre, serie, slug").order("created_at", {
         ascending: false,
       }),
       supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
@@ -1231,6 +1318,12 @@ export const adminCreateRental = createServerFn({ method: "POST" })
         email: z.string().trim().email(),
         password: z.string().min(8).max(72),
         responsable: z.string().trim().min(2).max(120),
+        slug: z
+          .string()
+          .trim()
+          .min(2)
+          .max(80)
+          .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Usa letras minúsculas, números y guiones."),
         startsAt: z.string().min(10),
         endsAt: z.string().min(10),
         prepaidAmount: z.number().int().min(0),
@@ -1279,7 +1372,7 @@ export const adminCreateRental = createServerFn({ method: "POST" })
     }
     await (supabaseAdmin as any)
       .from("raffles")
-      .update({ responsable: data.responsable })
+      .update({ responsable: data.responsable, slug: data.slug, activa: true })
       .eq("id", data.raffleId);
     return { ok: true };
   });
@@ -1300,6 +1393,43 @@ export const adminSetRentalActive = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const adminSetRentalPublicPage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) =>
+    z
+      .object({
+        rentalId: z.string().uuid(),
+        slug: z
+          .string()
+          .trim()
+          .min(2)
+          .max(80)
+          .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rental } = await (supabaseAdmin as any)
+      .from("raffle_rentals")
+      .select("raffle_id")
+      .eq("id", data.rentalId)
+      .maybeSingle();
+    if (!rental) throw new Error("Alquiler no encontrado.");
+    const { error } = await (supabaseAdmin as any)
+      .from("raffles")
+      .update({ slug: data.slug, activa: true })
+      .eq("id", rental.raffle_id);
+    if (error) {
+      throw new Error(
+        error.code === "23505"
+          ? "Esa extensión ya está siendo utilizada."
+          : "No fue posible habilitar la página.",
+      );
+    }
+    return { slug: data.slug };
+  });
 export const adminResetRentalPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: unknown) =>

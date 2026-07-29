@@ -10,6 +10,7 @@ import {
   adminGetRentalCenter,
   adminResetRentalPassword,
   adminSetRentalActive,
+  adminSetRentalPublicPage,
 } from "@/lib/raffle.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,7 @@ type RentalItem = {
   ends_at: string;
   active: boolean;
   currentlyActive: boolean;
-  raffle: { nombre: string } | null;
+  raffle: { nombre: string; slug: string | null } | null;
   account: { email: string | null; lastSignInAt: string | null } | null;
 };
 
@@ -45,6 +46,7 @@ function RentalCenter() {
   const getCenter = useServerFn(adminGetRentalCenter);
   const createRental = useServerFn(adminCreateRental);
   const setActive = useServerFn(adminSetRentalActive);
+  const setPublicPage = useServerFn(adminSetRentalPublicPage);
   const resetPassword = useServerFn(adminResetRentalPassword);
   const deleteUser = useServerFn(adminDeleteRentalUser);
   const [open, setOpen] = useState(false);
@@ -61,6 +63,7 @@ function RentalCenter() {
           email: String(formData.get("email")),
           password: String(formData.get("password")),
           responsable: String(formData.get("responsable")),
+          slug: String(formData.get("slug")),
           startsAt: String(formData.get("startsAt")),
           endsAt: String(formData.get("endsAt")),
           prepaidAmount: Number(formData.get("prepaidAmount")),
@@ -108,6 +111,16 @@ function RentalCenter() {
                   <p className="text-xs text-muted-foreground">
                     {rental.account?.email ?? "Correo no disponible"}
                   </p>
+                  {rental.raffle?.slug && (
+                    <a
+                      href={`/${rental.raffle.slug}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 block text-xs font-semibold text-brand underline"
+                    >
+                      {`/${rental.raffle.slug}`}
+                    </a>
+                  )}
                   <p className="mt-1 text-xs text-muted-foreground">
                     {new Date(rental.starts_at).toLocaleDateString("es-CO")} —{" "}
                     {new Date(rental.ends_at).toLocaleDateString("es-CO")} · Pagado por anticipado:{" "}
@@ -137,6 +150,30 @@ function RentalCenter() {
                     }}
                   >
                     {rental.active ? "Suspender" : "Reactivar"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      const slug = prompt(
+                        "Extensión pública (ejemplo: lvj001):",
+                        rental.raffle?.slug ?? "",
+                      );
+                      if (!slug) return;
+                      try {
+                        await setPublicPage({
+                          data: { rentalId: rental.id, slug: slug.toLowerCase().trim() },
+                        });
+                        toast.success("Página pública habilitada.");
+                        qc.invalidateQueries({ queryKey: ["rental-center"] });
+                      } catch (error) {
+                        toast.error(
+                          error instanceof Error ? error.message : "No fue posible habilitarla.",
+                        );
+                      }
+                    }}
+                  >
+                    Configurar enlace
                   </Button>
                   <Button
                     size="sm"
@@ -226,6 +263,18 @@ function RentalCenter() {
             </Field>
             <Field label="Responsable">
               <Input name="responsable" required />
+            </Field>
+            <Field label="Extensión pública">
+              <div className="flex items-center rounded-md border bg-background pl-3">
+                <span className="text-xs text-muted-foreground">/</span>
+                <Input
+                  name="slug"
+                  required
+                  pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                  placeholder="lvj001"
+                  className="border-0"
+                />
+              </div>
             </Field>
             <Field label="Correo de acceso">
               <Input name="email" type="email" required />
