@@ -704,11 +704,16 @@ export const adminAnularTicket = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: ticketAccess } = await supabaseAdmin
       .from("tickets")
-      .select("raffle_id")
+      .select("raffle_id, estado, total_abonado")
       .eq("id", data.ticketId)
       .single();
     if (!ticketAccess) throw new Error("Boleta no encontrada.");
     await assertRaffleAccess(context, ticketAccess.raffle_id);
+    if (ticketAccess.estado !== "reservado" || (ticketAccess.total_abonado ?? 0) > 0) {
+      throw new Error(
+        "Una boleta pagada no se puede eliminar. Primero desmarca el pago confirmado.",
+      );
+    }
     const { error: paymentsError } = await supabaseAdmin
       .from("ticket_payments")
       .delete()
@@ -739,6 +744,38 @@ export const adminAnularTicket = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const adminRevertirPagoTicket = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) => z.object({ ticketId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: ticket } = await supabaseAdmin
+      .from("tickets")
+      .select("raffle_id, estado")
+      .eq("id", data.ticketId)
+      .single();
+    if (!ticket) throw new Error("Boleta no encontrada.");
+    await assertRaffleAccess(context, ticket.raffle_id);
+    if (ticket.estado === "ganador") {
+      throw new Error("No se puede desmarcar el pago de una boleta ganadora.");
+    }
+    if (ticket.estado !== "vendido") {
+      throw new Error("Solo se puede desmarcar una boleta con pago confirmado.");
+    }
+    const { error } = await supabaseAdmin
+      .from("tickets")
+      .update({
+        estado: "reservado",
+        referencia_pago: null,
+        monto_recibido: null,
+        total_abonado: 0,
+        validado_por: null,
+        validado_at: null,
+      })
+      .eq("id", data.ticketId);
+    if (error) throw new Error("No fue posible desmarcar el pago.");
+    return { ok: true };
+  });
 export const adminUpdateRaffle = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: unknown) =>

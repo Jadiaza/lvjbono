@@ -2,7 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { adminListTickets, adminConfirmarPago, adminAnularTicket } from "@/lib/raffle.functions";
+import {
+  adminListTickets,
+  adminConfirmarPago,
+  adminAnularTicket,
+  adminRevertirPagoTicket,
+} from "@/lib/raffle.functions";
 import { buildWhatsAppUrl, formatCOP, pad2, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { Check, X, Search, Download, ShieldCheck, MessageCircle } from "lucide-react";
@@ -48,6 +53,7 @@ function AdminTickets() {
   const list = useServerFn(adminListTickets);
   const confirmar = useServerFn(adminConfirmarPago);
   const anular = useServerFn(adminAnularTicket);
+  const revertirPago = useServerFn(adminRevertirPagoTicket);
   const { id: selectedId } = useSelectedRaffle();
   const { data, isLoading } = useQuery({
     queryKey: ["admin-tickets", selectedId],
@@ -142,6 +148,21 @@ function AdminTickets() {
     }
   }
 
+  async function desmarcarPago(ticket: T) {
+    if (
+      !confirm(
+        `¿Desmarcar el pago confirmado de la boleta ${pad2(ticket.numero)}? Después podrá anularse y liberar el número.`,
+      )
+    )
+      return;
+    try {
+      await revertirPago({ data: { ticketId: ticket.id } });
+      toast.success("Pago desmarcado. La boleta volvió a estado reservado.");
+      qc.invalidateQueries({ queryKey: ["admin-tickets", selectedId] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No fue posible desmarcar el pago.");
+    }
+  }
   function exportCSV() {
     const rows = [
       [
@@ -304,11 +325,17 @@ function AdminTickets() {
                       </button>
                     )}
                     {t.estado === "vendido" && (
-                      <span title="Confirmado" className="p-1.5 rounded bg-success/10 text-success">
+                      <button
+                        type="button"
+                        onClick={() => desmarcarPago(t)}
+                        title="Pago confirmado. Pulsa para desmarcarlo"
+                        aria-label={`Desmarcar pago de la boleta ${pad2(t.numero)}`}
+                        className="p-1.5 rounded bg-success/10 text-success hover:bg-success/20"
+                      >
                         <Check className="h-4 w-4" />
-                      </span>
+                      </button>
                     )}
-                    {t.estado !== "disponible" && (
+                    {t.estado === "reservado" && (
                       <button
                         onClick={() => liberar(t.id)}
                         title="Anular / liberar"

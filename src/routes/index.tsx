@@ -963,17 +963,19 @@ export function RafflePublicPage({ slug }: { slug: string }) {
 
       {/* Dialog confirmación */}
       <Dialog open={!!confirmed} onOpenChange={(o) => !o && setConfirmed(null)}>
-        <DialogContent className="w-[calc(100%-1rem)] max-w-md max-h-[calc(100dvh-1rem)] overflow-x-hidden overscroll-contain p-2.5 sm:p-5">
+        <DialogContent className="inset-x-2 left-auto w-auto max-w-none translate-x-0 max-h-[calc(100dvh-1rem)] overflow-x-hidden overscroll-contain gap-2 p-2 sm:left-1/2 sm:right-auto sm:w-[calc(100%-2rem)] sm:max-w-md sm:-translate-x-1/2 sm:gap-4 sm:p-5">
           <div
             ref={confirmedTicketRef}
-            className="confirmation-ticket-image min-w-0 overflow-hidden rounded-2xl bg-card p-3 text-card-foreground sm:p-4"
+            className="confirmation-ticket-image box-border w-full max-w-full min-w-0 overflow-hidden rounded-2xl bg-card p-2.5 text-card-foreground sm:p-4"
           >
-            <DialogHeader>
+            <DialogHeader className="min-w-0">
               <div className="mx-auto mb-2 h-14 w-14 rounded-full bg-brand-soft grid place-items-center">
                 <CheckCircle2 className="h-8 w-8 text-brand" />
               </div>
-              <DialogTitle className="text-2xl font-bold text-center">Boleta digital</DialogTitle>
-              <DialogDescription className="text-center">
+              <DialogTitle className="min-w-0 px-6 text-center text-xl font-bold leading-tight break-words sm:text-2xl">
+                Boleta digital
+              </DialogTitle>
+              <DialogDescription className="min-w-0 text-center text-xs break-words sm:text-sm">
                 Tu número{" "}
                 <strong className="text-ink">{confirmed ? padded(confirmed.numero) : ""}</strong>{" "}
                 quedó reservado.{" "}
@@ -995,7 +997,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                 </div>
               )}
             </DialogHeader>
-            <div className="my-4 rounded-2xl border border-brand/30 bg-brand-soft/50 p-4 text-center">
+            <div className="my-3 min-w-0 overflow-hidden rounded-2xl border border-brand/30 bg-brand-soft/50 p-3 text-center sm:my-4 sm:p-4">
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 {raffle.nombre}
               </p>
@@ -1010,18 +1012,18 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                 Reservada · pendiente de confirmación
               </span>
             </div>
-            <div className="mb-4 grid grid-cols-1 gap-3 rounded-xl min-[360px]:grid-cols-2 border border-border bg-secondary/40 p-3 text-sm">
-              <div>
+            <div className="mb-3 grid min-w-0 grid-cols-1 gap-2 rounded-xl border border-border bg-secondary/40 p-2.5 text-sm min-[400px]:grid-cols-2 sm:mb-4 sm:gap-3 sm:p-3">
+              <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   Nombre
                 </p>
-                <p className="font-semibold text-ink">{confirmed?.nombre}</p>
+                <p className="break-words font-semibold text-ink">{confirmed?.nombre}</p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   Teléfono
                 </p>
-                <p className="font-semibold text-ink">{confirmed?.telefono}</p>
+                <p className="break-all font-semibold text-ink">{confirmed?.telefono}</p>
               </div>
             </div>
             <p className="mt-3 border-t border-dashed border-border pt-3 text-center font-mono text-[10px] text-muted-foreground">
@@ -1033,11 +1035,17 @@ export function RafflePublicPage({ slug }: { slug: string }) {
           )}
           {confirmed && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 rounded-xl border border-border bg-secondary/40 p-2">
+              <div className="flex min-w-0 items-center gap-1.5 rounded-xl border border-border bg-secondary/40 p-1.5 sm:gap-2 sm:p-2">
                 <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
                   {`${window.location.origin}/boleta/${confirmed.codigo}`}
                 </span>
-                <Button type="button" size="sm" variant="outline" onClick={copyConfirmedTicketUrl}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={copyConfirmedTicketUrl}
+                  className="shrink-0 px-2 sm:px-3"
+                >
                   <Copy className="mr-1.5 h-4 w-4" /> Copiar enlace
                 </Button>
               </div>
@@ -1047,7 +1055,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                   variant="outline"
                   onClick={downloadConfirmedTicket}
                   disabled={sharingConfirmed}
-                  className="rounded-full"
+                  className="min-w-0 whitespace-normal rounded-full"
                 >
                   <Download className="mr-2 h-4 w-4" /> Descargar imagen
                 </Button>
@@ -1055,7 +1063,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                   type="button"
                   onClick={sendConfirmedTicketToWhatsApp}
                   disabled={sharingConfirmed}
-                  className="rounded-full bg-[#25D366] font-semibold text-white hover:bg-[#20bd5a]"
+                  className="min-w-0 whitespace-normal rounded-full bg-[#25D366] font-semibold text-white hover:bg-[#20bd5a]"
                 >
                   <MessageCircle className="mr-2 h-4 w-4" />
                   {sharingConfirmed ? "Generando…" : "Enviar por WhatsApp"}
