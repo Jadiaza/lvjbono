@@ -1,4 +1,4 @@
-﻿import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
@@ -24,8 +24,8 @@ export const Route = createFileRoute("/boleta/$codigo")({
   },
   head: () => ({
     meta: [
-      { title: "Mi boleta Â· Rifaya" },
-      { name: "description", content: "Boleta virtual de participaciÃ³n." },
+      { title: "Mi boleta · Rifaya" },
+      { name: "description", content: "Boleta virtual de participación." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -120,7 +120,7 @@ function BoletaPage() {
   const badge = {
     reservado: {
       icon: Clock,
-      text: "Reservado â€” pendiente de pago",
+      text: "Reservado — pendiente de pago",
       className: "ticket-status--reserved",
     },
     vendido: {
@@ -130,7 +130,7 @@ function BoletaPage() {
     },
     ganador: {
       icon: Trophy,
-      text: `Â¡GANADOR! ${ticket.premio_ganado ?? ""}`,
+      text: `¡GANADOR! ${ticket.premio_ganado ?? ""}`,
       className: "ticket-status--winner",
     },
     disponible: {
@@ -169,8 +169,8 @@ function BoletaPage() {
     };
   }, [raffle?.public_skin]);
   const shareMessage = raffle?.staged_payments
-    ? `ðŸŽŸï¸ Boleta ${raffle.nombre}\nðŸŽ¯ NÃºmero principal: ${ticketNumber}\nðŸŽ NÃºmero alterno: ${alternateNumber ?? "Por asignar"}\nðŸ’³ Abonado: ${formatCOP(totalPaid)} de ${formatCOP(ticketValue)}\nðŸ”Ž VerificaciÃ³n: ${url}`
-    : `Boleta ${ticketNumber} de ${raffle?.nombre ?? "la rifa"}. VerificaciÃ³n: ${url}`;
+    ? `🎟️ Boleta ${raffle.nombre}\n🎯 Número principal: ${ticketNumber}\n🎁 Número alterno: ${alternateNumber ?? "Por asignar"}\n💳 Abonado: ${formatCOP(totalPaid)} de ${formatCOP(ticketValue)}\n🔎 Verificación: ${url}`
+    : `Boleta ${ticketNumber} de ${raffle?.nombre ?? "la rifa"}. Verificación: ${url}`;
 
   async function shareTicketImage() {
     if (!ticketRef.current) return;
@@ -190,7 +190,7 @@ function BoletaPage() {
       download.click();
       if (raffle?.whatsapp_admin) {
         window.open(buildWhatsAppUrl(raffle.whatsapp_admin, shareMessage), "_blank", "noopener");
-        toast.success("Imagen descargada. Se abriÃ³ el WhatsApp del administrador.");
+        toast.success("Imagen descargada. Se abrió el WhatsApp del administrador.");
       } else {
         toast.error("No hay un WhatsApp de administrador configurado.");
       }
@@ -211,7 +211,7 @@ function BoletaPage() {
       <div className="max-w-2xl mx-auto">
         <div className="flex justify-between items-center mb-4 print:hidden">
           <Link to="/" className="text-sm text-gold underline">
-            â† Volver
+            ← Volver
           </Link>
           <button
             onClick={() => window.print()}
@@ -229,22 +229,22 @@ function BoletaPage() {
             <p className="text-xs uppercase tracking-[0.3em] opacity-80">Boleta virtual</p>
             <h1 className="font-display text-3xl md:text-4xl mt-1">{raffle?.nombre ?? "Rifa"}</h1>
             <p className="text-sm mt-1 opacity-90">
-              {raffle?.loteria ?? ""} Â· Sorteo {formatDate(raffle?.fecha_sorteo)}
+              {raffle?.loteria ?? ""} · Sorteo {formatDate(raffle?.fecha_sorteo)}
             </p>
           </div>
 
           <div className="p-6 grid md:grid-cols-[1fr_auto] gap-6 items-center">
             <div className="flex flex-col items-center md:items-start">
               <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                {raffle?.staged_payments ? "NÃºmero principal Â· Sorteo mayor" : "Tu nÃºmero"}
+                {raffle?.staged_payments ? "Número principal · Sorteo mayor" : "Tu número"}
               </p>
-              <div className="ticket-number-orbit mt-3" aria-label={`NÃºmero ${ticketNumber}`}>
+              <div className="ticket-number-orbit mt-3" aria-label={`Número ${ticketNumber}`}>
                 <span>{ticketNumber}</span>
               </div>
               {raffle?.staged_payments && alternateNumber && (
                 <div className="mt-4 rounded-2xl border border-brand/30 bg-brand-soft/50 px-4 py-3">
                   <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                    NÃºmero alterno Â· Premios por etapas
+                    Número alterno · Premios por etapas
                   </p>
                   <p className="font-display text-4xl text-brand">{alternateNumber}</p>
                 </div>
@@ -259,7 +259,7 @@ function BoletaPage() {
               <img
                 src={qrUrl}
                 crossOrigin="anonymous"
-                alt="QR de verificaciÃ³n"
+                alt="QR de verificación"
                 width={160}
                 height={160}
                 className="rounded bg-white p-2 mx-auto"
@@ -271,12 +271,12 @@ function BoletaPage() {
           </div>
 
           <div className="ticket-details border-t border-dashed border-border grid grid-cols-2 gap-4 p-6 text-sm">
-            <Field label="Titular" value={ticket.nombre ?? "â€”"} />
-            <Field label="TelÃ©fono" value={ticket.telefono ?? "â€”"} />
-            <Field label="Ciudad" value={ticket.ciudad ?? "â€”"} />
+            <Field label="Titular" value={ticket.nombre ?? "—"} />
+            <Field label="Teléfono" value={ticket.telefono ?? "—"} />
+            <Field label="Ciudad" value={ticket.ciudad ?? "—"} />
             <Field label={amountLabel} value={formatCOP(amountValue)} />
             <Field label="Fecha compra" value={formatDate(ticket.fecha_compra)} />
-            <Field label="Medio de pago" value={ticket.medio_pago ?? "â€”"} />
+            <Field label="Medio de pago" value={ticket.medio_pago ?? "—"} />
             {raffle?.staged_payments && (
               <Field label="Total abonado" value={formatCOP(totalPaid)} />
             )}
@@ -318,14 +318,14 @@ function BoletaPage() {
                       <div>
                         <p className="font-semibold">{stage.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatDate(stage.draw_at)} Â· Premio {formatCOP(stage.prize_amount)}
+                          {formatDate(stage.draw_at)} · Premio {formatCOP(stage.prize_amount)}
                         </p>
                       </div>
                       <span
                         className={eligible ? "text-brand font-semibold" : "text-muted-foreground"}
                       >
                         {eligible
-                          ? "âœ“ Habilitado"
+                          ? "✓ Habilitado"
                           : `Faltan ${formatCOP(stage.minimum_paid - totalPaid)}`}
                       </span>
                     </div>
@@ -334,9 +334,7 @@ function BoletaPage() {
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/35 p-3 text-sm">
                   <div>
                     <p className="font-semibold">Sorteo mayor</p>
-                    <p className="text-xs text-muted-foreground">
-                      NÃºmero principal {ticketNumber}
-                    </p>
+                    <p className="text-xs text-muted-foreground">Número principal {ticketNumber}</p>
                   </div>
                   <span
                     className={
@@ -346,7 +344,7 @@ function BoletaPage() {
                     }
                   >
                     {totalPaid >= ticketValue
-                      ? "âœ“ Habilitado"
+                      ? "✓ Habilitado"
                       : `Faltan ${formatCOP(ticketValue - totalPaid)}`}
                   </span>
                 </div>
@@ -373,7 +371,7 @@ function BoletaPage() {
           )}
 
           <div className="ticket-verification border-t border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-            CÃ³digo de verificaciÃ³n:{" "}
+            Código de verificación:{" "}
             <span className="font-mono text-foreground">{ticket.codigo_verificacion}</span>
           </div>
         </div>
@@ -385,7 +383,7 @@ function BoletaPage() {
               <h2 className="text-lg font-bold">Pagar ahora</h2>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Elige uno de los mÃ©todos habilitados por el organizador y envÃ­a el comprobante.
+              Elige uno de los métodos habilitados por el organizador y envía el comprobante.
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {raffle.nequi_enabled &&
@@ -394,7 +392,7 @@ function BoletaPage() {
                   <PendingPaymentCard
                     name="Nequi"
                     value={raffle.nequi}
-                    valueLabel="NÃºmero Nequi"
+                    valueLabel="Número Nequi"
                     qrUrl={raffle.nequi_qr_visible ? raffle.nequi_qr_url : null}
                     logoUrl={raffle.nequi_logo_url}
                     accent="text-[#ff2ba6]"
@@ -406,7 +404,7 @@ function BoletaPage() {
                   <PendingPaymentCard
                     name="Daviplata"
                     value={raffle.daviplata}
-                    valueLabel="NÃºmero Daviplata"
+                    valueLabel="Número Daviplata"
                     qrUrl={raffle.daviplata_qr_visible ? raffle.daviplata_qr_url : null}
                     logoUrl={raffle.daviplata_logo_url}
                     accent="text-[#ef3340]"
@@ -456,14 +454,14 @@ function BoletaPage() {
           className="mt-4 print:hidden w-full inline-flex items-center justify-center gap-2 rounded-md bg-gold-gradient py-3 font-semibold text-primary-foreground disabled:opacity-60"
         >
           <Share2 className="h-5 w-5" />
-          {sharing ? "Generando imagenâ€¦" : "Enviar boleta al administrador"}
+          {sharing ? "Generando imagen…" : "Enviar boleta al administrador"}
         </button>
 
         {ticket.estado === "reservado" && raffle?.whatsapp_admin && (
           <a
             href={buildWhatsAppUrl(
               raffle.whatsapp_admin,
-              `Hola! Comprobante de pago para el nÃºmero ${ticketNumber} â€” cÃ³digo ${ticket.codigo_verificacion}`,
+              `Hola! Comprobante de pago para el número ${ticketNumber} — código ${ticket.codigo_verificacion}`,
             )}
             target="_blank"
             rel="noreferrer"

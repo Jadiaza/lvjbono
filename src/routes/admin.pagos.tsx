@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -138,7 +138,7 @@ function OrganizerPayments() {
       if (error) throw error;
       const { data: publicData } = supabase.storage.from("payment-qr").getPublicUrl(objectPath);
       setForm((current) => ({ ...current, [field]: publicData.publicUrl }));
-      toast.success("QR cargado. Pulsa Guardar configuraciÃ³n para publicarlo.");
+      toast.success("QR cargado. Pulsa Guardar configuración para publicarlo.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No fue posible cargar el QR.");
     } finally {
@@ -180,7 +180,7 @@ function OrganizerPayments() {
       });
       await qc.invalidateQueries({ queryKey: ["admin-raffles"] });
       await qc.invalidateQueries({ queryKey: ["raffle-public"] });
-      toast.success("MÃ©todos de pago actualizados.");
+      toast.success("Métodos de pago actualizados.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No fue posible guardar.");
     } finally {
@@ -188,13 +188,13 @@ function OrganizerPayments() {
     }
   }
 
-  if (isLoading) return <p className="text-muted-foreground">Cargando configuraciÃ³nâ€¦</p>;
+  if (isLoading) return <p className="text-muted-foreground">Cargando configuración…</p>;
   if (!isOrganizer) {
     return (
       <div className="rounded-xl border border-border bg-card p-6">
-        <h1 className="text-xl font-bold">ConfiguraciÃ³n personal de pagos</h1>
+        <h1 className="text-xl font-bold">Configuración personal de pagos</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Esta secciÃ³n estÃ¡ disponible Ãºnicamente en la cuenta del arrendatario.
+          Esta sección está disponible únicamente en la cuenta del arrendatario.
         </p>
       </div>
     );
@@ -206,11 +206,11 @@ function OrganizerPayments() {
       <div>
         <div className="flex items-center gap-2">
           <CreditCard className="h-6 w-6 text-brand" />
-          <h1 className="text-2xl font-bold">Mis mÃ©todos de pago</h1>
+          <h1 className="text-2xl font-bold">Mis métodos de pago</h1>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          ConfiguraciÃ³n personal para {raffle.serie ? `[${raffle.serie}] ` : ""}
-          {raffle.nombre}. Solo se mostrarÃ¡n los mÃ©todos que diligencies.
+          Configuración personal para {raffle.serie ? `[${raffle.serie}] ` : ""}
+          {raffle.nombre}. Solo se mostrarán los métodos que diligencies.
         </p>
       </div>
 
@@ -235,7 +235,7 @@ function OrganizerPayments() {
         showQr={form.nequi_qr_visible}
         onShowQr={(visible) => setForm({ ...form, nequi_qr_visible: visible })}
         accent="text-[#ff2ba6]"
-        valueLabel="NÃºmero Nequi"
+        valueLabel="Número Nequi"
         value={form.nequi}
         onValue={(value) => setForm({ ...form, nequi: value })}
         qrUrl={form.nequi_qr_url}
@@ -257,7 +257,7 @@ function OrganizerPayments() {
         showQr={form.daviplata_qr_visible}
         onShowQr={(visible) => setForm({ ...form, daviplata_qr_visible: visible })}
         accent="text-[#ef3340]"
-        valueLabel="NÃºmero Daviplata"
+        valueLabel="Número Daviplata"
         value={form.daviplata}
         onValue={(value) => setForm({ ...form, daviplata: value })}
         qrUrl={form.daviplata_qr_url}
@@ -332,7 +332,7 @@ function OrganizerPayments() {
 
       <Button type="submit" disabled={saving || uploading !== null} className="w-full">
         <Save className="mr-2 h-4 w-4" />
-        {saving ? "Guardandoâ€¦" : "Guardar configuraciÃ³n"}
+        {saving ? "Guardando…" : "Guardar configuración"}
       </Button>
     </form>
   );
@@ -392,13 +392,13 @@ function PaymentSection({
             disabled={!enabled}
             value={value}
             onChange={(event) => onValue(event.target.value)}
-            placeholder={keyIcon ? "Celular, documento, correo o llave" : "NÃºmero de la cuenta"}
+            placeholder={keyIcon ? "Celular, documento, correo o llave" : "Número de la cuenta"}
             className="mt-1"
           />
           <Label className="mt-4 block">QR oficial generado por la entidad</Label>
           <label className="mt-1 inline-flex cursor-pointer items-center rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-secondary">
             <ImageUp className="mr-2 h-4 w-4" />
-            {uploading ? "Cargandoâ€¦" : "Seleccionar imagen"}
+            {uploading ? "Cargando…" : "Seleccionar imagen"}
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"

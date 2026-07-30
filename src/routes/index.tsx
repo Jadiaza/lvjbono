@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { toPng } from "html-to-image";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -48,16 +48,16 @@ import { TurnstileWidget } from "@/components/turnstile-widget";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Rifaya â€” Talonario digital 00 al 99" },
+      { title: "Rifaya — Talonario digital 00 al 99" },
       {
         name: "description",
         content:
-          "Rifa 100% virtual del 00 al 99. Boleta $10.000, premios por $500.000. Elige tu nÃºmero, paga por Nequi / Daviplata / Bre-B y recibe tu ticket digital con QR.",
+          "Rifa 100% virtual del 00 al 99. Boleta $10.000, premios por $500.000. Elige tu número, paga por Nequi / Daviplata / Bre-B y recibe tu ticket digital con QR.",
       },
       { property: "og:title", content: "Rifaya" },
       {
         property: "og:description",
-        content: "Talonario digital Â· Tickets con QR Â· Sorteo transparente",
+        content: "Talonario digital · Tickets con QR · Sorteo transparente",
       },
     ],
   }),
@@ -90,13 +90,13 @@ function CatalogHome() {
       <section className="border-b border-border bg-card">
         <div className="mx-auto max-w-6xl px-4 py-16 text-center sm:py-24">
           <span className="rounded-full bg-brand-soft px-4 py-2 text-xs font-bold uppercase tracking-wider text-brand">
-            Rifaya Â· Talonarios digitales
+            Rifaya · Talonarios digitales
           </span>
           <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-extrabold text-ink sm:text-6xl">
-            Rifas transparentes, fÃ¡ciles de compartir y administrar
+            Rifas transparentes, fáciles de compartir y administrar
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground">
-            Cada organizador tiene su propia pÃ¡gina, talonario en tiempo real, boleta digital y
+            Cada organizador tiene su propia página, talonario en tiempo real, boleta digital y
             herramientas para pagos, WhatsApp y resultados.
           </p>
         </div>
@@ -114,7 +114,7 @@ function CatalogHome() {
           </Link>
         </div>
         {isLoading ? (
-          <p className="mt-8 text-muted-foreground">Cargando rifasâ€¦</p>
+          <p className="mt-8 text-muted-foreground">Cargando rifas…</p>
         ) : data.length ? (
           <div className="mt-7 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {(data as CatalogRaffle[]).map((raffle) => {
@@ -139,7 +139,7 @@ function CatalogHome() {
                       <strong>Sorteo:</strong> {formatDate(raffle.fecha_sorteo)}
                     </p>
                     <p>
-                      <strong>LoterÃ­a:</strong> {raffle.loteria ?? "Por definir"}
+                      <strong>Lotería:</strong> {raffle.loteria ?? "Por definir"}
                     </p>
                     <p>
                       <strong>Boleta:</strong> {formatCOP(raffle.valor_boleta)}
@@ -152,7 +152,7 @@ function CatalogHome() {
                       params={{ slug: publicPath }}
                       className="mt-4 block rounded-full bg-brand px-5 py-3 text-center font-bold text-brand-foreground"
                     >
-                      Ver talonario y elegir nÃºmero
+                      Ver talonario y elegir número
                     </Link>
                     <p className="text-center text-xs text-muted-foreground">/{publicPath}</p>
                   </div>
@@ -162,7 +162,7 @@ function CatalogHome() {
           </div>
         ) : (
           <div className="mt-8 rounded-2xl border border-dashed border-border p-10 text-center text-muted-foreground">
-            No hay rifas pÃºblicas disponibles en este momento.
+            No hay rifas públicas disponibles en este momento.
           </div>
         )}
       </section>
@@ -181,9 +181,9 @@ function CatalogHome() {
             </p>
           </div>
           <div>
-            <h3 className="font-bold text-ink">GestiÃ³n independiente</h3>
+            <h3 className="font-bold text-ink">Gestión independiente</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Cada arrendatario administra Ãºnicamente su campaÃ±a.
+              Cada arrendatario administra únicamente su campaña.
             </p>
           </div>
         </div>
@@ -315,7 +315,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
       setTurnstileToken(null);
       setTurnstileResetKey((value) => value + 1);
       qc.invalidateQueries({ queryKey: ["raffle-public"] });
-      toast.success(`Â¡Reservaste el nÃºmero ${padNumber(res.numero, raffle.digitos as 2 | 3)}!`);
+      toast.success(`¡Reservaste el número ${padNumber(res.numero, raffle.digitos as 2 | 3)}!`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al reservar");
       setTurnstileToken(null);
@@ -367,7 +367,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
       const message = [
         `Boleta ${padded(confirmed.numero)} de ${raffle.nombre}`,
         `Nombre: ${confirmed.nombre}`,
-        `TelÃ©fono: ${confirmed.telefono}`,
+        `Teléfono: ${confirmed.telefono}`,
         `Ver boleta: ${ticketUrl}`,
       ].join("\n");
       if (!raffle.whatsapp_admin) {
@@ -379,7 +379,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
       download.download = generated.file.name;
       download.click();
       window.open(buildWhatsAppUrl(raffle.whatsapp_admin, message), "_blank", "noopener");
-      toast.success("Imagen descargada. Se abriÃ³ directamente el WhatsApp del administrador.");
+      toast.success("Imagen descargada. Se abrió directamente el WhatsApp del administrador.");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       console.error("[sendConfirmedTicketToWhatsApp] Could not share image", error);
@@ -399,7 +399,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-muted-foreground">
-        Cargandoâ€¦
+        Cargando…
       </div>
     );
   }
@@ -419,7 +419,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
         <div>
           <h1 className="text-3xl font-bold text-ink">Sin rifa activa</h1>
           <p className="mt-2 text-muted-foreground">
-            AÃºn no hay una rifa disponible. Vuelve pronto.
+            Aún no hay una rifa disponible. Vuelve pronto.
           </p>
           <Link to="/auth" className="mt-4 inline-block text-sm text-brand underline">
             Acceso administrador
@@ -467,7 +467,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               Talonario
             </a>
             <a href="#como" className="hover:text-ink">
-              CÃ³mo juega
+              Cómo juega
             </a>
             <Link to="/resultados" className="inline-flex items-center gap-1.5 hover:text-ink">
               <Dices className="h-4 w-4" /> Resultados anteriores
@@ -478,7 +478,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
             className="md:hidden ml-auto grid h-10 w-10 place-items-center rounded-lg border border-border bg-white text-ink"
             onClick={() => setMobileMenuOpen((open) => !open)}
             aria-expanded={mobileMenuOpen}
-            aria-label={mobileMenuOpen ? "Cerrar menÃº" : "Abrir menÃº"}
+            aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -509,7 +509,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                 onClick={() => setMobileMenuOpen(false)}
                 className="rounded-lg px-3 py-2.5 hover:bg-secondary"
               >
-                CÃ³mo juega
+                Cómo juega
               </a>
               <Link
                 to="/resultados"
@@ -544,22 +544,22 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               </span>
             </h1>
             <p className="mt-5 text-lg text-muted-foreground max-w-lg">
-              SoluciÃ³n rÃ¡pida y transparente para participar en{" "}
-              <span className="font-semibold text-ink">{raffle.nombre}</span>. Elige tu nÃºmero del{" "}
-              {padded(0)} al {padded(maxNumber)}, paga en lÃ­nea y recibe tu ticket digital con QR.
+              Solución rápida y transparente para participar en{" "}
+              <span className="font-semibold text-ink">{raffle.nombre}</span>. Elige tu número del{" "}
+              {padded(0)} al {padded(maxNumber)}, paga en línea y recibe tu ticket digital con QR.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <a
                 href="#tablero"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand text-brand-foreground font-semibold px-6 py-3 hover:opacity-90 transition soft-shadow sm:w-auto"
               >
-                Elegir mi nÃºmero <ArrowRight className="h-4 w-4" />
+                Elegir mi número <ArrowRight className="h-4 w-4" />
               </a>
               <a
                 href="#como"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-white text-ink border border-border font-semibold px-6 py-3 hover:bg-secondary transition sm:w-auto"
               >
-                Ver cÃ³mo juega
+                Ver cómo juega
               </a>
             </div>
             <div className="mt-8 flex flex-wrap gap-6 text-sm">
@@ -580,19 +580,19 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                 <p className="text-xs uppercase tracking-[0.3em] opacity-80">Boleta virtual</p>
                 <p className="font-bold text-2xl mt-1">{raffle.nombre}</p>
                 <p className="text-xs opacity-90 mt-1">
-                  {raffle.loteria ?? "LoterÃ­a"} Â· {formatDate(raffle.fecha_sorteo)}
+                  {raffle.loteria ?? "Lotería"} · {formatDate(raffle.fecha_sorteo)}
                 </p>
               </div>
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 p-4 sm:gap-4 sm:p-6">
                 <div>
                   <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                    Tu nÃºmero
+                    Tu número
                   </p>
                   <p className="text-6xl font-extrabold text-brand leading-none tracking-tighter sm:text-7xl">
                     ##
                   </p>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    ElÃ­gelo en el talonario abajo
+                    Elígelo en el talonario abajo
                   </p>
                 </div>
                 <div className="grid h-20 w-20 place-items-center rounded-lg bg-brand-soft sm:h-24 sm:w-24">
@@ -600,12 +600,12 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                 </div>
               </div>
               <div className="flex flex-col gap-1 border-t border-dashed border-border p-4 text-xs text-muted-foreground sm:flex-row sm:justify-between">
-                <span>Nequi Â· Daviplata Â· Bre-B</span>
+                <span>Nequi · Daviplata · Bre-B</span>
                 <span className="text-brand font-semibold">{formatCOP(raffle.valor_boleta)}</span>
               </div>
             </div>
             <div className="absolute -top-3 -right-3 rotate-6 rounded-full bg-warning text-warning-foreground text-xs font-bold px-3 py-1.5 shadow-md">
-              {tickets.length} nÃºmeros
+              {tickets.length} números
             </div>
           </div>
         </div>
@@ -615,23 +615,23 @@ export function RafflePublicPage({ slug }: { slug: string }) {
       <section className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-16 sm:grid-cols-2 md:grid-cols-4">
         <Feature
           icon={<Ticket className="h-8 w-8" strokeWidth={2} />}
-          title="PÃ¡gina web"
-          text="Talonario online para que veas y elijas tu nÃºmero desde cualquier dispositivo."
+          title="Página web"
+          text="Talonario online para que veas y elijas tu número desde cualquier dispositivo."
         />
         <Feature
           icon={<QrCode className="h-8 w-8" strokeWidth={2} />}
           title="Tickets con QR"
-          text="Cada boleta tiene un cÃ³digo Ãºnico que puedes verificar y compartir por WhatsApp."
+          text="Cada boleta tiene un código único que puedes verificar y compartir por WhatsApp."
         />
         <Feature
           icon={<Cloud className="h-8 w-8" strokeWidth={2} />}
           title="En la nube"
-          text="Todo respaldado y accesible en cualquier momento desde tu telÃ©fono."
+          text="Todo respaldado y accesible en cualquier momento desde tu teléfono."
         />
         <Feature
           icon={<Dices className="h-8 w-8" strokeWidth={2} />}
           title="Sorteo transparente"
-          text="Los ganadores se calculan con el resultado oficial de la loterÃ­a."
+          text="Los ganadores se calculan con el resultado oficial de la lotería."
         />
       </section>
 
@@ -654,8 +654,8 @@ export function RafflePublicPage({ slug }: { slug: string }) {
             <PrizeCard rank="Mayor" label="Premio Mayor" amount={raffle.premio_mayor} highlight />
             <PrizeCard rank="1" label="Seco 1" amount={raffle.premio_seco1} />
             <PrizeCard rank="2" label="Seco 2" amount={raffle.premio_seco2} />
-            <PrizeCard rank="â†‘" label="Aprox. Anterior" amount={raffle.premio_aprox_ant} />
-            <PrizeCard rank="â†“" label="Aprox. Posterior" amount={raffle.premio_aprox_pos} />
+            <PrizeCard rank="↑" label="Aprox. Anterior" amount={raffle.premio_aprox_ant} />
+            <PrizeCard rank="↓" label="Aprox. Posterior" amount={raffle.premio_aprox_pos} />
           </div>
         </div>
       </section>
@@ -674,25 +674,25 @@ export function RafflePublicPage({ slug }: { slug: string }) {
             <Ticket className="h-3.5 w-3.5" /> Talonario
           </span>
           <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-ink tracking-tight">
-            Elige tu nÃºmero
+            Elige tu número
           </h2>
           <p className="mt-2 text-muted-foreground">
-            Toca cualquier nÃºmero disponible para reservarlo.
+            Toca cualquier número disponible para reservarlo.
           </p>
         </div>
         {raffle.staged_payments && (
           <div className="mx-auto mb-6 max-w-3xl rounded-3xl border border-brand/30 bg-brand-soft/55 p-5">
-            <h3 className="font-display text-xl text-brand">Dos nÃºmeros, una sola boleta</h3>
+            <h3 className="font-display text-xl text-brand">Dos números, una sola boleta</h3>
             <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
               <p>
-                ðŸŽ¯ <strong>Eliges</strong> tu nÃºmero principal para el sorteo mayor.
+                🎯 <strong>Eliges</strong> tu número principal para el sorteo mayor.
               </p>
               <p>
-                ðŸŽ Recibes un <strong>nÃºmero alterno</strong> para los premios por etapas.
+                🎁 Recibes un <strong>número alterno</strong> para los premios por etapas.
               </p>
               <p>
-                ðŸ’³ Puedes abonar desde <strong>{formatCOP(raffle.installment_amount)}</strong> y
-                mantenerte al dÃ­a.
+                💳 Puedes abonar desde <strong>{formatCOP(raffle.installment_amount)}</strong> y
+                mantenerte al día.
               </p>
             </div>
             {stages.length > 0 && (
@@ -704,7 +704,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                   >
                     <strong>{stage.name}</strong>
                     <span>
-                      {formatDate(stage.draw_at)} Â· Requiere {formatCOP(stage.minimum_paid)} Â·
+                      {formatDate(stage.draw_at)} · Requiere {formatCOP(stage.minimum_paid)} ·
                       Premio {formatCOP(stage.prize_amount)}
                     </span>
                   </div>
@@ -719,8 +719,8 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               role="alert"
               className="mb-4 rounded-xl border border-warning/50 bg-warning/15 px-4 py-3 text-sm text-warning-foreground"
             >
-              El talonario estÃ¡ temporalmente en configuraciÃ³n. No se aceptan reservas hasta
-              completar la actualizaciÃ³n segura de la base de datos.
+              El talonario está temporalmente en configuración. No se aceptan reservas hasta
+              completar la actualización segura de la base de datos.
             </div>
           )}
           <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5 md:gap-2">
@@ -750,26 +750,26 @@ export function RafflePublicPage({ slug }: { slug: string }) {
           <div className="h-11 w-11 rounded-xl bg-brand-soft text-brand grid place-items-center mb-4">
             <Sparkles className="h-6 w-6" />
           </div>
-          <h3 className="text-2xl font-bold text-ink">CÃ³mo se juega</h3>
+          <h3 className="text-2xl font-bold text-ink">Cómo se juega</h3>
           <ol className="mt-4 space-y-3 text-sm text-muted-foreground">
             <Step n={1}>
               Se juega con el resultado oficial de{" "}
               <span className="font-semibold text-ink">
-                {raffle.loteria ?? "una loterÃ­a colombiana"}
+                {raffle.loteria ?? "una lotería colombiana"}
               </span>
               .
             </Step>
             <Step n={2}>
-              <span className="font-semibold text-ink">Premio Mayor</span>: las dos Ãºltimas cifras
+              <span className="font-semibold text-ink">Premio Mayor</span>: las dos últimas cifras
               del Premio Mayor.
             </Step>
             <Step n={3}>
-              <span className="font-semibold text-ink">Seco 1 y 2</span>: dos Ãºltimas cifras de los
+              <span className="font-semibold text-ink">Seco 1 y 2</span>: dos últimas cifras de los
               secos oficiales.
             </Step>
             <Step n={4}>
-              <span className="font-semibold text-ink">Aproximaciones</span>: nÃºmero anterior y
-              posterior al Mayor (con vuelta {padded(0)}â†”{padded(maxNumber)}).
+              <span className="font-semibold text-ink">Aproximaciones</span>: número anterior y
+              posterior al Mayor (con vuelta {padded(0)}↔{padded(maxNumber)}).
             </Step>
             <Step n={5}>
               Los premios <span className="font-semibold text-brand">no son acumulables</span>: se
@@ -784,8 +784,8 @@ export function RafflePublicPage({ slug }: { slug: string }) {
           <h3 className="text-2xl font-bold text-ink">Recomendaciones</h3>
           <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
             <Bullet>Guarda el enlace de tu boleta virtual en un lugar seguro.</Bullet>
-            <Bullet>Verifica el nÃºmero y la fecha del sorteo al comprar.</Bullet>
-            <Bullet>Recibes confirmaciÃ³n inmediata con cÃ³digo de verificaciÃ³n.</Bullet>
+            <Bullet>Verifica el número y la fecha del sorteo al comprar.</Bullet>
+            <Bullet>Recibes confirmación inmediata con código de verificación.</Bullet>
             <Bullet>Al participar aceptas todas las condiciones de esta rifa.</Bullet>
           </ul>
         </div>
@@ -795,10 +795,10 @@ export function RafflePublicPage({ slug }: { slug: string }) {
       <section className="max-w-6xl mx-auto px-4 pb-16">
         <div className="public-cta rounded-3xl bg-gold-gradient p-10 md:p-14 text-center text-white soft-shadow">
           <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-            Â¿Listo para probar tu suerte?
+            ¿Listo para probar tu suerte?
           </h3>
           <p className="mt-3 opacity-90 max-w-md mx-auto">
-            Elige tu nÃºmero favorito antes de que se agoten los cupos.
+            Elige tu número favorito antes de que se agoten los cupos.
           </p>
           <a
             href="#tablero"
@@ -811,7 +811,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
 
       <footer className="border-t border-border">
         <div className="max-w-6xl mx-auto px-4 py-8 flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground">
-          <p>Â© {new Date().getFullYear()} Rifaya Â· Talonario 100% virtual</p>
+          <p>© {new Date().getFullYear()} Rifaya · Talonario 100% virtual</p>
           <Link to="/auth" className="hover:text-brand">
             Acceso administrador
           </Link>
@@ -823,8 +823,8 @@ export function RafflePublicPage({ slug }: { slug: string }) {
           <DialogHeader>
             <DialogTitle>Reserva encontrada</DialogTitle>
             <DialogDescription>
-              El nÃºmero {resumePayment ? padded(resumePayment.number) : ""} estÃ¡ separado desde
-              este dispositivo.
+              El número {resumePayment ? padded(resumePayment.number) : ""} está separado desde este
+              dispositivo.
             </DialogDescription>
           </DialogHeader>
           {resumePayment && (
@@ -852,11 +852,11 @@ export function RafflePublicPage({ slug }: { slug: string }) {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
-              Reservar nÃºmero{" "}
+              Reservar número{" "}
               <span className="text-brand">{selected != null ? padded(selected) : ""}</span>
             </DialogTitle>
             <DialogDescription>
-              Completa tus datos. Te mostraremos los datos de pago y podrÃ¡s enviar el comprobante
+              Completa tus datos. Te mostraremos los datos de pago y podrás enviar el comprobante
               por WhatsApp.
             </DialogDescription>
           </DialogHeader>
@@ -873,7 +873,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <Label htmlFor="telefono">TelÃ©fono *</Label>
+                <Label htmlFor="telefono">Teléfono *</Label>
                 <Input
                   id="telefono"
                   name="telefono"
@@ -893,7 +893,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               <Input id="email" name="email" type="email" maxLength={120} />
             </div>
             <div>
-              <Label>Â¿QuÃ© deseas hacer?</Label>
+              <Label>¿Qué deseas hacer?</Label>
               <div className="mt-1 grid grid-cols-2 gap-2">
                 <Button
                   type="button"
@@ -912,8 +912,8 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {purchaseIntent === "pay"
-                  ? "Reserva el nÃºmero y continÃºa con el medio de pago elegido."
-                  : "Aparta el nÃºmero y paga despuÃ©s; quedarÃ¡ pendiente de confirmaciÃ³n."}
+                  ? "Reserva el número y continúa con el medio de pago elegido."
+                  : "Aparta el número y paga después; quedará pendiente de confirmación."}
               </p>
             </div>
             {purchaseIntent === "pay" && (
@@ -952,16 +952,16 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               className="w-full rounded-full bg-brand text-brand-foreground font-semibold h-11 hover:opacity-90"
             >
               {submitting
-                ? "Procesandoâ€¦"
+                ? "Procesando…"
                 : purchaseIntent === "pay"
                   ? "Continuar al pago"
-                  : "Separar mi nÃºmero"}
+                  : "Separar mi número"}
             </Button>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog confirmaciÃ³n */}
+      {/* Dialog confirmación */}
       <Dialog open={!!confirmed} onOpenChange={(o) => !o && setConfirmed(null)}>
         <DialogContent className="w-[calc(100%-1rem)] max-w-md max-h-[calc(100dvh-1rem)] overflow-x-hidden overscroll-contain p-2.5 sm:p-5">
           <div
@@ -974,23 +974,23 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               </div>
               <DialogTitle className="text-2xl font-bold text-center">Boleta digital</DialogTitle>
               <DialogDescription className="text-center">
-                Tu nÃºmero{" "}
+                Tu número{" "}
                 <strong className="text-ink">{confirmed ? padded(confirmed.numero) : ""}</strong>{" "}
-                quedÃ³ reservado.{" "}
+                quedó reservado.{" "}
                 {confirmed?.intent === "pay"
-                  ? "Abre el enlace de pago o usa los datos indicados y envÃ­a el comprobante."
-                  : "Puedes pagar despuÃ©s desde esta boleta para confirmarla."}
+                  ? "Abre el enlace de pago o usa los datos indicados y envía el comprobante."
+                  : "Puedes pagar después desde esta boleta para confirmarla."}
               </DialogDescription>
               {confirmed?.numeroAlterno != null && (
                 <div className="mx-auto mt-3 rounded-2xl border border-brand/30 bg-brand-soft/60 px-5 py-3 text-center">
                   <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                    Tu nÃºmero alterno
+                    Tu número alterno
                   </p>
                   <p className="font-display text-4xl text-brand">
                     {String(confirmed.numeroAlterno).padStart(3, "0")}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    ParticiparÃ¡ en los premios pequeÃ±os cuando estÃ©s al dÃ­a.
+                    Participará en los premios pequeños cuando estés al día.
                   </p>
                 </div>
               )}
@@ -1004,10 +1004,10 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Sorteo {formatDate(raffle.fecha_sorteo)}
-                {raffle.loteria ? ` Â· ${raffle.loteria}` : ""}
+                {raffle.loteria ? ` · ${raffle.loteria}` : ""}
               </p>
               <span className="mt-2 inline-flex rounded-full bg-warning/15 px-3 py-1 text-xs font-bold text-warning">
-                Reservada Â· pendiente de confirmaciÃ³n
+                Reservada · pendiente de confirmación
               </span>
             </div>
             <div className="mb-4 grid grid-cols-1 gap-3 rounded-xl min-[360px]:grid-cols-2 border border-border bg-secondary/40 p-3 text-sm">
@@ -1019,13 +1019,13 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               </div>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  TelÃ©fono
+                  Teléfono
                 </p>
                 <p className="font-semibold text-ink">{confirmed?.telefono}</p>
               </div>
             </div>
             <p className="mt-3 border-t border-dashed border-border pt-3 text-center font-mono text-[10px] text-muted-foreground">
-              CÃ³digo: {confirmed?.codigo}
+              Código: {confirmed?.codigo}
             </p>
           </div>
           {confirmed?.intent === "pay" && (
@@ -1058,7 +1058,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                   className="rounded-full bg-[#25D366] font-semibold text-white hover:bg-[#20bd5a]"
                 >
                   <MessageCircle className="mr-2 h-4 w-4" />
-                  {sharingConfirmed ? "Generandoâ€¦" : "Enviar por WhatsApp"}
+                  {sharingConfirmed ? "Generando…" : "Enviar por WhatsApp"}
                 </Button>
               </div>
             </div>
@@ -1212,8 +1212,8 @@ function NumberCell({
         onPointerCancel={cancelHold}
         onContextMenu={(event) => event.preventDefault()}
         className={`${base} number-cell--occupied number-cell--reservado touch-none cursor-pointer`}
-        title="MantÃ©n pulsado para pagar"
-        aria-label={`NÃºmero ${padNumber(ticket.numero, digits)} reservado. MantÃ©n pulsado para pagar.`}
+        title="Mantén pulsado para pagar"
+        aria-label={`Número ${padNumber(ticket.numero, digits)} reservado. Mantén pulsado para pagar.`}
       >
         <span>{padNumber(ticket.numero, digits)}</span>
       </button>
@@ -1364,7 +1364,7 @@ function SelectedPaymentPanel({
       {showValue && value && (
         <div className="mt-2 min-w-0 rounded-xl bg-white/10 px-3 py-2">
           <p className="text-[10px] uppercase tracking-wider text-white/60">
-            {isBreB ? "Llave Bre-B" : `NÃºmero ${name}`}
+            {isBreB ? "Llave Bre-B" : `Número ${name}`}
           </p>
           <p className="mt-1 flex min-w-0 items-center justify-center gap-1.5 font-mono text-sm font-bold">
             {isBreB && <KeyRound className="h-4 w-4 shrink-0" />}

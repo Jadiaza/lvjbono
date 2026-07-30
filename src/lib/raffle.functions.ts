@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any -- rental tables are ahead of generated Supabase types */
+/* eslint-disable @typescript-eslint/no-explicit-any -- rental tables are ahead of generated Supabase types */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
@@ -10,7 +10,7 @@ import { normalizePublicRaffleSlug } from "@/lib/public-raffle-url";
 function getPublicClient() {
   const url = process.env.SUPABASE_URL?.replace(/^\uFEFF/, "").trim();
   const key = process.env.SUPABASE_PUBLISHABLE_KEY?.replace(/^\uFEFF/, "").trim();
-  if (!url || !key) throw new Error("El servicio no estÃ¡ configurado temporalmente.");
+  if (!url || !key) throw new Error("El servicio no está configurado temporalmente.");
   return createClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
   });
@@ -20,7 +20,7 @@ async function verifyTurnstileToken(token: string): Promise<void> {
   const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
   if (!secret) {
     console.error("[Turnstile] Missing TURNSTILE_SECRET_KEY");
-    throw new Error("La verificaciÃ³n antirrobot no estÃ¡ configurada.");
+    throw new Error("La verificación antirrobot no está configurada.");
   }
 
   const body = new FormData();
@@ -30,17 +30,16 @@ async function verifyTurnstileToken(token: string): Promise<void> {
     method: "POST",
     body,
   });
-  if (!response.ok) throw new Error("No fue posible comprobar la verificaciÃ³n antirrobot.");
+  if (!response.ok) throw new Error("No fue posible comprobar la verificación antirrobot.");
   const result = (await response.json()) as { success?: boolean };
-  if (!result.success)
-    throw new Error("La verificaciÃ³n antirrobot venciÃ³. IntÃ©ntalo nuevamente.");
+  if (!result.success) throw new Error("La verificación antirrobot venció. Inténtalo nuevamente.");
 }
 
-// ============ PÃšBLICO ============
+// ============ PÚBLICO ============
 
 export const isAdminSetupPending = createServerFn({ method: "GET" }).handler(async () => {
   const { data, error } = await getPublicClient().rpc("is_admin_setup_pending");
-  if (error) throw new Error("No fue posible consultar la configuraciÃ³n administrativa.");
+  if (error) throw new Error("No fue posible consultar la configuración administrativa.");
   return data === true;
 });
 
@@ -86,7 +85,7 @@ export const getRaffleData = createServerFn({ method: "GET" }).handler(async () 
   const { data: stages, error: stagesError } = raffle.staged_payments
     ? await s.rpc("get_public_raffle_stages", { _raffle_id: raffle.id })
     : { data: [], error: null };
-  if (stagesError) throw new Error("No fue posible cargar la programaciÃ³n de sorteos.");
+  if (stagesError) throw new Error("No fue posible cargar la programación de sorteos.");
 
   return {
     raffle,
@@ -138,7 +137,25 @@ export const getRaffleDataBySlug = createServerFn({ method: "GET" })
     raffleQuery = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(data.slug)
       ? raffleQuery.eq("id", data.slug)
       : raffleQuery.ilike("slug", data.slug);
-    let { data: raffle } = await raffleQuery.maybeSingle();
+    let { data: raffle, error: raffleError } = await raffleQuery.maybeSingle();
+    if (
+      raffleError &&
+      (raffleError.code === "42703" ||
+        raffleError.code === "PGRST204" ||
+        /(?:nequi|daviplata|bre_b|mercadopago)_logo_url/i.test(raffleError.message))
+    ) {
+      raffleQuery = (supabaseAdmin as any)
+        .from("raffles")
+        .select(
+          "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, nequi_qr_url, daviplata_qr_url, bre_b_qr_url, mercadopago_url, nequi_enabled, nequi_number_visible, nequi_qr_visible, daviplata_enabled, daviplata_number_visible, daviplata_qr_visible, bre_b_enabled, bre_b_key_visible, bre_b_qr_visible, mercadopago_enabled, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount, slug, responsable",
+        )
+        .eq("activa", true);
+      raffleQuery = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(data.slug)
+        ? raffleQuery.eq("id", data.slug)
+        : raffleQuery.ilike("slug", data.slug);
+      ({ data: raffle, error: raffleError } = await raffleQuery.maybeSingle());
+    }
+    if (raffleError) throw new Error("No fue posible cargar la rifa.");
     if (!raffle && !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(data.slug)) {
       const { data: activeRaffles } = await (supabaseAdmin as any)
         .from("raffles")
@@ -177,7 +194,7 @@ export const getRaffleDataBySlug = createServerFn({ method: "GET" })
     const { data: stages, error: stagesError } = raffle.staged_payments
       ? await s.rpc("get_public_raffle_stages", { _raffle_id: raffle.id })
       : { data: [], error: null };
-    if (stagesError) throw new Error("No fue posible cargar la programaciÃ³n de sorteos.");
+    if (stagesError) throw new Error("No fue posible cargar la programación de sorteos.");
     return {
       raffle,
       tickets: (tickets ?? []).sort((a, b) => a.numero - b.numero),
@@ -247,10 +264,9 @@ export const reservarNumero = createServerFn({ method: "POST" })
       .select("id, activa, valor_boleta, digitos")
       .eq("id", data.raffleId)
       .maybeSingle();
-    if (!raffle || !raffle.activa) throw new Error("La rifa no estÃ¡ disponible.");
+    if (!raffle || !raffle.activa) throw new Error("La rifa no está disponible.");
 
-    if (data.numero >= 10 ** raffle.digitos)
-      throw new Error("El nÃºmero no pertenece a esta rifa.");
+    if (data.numero >= 10 ** raffle.digitos) throw new Error("El número no pertenece a esta rifa.");
     const { data: rows, error } = await supabaseAdmin.rpc("reserve_ticket", {
       _raffle_id: data.raffleId,
       _numero: data.numero,
@@ -262,11 +278,11 @@ export const reservarNumero = createServerFn({ method: "POST" })
     });
     if (error) {
       if (error.message.includes("ticket_unavailable"))
-        throw new Error("Ese nÃºmero ya no estÃ¡ disponible. Elige otro.");
+        throw new Error("Ese número ya no está disponible. Elige otro.");
       throw new Error("No fue posible completar la reserva.");
     }
     const updated = rows?.[0];
-    if (!updated) throw new Error("Ese nÃºmero ya no estÃ¡ disponible. Elige otro.");
+    if (!updated) throw new Error("Ese número ya no está disponible. Elige otro.");
 
     return {
       codigo: updated.codigo_verificacion,
@@ -350,7 +366,7 @@ async function getAdminAccess(ctx: {
     .lte("starts_at", now)
     .gt("ends_at", now);
   const activeRentals = rentals ?? [];
-  if (!activeRentals.length) throw new Error("Tu alquiler no estÃ¡ activo o ya venciÃ³.");
+  if (!activeRentals.length) throw new Error("Tu alquiler no está activo o ya venció.");
   return {
     role: "organizer" as const,
     raffleIds: activeRentals.map((r: { raffle_id: string }) => r.raffle_id),
@@ -438,7 +454,7 @@ export const adminCreateRaffle = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const created: string[] = [];
     for (let i = 0; i < data.cantidad; i++) {
-      const suffix = data.cantidad > 1 ? ` Â· CartÃ³n ${i + 1}` : "";
+      const suffix = data.cantidad > 1 ? ` · Cartón ${i + 1}` : "";
       const serie = data.serie ? (data.cantidad > 1 ? `${data.serie}-${i + 1}` : data.serie) : null;
       const { data: r, error } = await supabaseAdmin
         .from("raffles")
@@ -486,7 +502,7 @@ export const adminCreateRaffle = createServerFn({ method: "POST" })
         );
         if (stagesError) {
           await supabaseAdmin.from("raffles").delete().eq("id", r.id);
-          throw new Error("No fue posible crear la programaciÃ³n mensual.");
+          throw new Error("No fue posible crear la programación mensual.");
         }
       }
       created.push(r.id);
@@ -611,7 +627,7 @@ export const adminConfirmarPago = createServerFn({ method: "POST" })
       .object({
         ticketId: z.string().uuid(),
         referencia_pago: z.string().trim().min(3, "Ingresa la referencia del comprobante").max(80),
-        monto_recibido: z.number().int().min(1, "Monto invÃ¡lido"),
+        monto_recibido: z.number().int().min(1, "Monto inválido"),
         observaciones: z.string().trim().max(500).optional().nullable(),
       })
       .parse(d),
@@ -729,7 +745,7 @@ export const adminUpdateRaffle = createServerFn({ method: "POST" })
         _raffle_id: id,
       });
       if (alternateError)
-        throw new Error("Se guardÃ³ la modalidad, pero no fue posible asignar nÃºmeros alternos.");
+        throw new Error("Se guardó la modalidad, pero no fue posible asignar números alternos.");
     }
     return { ok: true };
   });
@@ -768,13 +784,13 @@ export const organizerUpdatePaymentSettings = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const access = await getAdminAccess(context);
     if (access.role !== "organizer") {
-      throw new Error("Esta configuraciÃ³n pertenece a la cuenta personal del arrendatario.");
+      throw new Error("Esta configuración pertenece a la cuenta personal del arrendatario.");
     }
     await assertRaffleAccess(context, data.raffleId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { raffleId, ...settings } = data;
     const { error } = await supabaseAdmin.from("raffles").update(settings).eq("id", raffleId);
-    if (error) throw new Error("No fue posible guardar los mÃ©todos de pago.");
+    if (error) throw new Error("No fue posible guardar los métodos de pago.");
     return { ok: true };
   });
 export const adminListStages = createServerFn({ method: "GET" })
@@ -966,7 +982,7 @@ export const adminSaveReminderSettings = createServerFn({ method: "POST" })
       message_template: data.messageTemplate,
       updated_at: new Date().toISOString(),
     });
-    if (error) throw new Error("No fue posible guardar la programaciÃ³n.");
+    if (error) throw new Error("No fue posible guardar la programación.");
     return { ok: true };
   });
 
@@ -1053,7 +1069,7 @@ export const adminRegisterStageDraw = createServerFn({ method: "POST" })
     });
     if (error) {
       if (error.message.includes("stage_not_closed"))
-        throw new Error("La etapa todavÃ­a no ha llegado a su fecha y hora de cierre.");
+        throw new Error("La etapa todavía no ha llegado a su fecha y hora de cierre.");
       throw new Error("No fue posible registrar el sorteo alterno.");
     }
     return result;
@@ -1127,8 +1143,8 @@ export const adminRegistrarSorteo = createServerFn({ method: "POST" })
     asignar("Premio Mayor", mayor, raffle.premio_mayor);
     asignar("Seco 1", seco1, raffle.premio_seco1);
     asignar("Seco 2", seco2, raffle.premio_seco2);
-    asignar("AproximaciÃ³n Anterior", aprev, raffle.premio_aprox_ant);
-    asignar("AproximaciÃ³n Posterior", apost, raffle.premio_aprox_pos);
+    asignar("Aproximación Anterior", aprev, raffle.premio_aprox_ant);
+    asignar("Aproximación Posterior", apost, raffle.premio_aprox_pos);
 
     const ganadores = asignaciones.map((a) => {
       const t = byNum.get(a.numero);
@@ -1303,7 +1319,7 @@ export const adminSelfBootstrap = createServerFn({ method: "POST" })
     }
     /*
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    // Si aÃºn no hay admins, este usuario se convierte en admin.
+    // Si aún no hay admins, este usuario se convierte en admin.
     const { count } = await supabaseAdmin
       .from("user_roles")
       .select("*", { count: "exact", head: true })
@@ -1343,7 +1359,7 @@ export const adminGetRentalCenter = createServerFn({ method: "GET" })
       supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
     ]);
     if (error)
-      throw new Error("No fue posible cargar los alquileres. Ejecuta la migraciÃ³n pendiente.");
+      throw new Error("No fue posible cargar los alquileres. Ejecuta la migración pendiente.");
     const raffleMap = new Map((raffles ?? []).map((raffle) => [raffle.id, raffle]));
     const userMap = new Map(
       (usersData?.users ?? []).map((user) => [
@@ -1379,7 +1395,7 @@ export const adminCreateRental = createServerFn({ method: "POST" })
           .trim()
           .min(2)
           .max(80)
-          .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Usa letras minÃºsculas, nÃºmeros y guiones."),
+          .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Usa letras minúsculas, números y guiones."),
         startsAt: z.string().min(10),
         endsAt: z.string().min(10),
         prepaidAmount: z.number().int().min(0),
@@ -1423,7 +1439,7 @@ export const adminCreateRental = createServerFn({ method: "POST" })
     if (roleError || rentalError) {
       await supabaseAdmin.auth.admin.deleteUser(created.user.id);
       throw new Error(
-        "No fue posible asignar el alquiler. Verifica que la migraciÃ³n estÃ© aplicada.",
+        "No fue posible asignar el alquiler. Verifica que la migración esté aplicada.",
       );
     }
     await (supabaseAdmin as any)
@@ -1480,8 +1496,8 @@ export const adminSetRentalPublicPage = createServerFn({ method: "POST" })
     if (error) {
       throw new Error(
         error.code === "23505"
-          ? "Esa extensiÃ³n ya estÃ¡ siendo utilizada."
-          : "No fue posible habilitar la pÃ¡gina.",
+          ? "Esa extensión ya está siendo utilizada."
+          : "No fue posible habilitar la página.",
       );
     }
     return { slug: data.slug };
@@ -1503,7 +1519,7 @@ export const adminResetRentalPassword = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
       password: data.password,
     });
-    if (error) throw new Error("No fue posible restablecer la contraseÃ±a.");
+    if (error) throw new Error("No fue posible restablecer la contraseña.");
     return { ok: true };
   });
 
