@@ -596,10 +596,6 @@ function RaffleCard({
           valor_boleta: Number(form.valor_boleta),
           fecha_sorteo: form.fecha_sorteo || null,
           loteria: form.loteria || null,
-          whatsapp_admin: form.whatsapp_admin || null,
-          nequi: form.nequi || null,
-          daviplata: form.daviplata || null,
-          bre_b: form.bre_b || null,
           premio_mayor: Number(form.premio_mayor),
           premio_seco1: Number(form.premio_seco1),
           premio_seco2: Number(form.premio_seco2),
@@ -867,33 +863,6 @@ function RaffleCard({
                 />
               ))}
             </div>
-          </div>
-          <Field label="WhatsApp administrador">
-            <Input
-              value={form.whatsapp_admin}
-              onChange={(e) => setForm({ ...form, whatsapp_admin: e.target.value })}
-              placeholder="+57 300..."
-            />
-          </Field>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Field label="Nequi (número o link)">
-              <Input
-                value={form.nequi}
-                onChange={(e) => setForm({ ...form, nequi: e.target.value })}
-              />
-            </Field>
-            <Field label="Daviplata (número o link)">
-              <Input
-                value={form.daviplata}
-                onChange={(e) => setForm({ ...form, daviplata: e.target.value })}
-              />
-            </Field>
-            <Field label="Bre-B (llave o link)">
-              <Input
-                value={form.bre_b}
-                onChange={(e) => setForm({ ...form, bre_b: e.target.value })}
-              />
-            </Field>
           </div>
           <div className="rounded-md border border-border bg-background p-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">

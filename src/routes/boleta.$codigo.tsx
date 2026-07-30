@@ -4,7 +4,16 @@ import { toPng } from "html-to-image";
 import { toast } from "sonner";
 import { getBoletaByCodigo } from "@/lib/raffle.functions";
 import { formatCOP, padNumber, formatDate, buildWhatsAppUrl } from "@/lib/format";
-import { Printer, CheckCircle2, Clock, XCircle, Trophy, Share2 } from "lucide-react";
+import {
+  Printer,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Trophy,
+  Share2,
+  CreditCard,
+  KeyRound,
+} from "lucide-react";
 import { getPublicSkinDefinition, type PublicSkin } from "@/lib/public-skins";
 
 export const Route = createFileRoute("/boleta/$codigo")({
@@ -67,6 +76,10 @@ function BoletaPage() {
       nequi: string | null;
       daviplata: string | null;
       bre_b: string | null;
+      nequi_qr_url: string | null;
+      daviplata_qr_url: string | null;
+      bre_b_qr_url: string | null;
+      mercadopago_url: string | null;
       public_skin: PublicSkin;
       valor_boleta: number;
       staged_payments: boolean;
@@ -161,11 +174,11 @@ function BoletaPage() {
       download.href = dataUrl;
       download.download = file.name;
       download.click();
-      if (ticket.telefono) {
-        window.open(buildWhatsAppUrl(ticket.telefono, shareMessage), "_blank", "noopener");
-        toast.success("Imagen descargada. Se abrió el chat del comprador para adjuntarla.");
+      if (raffle?.whatsapp_admin) {
+        window.open(buildWhatsAppUrl(raffle.whatsapp_admin, shareMessage), "_blank", "noopener");
+        toast.success("Imagen descargada. Se abrió el WhatsApp del administrador.");
       } else {
-        toast.error("Esta boleta no tiene un teléfono de comprador registrado.");
+        toast.error("No hay un WhatsApp de administrador configurado.");
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
@@ -349,6 +362,61 @@ function BoletaPage() {
           </div>
         </div>
 
+        {isPendingPayment && raffle && (
+          <section className="mt-4 rounded-2xl border border-brand/30 bg-card p-4 print:hidden">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-brand" />
+              <h2 className="text-lg font-bold">Pagar ahora</h2>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Elige uno de los métodos habilitados por el organizador y envía el comprobante.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {(raffle.nequi || raffle.nequi_qr_url) && (
+                <PendingPaymentCard
+                  name="Nequi"
+                  value={raffle.nequi}
+                  valueLabel="Número Nequi"
+                  qrUrl={raffle.nequi_qr_url}
+                  accent="text-[#ff2ba6]"
+                />
+              )}
+              {(raffle.daviplata || raffle.daviplata_qr_url) && (
+                <PendingPaymentCard
+                  name="Daviplata"
+                  value={raffle.daviplata}
+                  valueLabel="Número Daviplata"
+                  qrUrl={raffle.daviplata_qr_url}
+                  accent="text-[#ef3340]"
+                />
+              )}
+              {(raffle.bre_b || raffle.bre_b_qr_url) && (
+                <PendingPaymentCard
+                  name="Bre-B"
+                  value={raffle.bre_b}
+                  valueLabel="Llave Bre-B"
+                  qrUrl={raffle.bre_b_qr_url}
+                  accent="text-[#00a7c7]"
+                  keyIcon
+                />
+              )}
+              {raffle.mercadopago_url && (
+                <a
+                  href={raffle.mercadopago_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex min-h-24 flex-col items-center justify-center rounded-xl border border-[#00a650]/30 bg-[#00a650]/10 p-4 text-center"
+                >
+                  <strong className="text-[#00a650]">Mercado Pago</strong>
+                  <span className="mt-2 text-sm font-semibold">Abrir enlace oficial</span>
+                </a>
+              )}
+            </div>
+            <p className="mt-4 text-center text-sm">
+              Saldo pendiente: <strong className="text-brand">{formatCOP(amountValue)}</strong>
+            </p>
+          </section>
+        )}
         <button
           type="button"
           onClick={shareTicketImage}
@@ -356,7 +424,7 @@ function BoletaPage() {
           className="mt-4 print:hidden w-full inline-flex items-center justify-center gap-2 rounded-md bg-gold-gradient py-3 font-semibold text-primary-foreground disabled:opacity-60"
         >
           <Share2 className="h-5 w-5" />
-          {sharing ? "Generando imagen…" : "Enviar al WhatsApp del comprador"}
+          {sharing ? "Generando imagen…" : "Enviar boleta al administrador"}
         </button>
 
         {ticket.estado === "reservado" && raffle?.whatsapp_admin && (
@@ -377,6 +445,45 @@ function BoletaPage() {
   );
 }
 
+function PendingPaymentCard({
+  name,
+  value,
+  valueLabel,
+  qrUrl,
+  accent,
+  keyIcon = false,
+}: {
+  name: string;
+  value: string | null;
+  valueLabel: string;
+  qrUrl: string | null;
+  accent: string;
+  keyIcon?: boolean;
+}) {
+  return (
+    <div className="min-w-0 rounded-xl border border-border bg-secondary/30 p-3 text-center">
+      <h3 className={`font-black ${accent}`}>{name}</h3>
+      {qrUrl && (
+        <img
+          src={qrUrl}
+          alt={`QR oficial de ${name}`}
+          className="mx-auto mt-3 aspect-square w-full max-w-40 rounded-lg bg-white object-contain p-2"
+        />
+      )}
+      {value && (
+        <div className="mt-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            {valueLabel}
+          </p>
+          <p className="mt-1 flex items-center justify-center gap-1 break-all font-mono font-bold">
+            {keyIcon && <KeyRound className="h-4 w-4 shrink-0" />}
+            {value}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>

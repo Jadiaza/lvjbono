@@ -14,6 +14,7 @@ import {
   Trophy,
   Layers,
   CalendarClock,
+  CreditCard,
 } from "lucide-react";
 import { useSelectedRaffle } from "@/hooks/use-selected-raffle";
 import { getPublicSkinDefinition } from "@/lib/public-skins";
@@ -124,6 +125,16 @@ function AdminLayout() {
                 <TicketIcon className="h-4 w-4" />
                 Boletas
               </Link>
+              {!isPlatformAdmin && (
+                <Link
+                  to="/admin/pagos"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md hover:bg-secondary"
+                  activeProps={{ className: "bg-secondary text-gold" }}
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Mis pagos
+                </Link>
+              )}
               {isPlatformAdmin && (
                 <Link
                   to="/admin/rifa"
@@ -213,6 +224,11 @@ function AdminLayout() {
             >
               Boletas
             </Link>
+            {!isPlatformAdmin && (
+              <Link to="/admin/pagos" className="rounded-md px-3 py-2 hover:bg-secondary">
+                Mis métodos de pago
+              </Link>
+            )}
             {isPlatformAdmin && (
               <>
                 <Link to="/admin/rifa" className="rounded-md px-3 py-2 hover:bg-secondary">

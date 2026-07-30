@@ -20,6 +20,7 @@ import {
   MessageCircle,
   Menu,
   X,
+  KeyRound,
 } from "lucide-react";
 
 import {
@@ -208,6 +209,8 @@ export function RafflePublicPage({ slug }: { slug: string }) {
 
   const [selected, setSelected] = useState<number | null>(null);
   const [purchaseIntent, setPurchaseIntent] = useState<"pay" | "reserve">("pay");
+  const [ownedReservationCodes, setOwnedReservationCodes] = useState<Record<number, string>>({});
+  const [resumePayment, setResumePayment] = useState<{ number: number; code: string } | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sharingConfirmed, setSharingConfirmed] = useState(false);
@@ -221,14 +224,34 @@ export function RafflePublicPage({ slug }: { slug: string }) {
     nombre: string;
     telefono: string;
     intent: "pay" | "reserve";
-    paymentMethod: "nequi" | "daviplata" | "bre_b" | "transferencia";
+    paymentMethod: "nequi" | "daviplata" | "bre_b" | "mercadopago_url" | "transferencia";
   } | null>(null);
 
   const raffle = data?.raffle;
   const setupRequired = Boolean(data?.setupRequired);
-  const tickets: TicketRow[] = (data?.tickets ?? []) as TicketRow[];
+  const defaultPaymentMethod =
+    raffle?.nequi || raffle?.nequi_qr_url
+      ? "nequi"
+      : raffle?.daviplata || raffle?.daviplata_qr_url
+        ? "daviplata"
+        : raffle?.bre_b || raffle?.bre_b_qr_url
+          ? "bre_b"
+          : raffle?.mercadopago_url
+            ? "mercadopago_url"
+            : "transferencia";
+  const tickets = useMemo(() => (data?.tickets ?? []) as TicketRow[], [data?.tickets]);
   const stages = data?.stages ?? [];
 
+  useEffect(() => {
+    if (!raffle) return;
+    const owned: Record<number, string> = {};
+    for (const ticket of tickets) {
+      if (ticket.estado !== "reservado") continue;
+      const code = localStorage.getItem(`rifaya.reservation.${raffle.id}.${ticket.numero}`);
+      if (code) owned[ticket.numero] = code;
+    }
+    setOwnedReservationCodes(owned);
+  }, [raffle, tickets]);
   useEffect(() => {
     if (!raffle?.public_skin) return;
     document.documentElement.dataset.publicActiveSkin = raffle.public_skin;
@@ -268,10 +291,13 @@ export function RafflePublicPage({ slug }: { slug: string }) {
           | "nequi"
           | "daviplata"
           | "bre_b"
+          | "mercadopago_url"
           | "transferencia",
         turnstileToken,
       };
       const res = await reservar({ data: payload });
+      localStorage.setItem(`rifaya.reservation.${raffle.id}.${res.numero}`, res.codigo);
+      setOwnedReservationCodes((current) => ({ ...current, [res.numero]: res.codigo }));
       setConfirmed({
         ...res,
         nombre: payload.nombre,
@@ -332,30 +358,22 @@ export function RafflePublicPage({ slug }: { slug: string }) {
       const generated = await generateConfirmedTicketImage();
       if (!generated) return;
       const ticketUrl = `${window.location.origin}/boleta/${confirmed.codigo}`;
-      const shareData = {
-        files: [generated.file],
-        title: `Boleta ${padded(confirmed.numero)}`,
-        text: [
-          `Boleta ${padded(confirmed.numero)} de ${raffle.nombre}`,
-          `Nombre: ${confirmed.nombre}`,
-          `Teléfono: ${confirmed.telefono}`,
-          `Ver boleta: ${ticketUrl}`,
-        ].join("\n"),
-      };
-      if (navigator.share && navigator.canShare?.(shareData)) {
-        await navigator.share(shareData);
+      const message = [
+        `Boleta ${padded(confirmed.numero)} de ${raffle.nombre}`,
+        `Nombre: ${confirmed.nombre}`,
+        `Teléfono: ${confirmed.telefono}`,
+        `Ver boleta: ${ticketUrl}`,
+      ].join("\n");
+      if (!raffle.whatsapp_admin) {
+        toast.error("No hay un WhatsApp de administrador configurado.");
         return;
       }
       const download = document.createElement("a");
       download.href = generated.dataUrl;
       download.download = generated.file.name;
       download.click();
-      window.open(
-        buildWhatsAppUrl(raffle.whatsapp_admin ?? "", shareData.text),
-        "_blank",
-        "noopener",
-      );
-      toast.success("Imagen descargada. Adjunta en el chat de WhatsApp.");
+      window.open(buildWhatsAppUrl(raffle.whatsapp_admin, message), "_blank", "noopener");
+      toast.success("Imagen descargada. Se abrió directamente el WhatsApp del administrador.");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       console.error("[sendConfirmedTicketToWhatsApp] Could not share image", error);
@@ -706,6 +724,8 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                 ticket={t}
                 digits={digits}
                 onClick={() => setSelected(t.numero)}
+                paymentCode={ownedReservationCodes[t.numero]}
+                onResumePayment={(code) => setResumePayment({ number: t.numero, code })}
               />
             ))}
           </div>
@@ -792,6 +812,26 @@ export function RafflePublicPage({ slug }: { slug: string }) {
         </div>
       </footer>
 
+      <Dialog open={!!resumePayment} onOpenChange={(open) => !open && setResumePayment(null)}>
+        <DialogContent className="max-w-sm text-center">
+          <DialogHeader>
+            <DialogTitle>Reserva encontrada</DialogTitle>
+            <DialogDescription>
+              El número {resumePayment ? padded(resumePayment.number) : ""} está separado desde este
+              dispositivo.
+            </DialogDescription>
+          </DialogHeader>
+          {resumePayment && (
+            <Link
+              to="/boleta/$codigo"
+              params={{ codigo: resumePayment.code }}
+              className="flex h-11 items-center justify-center rounded-full bg-brand px-4 font-semibold text-brand-foreground"
+            >
+              Continuar al pago
+            </Link>
+          )}
+        </DialogContent>
+      </Dialog>
       {/* Dialog reservar */}
       <Dialog
         open={selected != null}
@@ -875,13 +915,15 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                 <Label>Medio de pago</Label>
                 <RadioGroup
                   name="medio_pago"
-                  defaultValue="nequi"
-                  className="mt-1 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2"
+                  defaultValue={defaultPaymentMethod}
+                  className="mt-1 grid grid-cols-2 gap-2"
                 >
-                  {raffle.nequi && <PayOpt id="nequi" label="Nequi" />}
-                  {raffle.daviplata && <PayOpt id="daviplata" label="Daviplata" />}
-                  {raffle.bre_b && <PayOpt id="bre_b" label="Bre-B" />}
-                  <PayOpt id="transferencia" label="Transferencia" />
+                  {(raffle.nequi || raffle.nequi_qr_url) && <PayOpt id="nequi" label="Nequi" />}
+                  {(raffle.daviplata || raffle.daviplata_qr_url) && (
+                    <PayOpt id="daviplata" label="Daviplata" />
+                  )}
+                  {(raffle.bre_b || raffle.bre_b_qr_url) && <PayOpt id="bre_b" label="Bre-B" />}
+                  {raffle.mercadopago_url && <PayOpt id="mercadopago_url" label="Mercado Pago" />}
                 </RadioGroup>
               </div>
             )}
@@ -903,10 +945,10 @@ export function RafflePublicPage({ slug }: { slug: string }) {
 
       {/* Dialog confirmación */}
       <Dialog open={!!confirmed} onOpenChange={(o) => !o && setConfirmed(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[calc(100%-1.5rem)] max-w-md overflow-x-hidden p-3 sm:p-5">
           <div
             ref={confirmedTicketRef}
-            className="confirmation-ticket-image rounded-2xl bg-card p-4 text-card-foreground"
+            className="confirmation-ticket-image min-w-0 overflow-hidden rounded-2xl bg-card p-3 text-card-foreground sm:p-4"
           >
             <DialogHeader>
               <div className="mx-auto mb-2 h-14 w-14 rounded-full bg-brand-soft grid place-items-center">
@@ -964,29 +1006,59 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                 <p className="font-semibold text-ink">{confirmed?.telefono}</p>
               </div>
             </div>
-            <div className="space-y-2 text-sm">
-              {raffle.nequi && <PayLine label="Nequi" value={raffle.nequi} />}
-              {raffle.daviplata && <PayLine label="Daviplata" value={raffle.daviplata} />}
-              {raffle.bre_b && <PayLine label="Bre-B" value={raffle.bre_b} />}
-              {confirmed?.intent === "pay" &&
-                (() => {
-                  const paymentValue = raffle[confirmed.paymentMethod];
-                  return paymentValue && /^https?:\/\//i.test(paymentValue) ? (
-                    <a
-                      href={paymentValue}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex h-11 items-center justify-center rounded-full bg-brand px-4 font-semibold text-brand-foreground"
-                    >
-                      Abrir pago seguro
-                    </a>
-                  ) : null;
-                })()}
-              <p className="text-xs text-center text-muted-foreground pt-1">
-                Valor a pagar:{" "}
-                <span className="text-brand font-bold">{formatCOP(raffle.valor_boleta)}</span>
-              </p>
-            </div>
+            {confirmed?.intent === "pay" &&
+              (() => {
+                const configuredPaymentValue = raffle[confirmed.paymentMethod];
+                const paymentValue =
+                  configuredPaymentValue ||
+                  (confirmed.paymentMethod !== "mercadopago_url" ? "Escanea el QR oficial" : null);
+                const paymentQrUrl =
+                  confirmed.paymentMethod === "nequi"
+                    ? raffle.nequi_qr_url
+                    : confirmed.paymentMethod === "daviplata"
+                      ? raffle.daviplata_qr_url
+                      : confirmed.paymentMethod === "bre_b"
+                        ? raffle.bre_b_qr_url
+                        : null;
+                const paymentLabel =
+                  confirmed.paymentMethod === "bre_b"
+                    ? "Llave Bre-B"
+                    : confirmed.paymentMethod === "daviplata"
+                      ? "Número Daviplata"
+                      : "Número Nequi";
+                if (!paymentValue) return null;
+                return (
+                  <div className="space-y-3 rounded-2xl border border-[#d72b91]/30 bg-[#230b2d] p-3 text-white">
+                    <div className="text-center text-xl font-black">
+                      {confirmed.paymentMethod === "bre_b" ? (
+                        <span className="text-[#00d9e8]">Bre-B</span>
+                      ) : confirmed.paymentMethod === "daviplata" ? (
+                        <span className="text-[#ef3340]">Daviplata</span>
+                      ) : confirmed.paymentMethod === "mercadopago_url" ? (
+                        <span className="text-[#00a650]">Mercado Pago</span>
+                      ) : (
+                        <span className="text-[#ff2ba6]">Nequi</span>
+                      )}
+                    </div>
+                    {raffle.serie?.toUpperCase() === "LVJ-001" && (
+                      <img
+                        src="/brand/qr-nequi.jpg"
+                        alt="Código QR de pago configurado para LVJ-001"
+                        className="mx-auto aspect-square w-full max-w-[180px] rounded-xl bg-white object-contain p-2"
+                      />
+                    )}
+                    <PaymentDatum
+                      label={paymentLabel}
+                      value={paymentValue}
+                      icon={confirmed.paymentMethod === "bre_b"}
+                    />
+                    <p className="text-center text-xs text-white/70">
+                      Valor a pagar:{" "}
+                      <strong className="text-white">{formatCOP(raffle.valor_boleta)}</strong>
+                    </p>
+                  </div>
+                );
+              })()}
             <p className="mt-3 border-t border-dashed border-border pt-3 text-center font-mono text-[10px] text-muted-foreground">
               Código: {confirmed?.codigo}
             </p>
@@ -1128,13 +1200,30 @@ function NumberCell({
   ticket,
   digits,
   onClick,
+  paymentCode,
+  onResumePayment,
 }: {
   ticket: TicketRow;
   digits: 2 | 3;
   onClick: () => void;
+  paymentCode?: string;
+  onResumePayment: (code: string) => void;
 }) {
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const base =
     "number-cell aspect-square flex items-center justify-center rounded-xl font-bold text-base md:text-lg transition-all";
+
+  function cancelHold() {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+  }
+
+  function startHold() {
+    if (!paymentCode || ticket.estado !== "reservado") return;
+    cancelHold();
+    holdTimer.current = setTimeout(() => onResumePayment(paymentCode), 700);
+  }
+
   if (ticket.estado === "disponible") {
     return (
       <button
@@ -1142,6 +1231,23 @@ function NumberCell({
         className={`${base} number-cell--available bg-white border-2 border-border text-ink hover:border-brand hover:bg-brand hover:text-brand-foreground hover:scale-105 active:scale-95`}
       >
         {padNumber(ticket.numero, digits)}
+      </button>
+    );
+  }
+  if (ticket.estado === "reservado" && paymentCode) {
+    return (
+      <button
+        type="button"
+        onPointerDown={startHold}
+        onPointerUp={cancelHold}
+        onPointerLeave={cancelHold}
+        onPointerCancel={cancelHold}
+        onContextMenu={(event) => event.preventDefault()}
+        className={`${base} number-cell--occupied number-cell--reservado touch-none cursor-pointer`}
+        title="Mantén pulsado para pagar"
+        aria-label={`Número ${padNumber(ticket.numero, digits)} reservado. Mantén pulsado para pagar.`}
+      >
+        <span>{padNumber(ticket.numero, digits)}</span>
       </button>
     );
   }
@@ -1154,7 +1260,6 @@ function NumberCell({
     </div>
   );
 }
-
 function Legend({ swatch, label }: { swatch: string; label: string }) {
   return (
     <span className="inline-flex items-center gap-1.5">
@@ -1192,6 +1297,26 @@ function PayOpt({ id, label }: { id: string; label: string }) {
     </label>
   );
 }
+function PaymentDatum({
+  label,
+  value,
+  icon = false,
+}: {
+  label: string;
+  value: string;
+  icon?: boolean;
+}) {
+  return (
+    <div className="min-w-0 rounded-xl bg-white/10 px-3 py-2 text-center">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-white/60">{label}</p>
+      <p className="mt-1 flex items-center justify-center gap-1.5 font-mono text-sm font-bold sm:text-base">
+        {icon && <KeyRound className="h-4 w-4 shrink-0" />}
+        <span className="break-all">{value}</span>
+      </p>
+    </div>
+  );
+}
+
 function PayLine({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between items-center rounded-xl border border-border bg-secondary/50 px-4 py-2.5">

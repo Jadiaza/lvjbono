@@ -21,6 +21,7 @@ import { Route as BoletaCodigoRouteImport } from './routes/boleta.$codigo'
 import { Route as AdminSorteoRouteImport } from './routes/admin.sorteo'
 import { Route as AdminRifaRouteImport } from './routes/admin.rifa'
 import { Route as AdminRecordatoriosRouteImport } from './routes/admin.recordatorios'
+import { Route as AdminPagosRouteImport } from './routes/admin.pagos'
 import { Route as AdminPadrinosRouteImport } from './routes/admin.padrinos'
 import { Route as AdminAlquileresRouteImport } from './routes/admin.alquileres'
 
@@ -84,6 +85,11 @@ const AdminRecordatoriosRoute = AdminRecordatoriosRouteImport.update({
   path: '/recordatorios',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPagosRoute = AdminPagosRouteImport.update({
+  id: '/pagos',
+  path: '/pagos',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminPadrinosRoute = AdminPadrinosRouteImport.update({
   id: '/padrinos',
   path: '/padrinos',
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/resultados': typeof ResultadosRoute
   '/admin/alquileres': typeof AdminAlquileresRoute
   '/admin/padrinos': typeof AdminPadrinosRoute
+  '/admin/pagos': typeof AdminPagosRoute
   '/admin/recordatorios': typeof AdminRecordatoriosRoute
   '/admin/rifa': typeof AdminRifaRoute
   '/admin/sorteo': typeof AdminSorteoRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByTo {
   '/resultados': typeof ResultadosRoute
   '/admin/alquileres': typeof AdminAlquileresRoute
   '/admin/padrinos': typeof AdminPadrinosRoute
+  '/admin/pagos': typeof AdminPagosRoute
   '/admin/recordatorios': typeof AdminRecordatoriosRoute
   '/admin/rifa': typeof AdminRifaRoute
   '/admin/sorteo': typeof AdminSorteoRoute
@@ -137,6 +145,7 @@ export interface FileRoutesById {
   '/resultados': typeof ResultadosRoute
   '/admin/alquileres': typeof AdminAlquileresRoute
   '/admin/padrinos': typeof AdminPadrinosRoute
+  '/admin/pagos': typeof AdminPagosRoute
   '/admin/recordatorios': typeof AdminRecordatoriosRoute
   '/admin/rifa': typeof AdminRifaRoute
   '/admin/sorteo': typeof AdminSorteoRoute
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
     | '/resultados'
     | '/admin/alquileres'
     | '/admin/padrinos'
+    | '/admin/pagos'
     | '/admin/recordatorios'
     | '/admin/rifa'
     | '/admin/sorteo'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/resultados'
     | '/admin/alquileres'
     | '/admin/padrinos'
+    | '/admin/pagos'
     | '/admin/recordatorios'
     | '/admin/rifa'
     | '/admin/sorteo'
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/resultados'
     | '/admin/alquileres'
     | '/admin/padrinos'
+    | '/admin/pagos'
     | '/admin/recordatorios'
     | '/admin/rifa'
     | '/admin/sorteo'
@@ -290,6 +302,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRecordatoriosRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/pagos': {
+      id: '/admin/pagos'
+      path: '/pagos'
+      fullPath: '/admin/pagos'
+      preLoaderRoute: typeof AdminPagosRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/padrinos': {
       id: '/admin/padrinos'
       path: '/padrinos'
@@ -310,6 +329,7 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminAlquileresRoute: typeof AdminAlquileresRoute
   AdminPadrinosRoute: typeof AdminPadrinosRoute
+  AdminPagosRoute: typeof AdminPagosRoute
   AdminRecordatoriosRoute: typeof AdminRecordatoriosRoute
   AdminRifaRoute: typeof AdminRifaRoute
   AdminSorteoRoute: typeof AdminSorteoRoute
@@ -319,6 +339,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAlquileresRoute: AdminAlquileresRoute,
   AdminPadrinosRoute: AdminPadrinosRoute,
+  AdminPagosRoute: AdminPagosRoute,
   AdminRecordatoriosRoute: AdminRecordatoriosRoute,
   AdminRifaRoute: AdminRifaRoute,
   AdminSorteoRoute: AdminSorteoRoute,

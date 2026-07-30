@@ -48,7 +48,7 @@ export const getRaffleData = createServerFn({ method: "GET" }).handler(async () 
   const { data: raffle, error: raffleError } = await s
     .from("raffles")
     .select(
-      "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount",
+      "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, nequi_qr_url, daviplata_qr_url, bre_b_qr_url, mercadopago_url, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount",
     )
     .eq("activa", true)
     .order("created_at", { ascending: false })
@@ -131,7 +131,7 @@ export const getRaffleDataBySlug = createServerFn({ method: "GET" })
     let raffleQuery = (supabaseAdmin as any)
       .from("raffles")
       .select(
-        "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount, slug, responsable",
+        "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, nequi_qr_url, daviplata_qr_url, bre_b_qr_url, mercadopago_url, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount, slug, responsable",
       )
       .eq("activa", true);
     raffleQuery = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(data.slug)
@@ -142,7 +142,7 @@ export const getRaffleDataBySlug = createServerFn({ method: "GET" })
       const { data: activeRaffles } = await (supabaseAdmin as any)
         .from("raffles")
         .select(
-          "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount, slug, responsable",
+          "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, nequi_qr_url, daviplata_qr_url, bre_b_qr_url, mercadopago_url, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount, slug, responsable",
         )
         .eq("activa", true);
       const requestedSlug = normalizePublicRaffleSlug(data.slug);
@@ -232,7 +232,7 @@ export const reservarNumero = createServerFn({ method: "POST" })
         telefono: z.string().trim().min(7).max(20),
         ciudad: z.string().trim().min(2).max(60),
         email: z.string().trim().email().max(120).optional().or(z.literal("")),
-        medio_pago: z.enum(["nequi", "daviplata", "bre_b", "transferencia"]),
+        medio_pago: z.enum(["nequi", "daviplata", "bre_b", "mercadopago_url", "transferencia"]),
         turnstileToken: z.string().min(10),
       })
       .parse(d),
@@ -289,7 +289,7 @@ export const getBoletaByCodigo = createServerFn({ method: "GET" })
     const { data: r, error: raffleError } = await supabaseAdmin
       .from("raffles")
       .select(
-        "nombre, digitos, valor_boleta, fecha_sorteo, loteria, whatsapp_admin, nequi, daviplata, bre_b, public_skin, staged_payments, installment_amount",
+        "nombre, digitos, valor_boleta, fecha_sorteo, loteria, whatsapp_admin, nequi, daviplata, bre_b, nequi_qr_url, daviplata_qr_url, bre_b_qr_url, mercadopago_url, public_skin, staged_payments, installment_amount",
       )
       .eq("id", t.raffle_id)
       .maybeSingle();
@@ -698,10 +698,6 @@ export const adminUpdateRaffle = createServerFn({ method: "POST" })
         fecha_sorteo: z.string().nullable().optional(),
         loteria: z.string().nullable().optional(),
         activa: z.boolean().optional(),
-        whatsapp_admin: z.string().nullable().optional(),
-        nequi: z.string().nullable().optional(),
-        daviplata: z.string().nullable().optional(),
-        bre_b: z.string().nullable().optional(),
         premio_mayor: z.number().int().min(0).optional(),
         premio_seco1: z.number().int().min(0).optional(),
         premio_seco2: z.number().int().min(0).optional(),
@@ -736,6 +732,35 @@ export const adminUpdateRaffle = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const organizerUpdatePaymentSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) =>
+    z
+      .object({
+        raffleId: z.string().uuid(),
+        whatsapp_admin: z.string().trim().max(30).nullable(),
+        nequi: z.string().trim().max(120).nullable(),
+        daviplata: z.string().trim().max(120).nullable(),
+        bre_b: z.string().trim().max(160).nullable(),
+        nequi_qr_url: z.string().url().nullable(),
+        daviplata_qr_url: z.string().url().nullable(),
+        bre_b_qr_url: z.string().url().nullable(),
+        mercadopago_url: z.string().url().nullable(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const access = await getAdminAccess(context);
+    if (access.role !== "organizer") {
+      throw new Error("Esta configuración pertenece a la cuenta personal del arrendatario.");
+    }
+    await assertRaffleAccess(context, data.raffleId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { raffleId, ...settings } = data;
+    const { error } = await supabaseAdmin.from("raffles").update(settings).eq("id", raffleId);
+    if (error) throw new Error("No fue posible guardar los métodos de pago.");
+    return { ok: true };
+  });
 export const adminListStages = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .validator((d: unknown) => z.object({ raffleId: z.string().uuid() }).parse(d))

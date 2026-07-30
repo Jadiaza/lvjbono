@@ -56,13 +56,17 @@ export type Database = {
         Row: {
           activa: boolean;
           bre_b: string | null;
+          bre_b_qr_url: string | null;
           created_at: string;
           daviplata: string | null;
+          daviplata_qr_url: string | null;
           digitos: number;
           fecha_sorteo: string | null;
           id: string;
           loteria: string | null;
+          mercadopago_url: string | null;
           nequi: string | null;
+          nequi_qr_url: string | null;
           nombre: string;
           premio_aprox_ant: number;
           premio_aprox_pos: number;
@@ -82,13 +86,17 @@ export type Database = {
         Insert: {
           activa?: boolean;
           bre_b?: string | null;
+          bre_b_qr_url?: string | null;
           created_at?: string;
           daviplata?: string | null;
+          daviplata_qr_url?: string | null;
           digitos?: number;
           fecha_sorteo?: string | null;
           id?: string;
           loteria?: string | null;
+          mercadopago_url?: string | null;
           nequi?: string | null;
+          nequi_qr_url?: string | null;
           nombre: string;
           premio_aprox_ant?: number;
           premio_aprox_pos?: number;
@@ -108,13 +116,17 @@ export type Database = {
         Update: {
           activa?: boolean;
           bre_b?: string | null;
+          bre_b_qr_url?: string | null;
           created_at?: string;
           daviplata?: string | null;
+          daviplata_qr_url?: string | null;
           digitos?: number;
           fecha_sorteo?: string | null;
           id?: string;
           loteria?: string | null;
+          mercadopago_url?: string | null;
           nequi?: string | null;
+          nequi_qr_url?: string | null;
           nombre?: string;
           premio_aprox_ant?: number;
           premio_aprox_pos?: number;
