@@ -207,6 +207,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
   });
 
   const [selected, setSelected] = useState<number | null>(null);
+  const [purchaseIntent, setPurchaseIntent] = useState<"pay" | "reserve">("pay");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sharingConfirmed, setSharingConfirmed] = useState(false);
@@ -219,6 +220,8 @@ export function RafflePublicPage({ slug }: { slug: string }) {
     numeroAlterno: number | null;
     nombre: string;
     telefono: string;
+    intent: "pay" | "reserve";
+    paymentMethod: "nequi" | "daviplata" | "bre_b" | "transferencia";
   } | null>(null);
 
   const raffle = data?.raffle;
@@ -259,7 +262,9 @@ export function RafflePublicPage({ slug }: { slug: string }) {
         telefono: String(fd.get("telefono") ?? ""),
         ciudad: String(fd.get("ciudad") ?? ""),
         email: String(fd.get("email") ?? ""),
-        medio_pago: String(fd.get("medio_pago") ?? "nequi") as
+        medio_pago: (purchaseIntent === "reserve"
+          ? "transferencia"
+          : String(fd.get("medio_pago") ?? "nequi")) as
           | "nequi"
           | "daviplata"
           | "bre_b"
@@ -267,7 +272,13 @@ export function RafflePublicPage({ slug }: { slug: string }) {
         turnstileToken,
       };
       const res = await reservar({ data: payload });
-      setConfirmed({ ...res, nombre: payload.nombre, telefono: payload.telefono });
+      setConfirmed({
+        ...res,
+        nombre: payload.nombre,
+        telefono: payload.telefono,
+        intent: purchaseIntent,
+        paymentMethod: payload.medio_pago,
+      });
       setSelected(null);
       setTurnstileToken(null);
       setTurnstileResetKey((value) => value + 1);
@@ -836,25 +847,55 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               <Input id="email" name="email" type="email" maxLength={120} />
             </div>
             <div>
-              <Label>Medio de pago</Label>
-              <RadioGroup
-                name="medio_pago"
-                defaultValue="nequi"
-                className="mt-1 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2"
-              >
-                {raffle.nequi && <PayOpt id="nequi" label="Nequi" />}
-                {raffle.daviplata && <PayOpt id="daviplata" label="Daviplata" />}
-                {raffle.bre_b && <PayOpt id="bre_b" label="Bre-B" />}
-                <PayOpt id="transferencia" label="Transferencia" />
-              </RadioGroup>
+              <Label>¿Qué deseas hacer?</Label>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={purchaseIntent === "pay" ? "default" : "outline"}
+                  onClick={() => setPurchaseIntent("pay")}
+                >
+                  Pagar ahora
+                </Button>
+                <Button
+                  type="button"
+                  variant={purchaseIntent === "reserve" ? "default" : "outline"}
+                  onClick={() => setPurchaseIntent("reserve")}
+                >
+                  Separar
+                </Button>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {purchaseIntent === "pay"
+                  ? "Reserva el número y continúa con el medio de pago elegido."
+                  : "Aparta el número y paga después; quedará pendiente de confirmación."}
+              </p>
             </div>
+            {purchaseIntent === "pay" && (
+              <div>
+                <Label>Medio de pago</Label>
+                <RadioGroup
+                  name="medio_pago"
+                  defaultValue="nequi"
+                  className="mt-1 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2"
+                >
+                  {raffle.nequi && <PayOpt id="nequi" label="Nequi" />}
+                  {raffle.daviplata && <PayOpt id="daviplata" label="Daviplata" />}
+                  {raffle.bre_b && <PayOpt id="bre_b" label="Bre-B" />}
+                  <PayOpt id="transferencia" label="Transferencia" />
+                </RadioGroup>
+              </div>
+            )}
             <TurnstileWidget onToken={setTurnstileToken} resetKey={turnstileResetKey} />
             <Button
               type="submit"
               disabled={submitting || !turnstileToken}
               className="w-full rounded-full bg-brand text-brand-foreground font-semibold h-11 hover:opacity-90"
             >
-              {submitting ? "Reservando…" : "Reservar mi número"}
+              {submitting
+                ? "Procesando…"
+                : purchaseIntent === "pay"
+                  ? "Continuar al pago"
+                  : "Separar mi número"}
             </Button>
           </form>
         </DialogContent>
@@ -875,7 +916,10 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               <DialogDescription className="text-center">
                 Tu número{" "}
                 <strong className="text-ink">{confirmed ? padded(confirmed.numero) : ""}</strong>{" "}
-                quedó reservado. Realiza el pago y envía el comprobante para confirmarla.
+                quedó reservado.{" "}
+                {confirmed?.intent === "pay"
+                  ? "Abre el enlace de pago o usa los datos indicados y envía el comprobante."
+                  : "Puedes pagar después desde esta boleta para confirmarla."}
               </DialogDescription>
               {confirmed?.numeroAlterno != null && (
                 <div className="mx-auto mt-3 rounded-2xl border border-brand/30 bg-brand-soft/60 px-5 py-3 text-center">
@@ -924,6 +968,20 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               {raffle.nequi && <PayLine label="Nequi" value={raffle.nequi} />}
               {raffle.daviplata && <PayLine label="Daviplata" value={raffle.daviplata} />}
               {raffle.bre_b && <PayLine label="Bre-B" value={raffle.bre_b} />}
+              {confirmed?.intent === "pay" &&
+                (() => {
+                  const paymentValue = raffle[confirmed.paymentMethod];
+                  return paymentValue && /^https?:\/\//i.test(paymentValue) ? (
+                    <a
+                      href={paymentValue}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex h-11 items-center justify-center rounded-full bg-brand px-4 font-semibold text-brand-foreground"
+                    >
+                      Abrir pago seguro
+                    </a>
+                  ) : null;
+                })()}
               <p className="text-xs text-center text-muted-foreground pt-1">
                 Valor a pagar:{" "}
                 <span className="text-brand font-bold">{formatCOP(raffle.valor_boleta)}</span>

@@ -875,20 +875,20 @@ function RaffleCard({
               placeholder="+57 300..."
             />
           </Field>
-          <div className="grid grid-cols-3 gap-3">
-            <Field label="Nequi">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Field label="Nequi (número o link)">
               <Input
                 value={form.nequi}
                 onChange={(e) => setForm({ ...form, nequi: e.target.value })}
               />
             </Field>
-            <Field label="Daviplata">
+            <Field label="Daviplata (número o link)">
               <Input
                 value={form.daviplata}
                 onChange={(e) => setForm({ ...form, daviplata: e.target.value })}
               />
             </Field>
-            <Field label="Bre-B">
+            <Field label="Bre-B (llave o link)">
               <Input
                 value={form.bre_b}
                 onChange={(e) => setForm({ ...form, bre_b: e.target.value })}

@@ -156,20 +156,16 @@ function BoletaPage() {
       });
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], `boleta-${ticketNumber}.png`, { type: "image/png" });
-      const shareData = { files: [file], title: `Boleta ${ticketNumber}`, text: shareMessage };
-
-      if (navigator.share && navigator.canShare?.(shareData)) {
-        await navigator.share(shareData);
-        return;
-      }
 
       const download = document.createElement("a");
       download.href = dataUrl;
       download.download = file.name;
       download.click();
-      toast.success("Imagen descargada. Adjúntala en el chat de WhatsApp.");
-      if (raffle?.whatsapp_admin) {
-        window.open(buildWhatsAppUrl(raffle.whatsapp_admin, shareMessage), "_blank", "noopener");
+      if (ticket.telefono) {
+        window.open(buildWhatsAppUrl(ticket.telefono, shareMessage), "_blank", "noopener");
+        toast.success("Imagen descargada. Se abrió el chat del comprador para adjuntarla.");
+      } else {
+        toast.error("Esta boleta no tiene un teléfono de comprador registrado.");
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
@@ -360,7 +356,7 @@ function BoletaPage() {
           className="mt-4 print:hidden w-full inline-flex items-center justify-center gap-2 rounded-md bg-gold-gradient py-3 font-semibold text-primary-foreground disabled:opacity-60"
         >
           <Share2 className="h-5 w-5" />
-          {sharing ? "Generando imagen…" : "Compartir boleta por WhatsApp"}
+          {sharing ? "Generando imagen…" : "Enviar al WhatsApp del comprador"}
         </button>
 
         {ticket.estado === "reservado" && raffle?.whatsapp_admin && (

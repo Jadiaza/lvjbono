@@ -3,9 +3,9 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { adminListTickets, adminConfirmarPago, adminAnularTicket } from "@/lib/raffle.functions";
-import { formatCOP, pad2, formatDate } from "@/lib/format";
+import { buildWhatsAppUrl, formatCOP, pad2, formatDate } from "@/lib/format";
 import { toast } from "sonner";
-import { Check, X, Search, Download, ShieldCheck } from "lucide-react";
+import { Check, X, Search, Download, ShieldCheck, MessageCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -325,6 +325,20 @@ function AdminTickets() {
                         className="p-1.5 rounded bg-secondary text-foreground hover:bg-accent text-xs"
                       >
                         Ver
+                      </a>
+                    )}
+                    {t.estado !== "disponible" && t.telefono && (
+                      <a
+                        href={buildWhatsAppUrl(
+                          t.telefono,
+                          `${t.estado === "vendido" || t.estado === "ganador" ? "Pago confirmado" : "Pago pendiente"} · Boleta ${pad2(t.numero)}. Consulta tu recibo aquí: ${window.location.origin}/boleta/${t.codigo_verificacion}`,
+                        )}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={`Enviar recibo directamente a ${t.telefono}`}
+                        className="inline-flex items-center gap-1 rounded bg-[#25D366]/15 px-2 py-1 text-xs font-semibold text-[#128C7E] hover:bg-[#25D366]/25"
+                      >
+                        <MessageCircle className="h-4 w-4" /> Recibo
                       </a>
                     )}
                   </div>
