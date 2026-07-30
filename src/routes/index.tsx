@@ -963,7 +963,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
 
       {/* Dialog confirmación */}
       <Dialog open={!!confirmed} onOpenChange={(o) => !o && setConfirmed(null)}>
-        <DialogContent className="inset-x-2 left-auto w-auto max-w-none translate-x-0 max-h-[calc(100dvh-1rem)] overflow-x-hidden overscroll-contain gap-2 p-2 sm:left-1/2 sm:right-auto sm:w-[calc(100%-2rem)] sm:max-w-md sm:-translate-x-1/2 sm:gap-4 sm:p-5">
+        <DialogContent className="mobile-confirmation-dialog max-h-[calc(100dvh-1rem)] overflow-x-hidden overscroll-contain gap-2 p-2 sm:w-[calc(100%-2rem)] sm:max-w-md sm:gap-4 sm:p-5">
           <div
             ref={confirmedTicketRef}
             className="confirmation-ticket-image box-border w-full max-w-full min-w-0 overflow-hidden rounded-2xl bg-card p-2.5 text-card-foreground sm:p-4"

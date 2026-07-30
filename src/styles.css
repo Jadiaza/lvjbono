@@ -582,6 +582,16 @@
     var(--card);
 }
 
+@media (max-width: 639px) {
+  .mobile-confirmation-dialog {
+    box-sizing: border-box;
+    left: 0.5rem !important;
+    right: 0.5rem !important;
+    width: auto !important;
+    max-width: none !important;
+    transform: translateY(-50%) !important;
+  }
+}
 .public-raffle[data-public-skin] :is(.number-cell, .public-board, .public-ticket) {
   font-variant-numeric: tabular-nums;
 }
