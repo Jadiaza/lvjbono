@@ -45,7 +45,7 @@ export const isAdminSetupPending = createServerFn({ method: "GET" }).handler(asy
 
 export const getRaffleData = createServerFn({ method: "GET" }).handler(async () => {
   const s = getPublicClient();
-  const { data: raffle, error: raffleError } = await s
+  let { data: raffle, error: raffleError } = await s
     .from("raffles")
     .select(
       "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, nequi_qr_url, daviplata_qr_url, bre_b_qr_url, mercadopago_url, nequi_logo_url, daviplata_logo_url, bre_b_logo_url, mercadopago_logo_url, nequi_enabled, nequi_number_visible, nequi_qr_visible, daviplata_enabled, daviplata_number_visible, daviplata_qr_visible, bre_b_enabled, bre_b_key_visible, bre_b_qr_visible, mercadopago_enabled, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount",
@@ -54,6 +54,41 @@ export const getRaffleData = createServerFn({ method: "GET" }).handler(async () 
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (raffleError && (raffleError.code === "42703" || raffleError.code === "PGRST204")) {
+    const legacyResult = await s
+      .from("raffles")
+      .select(
+        "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount",
+      )
+      .eq("activa", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    raffle = legacyResult.data
+      ? {
+          ...legacyResult.data,
+          nequi_qr_url: null,
+          daviplata_qr_url: null,
+          bre_b_qr_url: null,
+          mercadopago_url: null,
+          nequi_logo_url: null,
+          daviplata_logo_url: null,
+          bre_b_logo_url: null,
+          mercadopago_logo_url: null,
+          nequi_enabled: Boolean(legacyResult.data.nequi),
+          nequi_number_visible: true,
+          nequi_qr_visible: false,
+          daviplata_enabled: Boolean(legacyResult.data.daviplata),
+          daviplata_number_visible: true,
+          daviplata_qr_visible: false,
+          bre_b_enabled: Boolean(legacyResult.data.bre_b),
+          bre_b_key_visible: true,
+          bre_b_qr_visible: false,
+          mercadopago_enabled: false,
+        }
+      : null;
+    raffleError = legacyResult.error;
+  }
 
   if (raffleError) {
     console.error("[getRaffleData] raffle query failed", {
@@ -147,7 +182,7 @@ export const getRaffleDataBySlug = createServerFn({ method: "GET" })
       raffleQuery = (supabaseAdmin as any)
         .from("raffles")
         .select(
-          "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, nequi_qr_url, daviplata_qr_url, bre_b_qr_url, mercadopago_url, nequi_enabled, nequi_number_visible, nequi_qr_visible, daviplata_enabled, daviplata_number_visible, daviplata_qr_visible, bre_b_enabled, bre_b_key_visible, bre_b_qr_visible, mercadopago_enabled, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount, slug, responsable",
+          "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount, slug, responsable",
         )
         .eq("activa", true);
       raffleQuery = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(data.slug)
@@ -160,7 +195,7 @@ export const getRaffleDataBySlug = createServerFn({ method: "GET" })
       const { data: activeRaffles } = await (supabaseAdmin as any)
         .from("raffles")
         .select(
-          "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, nequi_qr_url, daviplata_qr_url, bre_b_qr_url, mercadopago_url, nequi_logo_url, daviplata_logo_url, bre_b_logo_url, mercadopago_logo_url, nequi_enabled, nequi_number_visible, nequi_qr_visible, daviplata_enabled, daviplata_number_visible, daviplata_qr_visible, bre_b_enabled, bre_b_key_visible, bre_b_qr_visible, mercadopago_enabled, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount, slug, responsable",
+          "id, nombre, serie, digitos, valor_boleta, fecha_sorteo, loteria, activa, whatsapp_admin, nequi, daviplata, bre_b, premio_mayor, premio_seco1, premio_seco2, premio_aprox_ant, premio_aprox_pos, public_skin, staged_payments, installment_amount, slug, responsable",
         )
         .eq("activa", true);
       const requestedSlug = normalizePublicRaffleSlug(data.slug);
