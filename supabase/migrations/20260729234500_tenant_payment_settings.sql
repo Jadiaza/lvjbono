@@ -3,7 +3,17 @@ ALTER TABLE public.raffles
   ADD COLUMN IF NOT EXISTS nequi_qr_url text,
   ADD COLUMN IF NOT EXISTS daviplata_qr_url text,
   ADD COLUMN IF NOT EXISTS bre_b_qr_url text,
-  ADD COLUMN IF NOT EXISTS mercadopago_url text;
+  ADD COLUMN IF NOT EXISTS mercadopago_url text,
+  ADD COLUMN IF NOT EXISTS nequi_enabled boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS nequi_number_visible boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS nequi_qr_visible boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS daviplata_enabled boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS daviplata_number_visible boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS daviplata_qr_visible boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS bre_b_enabled boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS bre_b_key_visible boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS bre_b_qr_visible boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS mercadopago_enabled boolean NOT NULL DEFAULT false;
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (

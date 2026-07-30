@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+﻿import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
@@ -24,8 +24,8 @@ export const Route = createFileRoute("/boleta/$codigo")({
   },
   head: () => ({
     meta: [
-      { title: "Mi boleta · Rifaya" },
-      { name: "description", content: "Boleta virtual de participación." },
+      { title: "Mi boleta Â· Rifaya" },
+      { name: "description", content: "Boleta virtual de participaciÃ³n." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -77,9 +77,23 @@ function BoletaPage() {
       daviplata: string | null;
       bre_b: string | null;
       nequi_qr_url: string | null;
+      nequi_logo_url: string | null;
       daviplata_qr_url: string | null;
+      daviplata_logo_url: string | null;
       bre_b_qr_url: string | null;
+      bre_b_logo_url: string | null;
       mercadopago_url: string | null;
+      mercadopago_logo_url: string | null;
+      nequi_enabled: boolean;
+      nequi_number_visible: boolean;
+      nequi_qr_visible: boolean;
+      daviplata_enabled: boolean;
+      daviplata_number_visible: boolean;
+      daviplata_qr_visible: boolean;
+      bre_b_enabled: boolean;
+      bre_b_key_visible: boolean;
+      bre_b_qr_visible: boolean;
+      mercadopago_enabled: boolean;
       public_skin: PublicSkin;
       valor_boleta: number;
       staged_payments: boolean;
@@ -106,7 +120,7 @@ function BoletaPage() {
   const badge = {
     reservado: {
       icon: Clock,
-      text: "Reservado — pendiente de pago",
+      text: "Reservado â€” pendiente de pago",
       className: "ticket-status--reserved",
     },
     vendido: {
@@ -116,7 +130,7 @@ function BoletaPage() {
     },
     ganador: {
       icon: Trophy,
-      text: `¡GANADOR! ${ticket.premio_ganado ?? ""}`,
+      text: `Â¡GANADOR! ${ticket.premio_ganado ?? ""}`,
       className: "ticket-status--winner",
     },
     disponible: {
@@ -155,8 +169,8 @@ function BoletaPage() {
     };
   }, [raffle?.public_skin]);
   const shareMessage = raffle?.staged_payments
-    ? `🎟️ Boleta ${raffle.nombre}\n🎯 Número principal: ${ticketNumber}\n🎁 Número alterno: ${alternateNumber ?? "Por asignar"}\n💳 Abonado: ${formatCOP(totalPaid)} de ${formatCOP(ticketValue)}\n🔎 Verificación: ${url}`
-    : `Boleta ${ticketNumber} de ${raffle?.nombre ?? "la rifa"}. Verificación: ${url}`;
+    ? `ðŸŽŸï¸ Boleta ${raffle.nombre}\nðŸŽ¯ NÃºmero principal: ${ticketNumber}\nðŸŽ NÃºmero alterno: ${alternateNumber ?? "Por asignar"}\nðŸ’³ Abonado: ${formatCOP(totalPaid)} de ${formatCOP(ticketValue)}\nðŸ”Ž VerificaciÃ³n: ${url}`
+    : `Boleta ${ticketNumber} de ${raffle?.nombre ?? "la rifa"}. VerificaciÃ³n: ${url}`;
 
   async function shareTicketImage() {
     if (!ticketRef.current) return;
@@ -176,7 +190,7 @@ function BoletaPage() {
       download.click();
       if (raffle?.whatsapp_admin) {
         window.open(buildWhatsAppUrl(raffle.whatsapp_admin, shareMessage), "_blank", "noopener");
-        toast.success("Imagen descargada. Se abrió el WhatsApp del administrador.");
+        toast.success("Imagen descargada. Se abriÃ³ el WhatsApp del administrador.");
       } else {
         toast.error("No hay un WhatsApp de administrador configurado.");
       }
@@ -197,7 +211,7 @@ function BoletaPage() {
       <div className="max-w-2xl mx-auto">
         <div className="flex justify-between items-center mb-4 print:hidden">
           <Link to="/" className="text-sm text-gold underline">
-            ← Volver
+            â† Volver
           </Link>
           <button
             onClick={() => window.print()}
@@ -215,22 +229,22 @@ function BoletaPage() {
             <p className="text-xs uppercase tracking-[0.3em] opacity-80">Boleta virtual</p>
             <h1 className="font-display text-3xl md:text-4xl mt-1">{raffle?.nombre ?? "Rifa"}</h1>
             <p className="text-sm mt-1 opacity-90">
-              {raffle?.loteria ?? ""} · Sorteo {formatDate(raffle?.fecha_sorteo)}
+              {raffle?.loteria ?? ""} Â· Sorteo {formatDate(raffle?.fecha_sorteo)}
             </p>
           </div>
 
           <div className="p-6 grid md:grid-cols-[1fr_auto] gap-6 items-center">
             <div className="flex flex-col items-center md:items-start">
               <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                {raffle?.staged_payments ? "Número principal · Sorteo mayor" : "Tu número"}
+                {raffle?.staged_payments ? "NÃºmero principal Â· Sorteo mayor" : "Tu nÃºmero"}
               </p>
-              <div className="ticket-number-orbit mt-3" aria-label={`Número ${ticketNumber}`}>
+              <div className="ticket-number-orbit mt-3" aria-label={`NÃºmero ${ticketNumber}`}>
                 <span>{ticketNumber}</span>
               </div>
               {raffle?.staged_payments && alternateNumber && (
                 <div className="mt-4 rounded-2xl border border-brand/30 bg-brand-soft/50 px-4 py-3">
                   <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                    Número alterno · Premios por etapas
+                    NÃºmero alterno Â· Premios por etapas
                   </p>
                   <p className="font-display text-4xl text-brand">{alternateNumber}</p>
                 </div>
@@ -245,7 +259,7 @@ function BoletaPage() {
               <img
                 src={qrUrl}
                 crossOrigin="anonymous"
-                alt="QR de verificación"
+                alt="QR de verificaciÃ³n"
                 width={160}
                 height={160}
                 className="rounded bg-white p-2 mx-auto"
@@ -257,12 +271,12 @@ function BoletaPage() {
           </div>
 
           <div className="ticket-details border-t border-dashed border-border grid grid-cols-2 gap-4 p-6 text-sm">
-            <Field label="Titular" value={ticket.nombre ?? "—"} />
-            <Field label="Teléfono" value={ticket.telefono ?? "—"} />
-            <Field label="Ciudad" value={ticket.ciudad ?? "—"} />
+            <Field label="Titular" value={ticket.nombre ?? "â€”"} />
+            <Field label="TelÃ©fono" value={ticket.telefono ?? "â€”"} />
+            <Field label="Ciudad" value={ticket.ciudad ?? "â€”"} />
             <Field label={amountLabel} value={formatCOP(amountValue)} />
             <Field label="Fecha compra" value={formatDate(ticket.fecha_compra)} />
-            <Field label="Medio de pago" value={ticket.medio_pago ?? "—"} />
+            <Field label="Medio de pago" value={ticket.medio_pago ?? "â€”"} />
             {raffle?.staged_payments && (
               <Field label="Total abonado" value={formatCOP(totalPaid)} />
             )}
@@ -304,14 +318,14 @@ function BoletaPage() {
                       <div>
                         <p className="font-semibold">{stage.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatDate(stage.draw_at)} · Premio {formatCOP(stage.prize_amount)}
+                          {formatDate(stage.draw_at)} Â· Premio {formatCOP(stage.prize_amount)}
                         </p>
                       </div>
                       <span
                         className={eligible ? "text-brand font-semibold" : "text-muted-foreground"}
                       >
                         {eligible
-                          ? "✓ Habilitado"
+                          ? "âœ“ Habilitado"
                           : `Faltan ${formatCOP(stage.minimum_paid - totalPaid)}`}
                       </span>
                     </div>
@@ -320,7 +334,9 @@ function BoletaPage() {
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/35 p-3 text-sm">
                   <div>
                     <p className="font-semibold">Sorteo mayor</p>
-                    <p className="text-xs text-muted-foreground">Número principal {ticketNumber}</p>
+                    <p className="text-xs text-muted-foreground">
+                      NÃºmero principal {ticketNumber}
+                    </p>
                   </div>
                   <span
                     className={
@@ -330,7 +346,7 @@ function BoletaPage() {
                     }
                   >
                     {totalPaid >= ticketValue
-                      ? "✓ Habilitado"
+                      ? "âœ“ Habilitado"
                       : `Faltan ${formatCOP(ticketValue - totalPaid)}`}
                   </span>
                 </div>
@@ -357,7 +373,7 @@ function BoletaPage() {
           )}
 
           <div className="ticket-verification border-t border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-            Código de verificación:{" "}
+            CÃ³digo de verificaciÃ³n:{" "}
             <span className="font-mono text-foreground">{ticket.codigo_verificacion}</span>
           </div>
         </div>
@@ -369,44 +385,60 @@ function BoletaPage() {
               <h2 className="text-lg font-bold">Pagar ahora</h2>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Elige uno de los métodos habilitados por el organizador y envía el comprobante.
+              Elige uno de los mÃ©todos habilitados por el organizador y envÃ­a el comprobante.
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {(raffle.nequi || raffle.nequi_qr_url) && (
-                <PendingPaymentCard
-                  name="Nequi"
-                  value={raffle.nequi}
-                  valueLabel="Número Nequi"
-                  qrUrl={raffle.nequi_qr_url}
-                  accent="text-[#ff2ba6]"
-                />
-              )}
-              {(raffle.daviplata || raffle.daviplata_qr_url) && (
-                <PendingPaymentCard
-                  name="Daviplata"
-                  value={raffle.daviplata}
-                  valueLabel="Número Daviplata"
-                  qrUrl={raffle.daviplata_qr_url}
-                  accent="text-[#ef3340]"
-                />
-              )}
-              {(raffle.bre_b || raffle.bre_b_qr_url) && (
-                <PendingPaymentCard
-                  name="Bre-B"
-                  value={raffle.bre_b}
-                  valueLabel="Llave Bre-B"
-                  qrUrl={raffle.bre_b_qr_url}
-                  accent="text-[#00a7c7]"
-                  keyIcon
-                />
-              )}
-              {raffle.mercadopago_url && (
+              {raffle.nequi_enabled &&
+                ((raffle.nequi_number_visible && raffle.nequi) ||
+                  (raffle.nequi_qr_visible && raffle.nequi_qr_url)) && (
+                  <PendingPaymentCard
+                    name="Nequi"
+                    value={raffle.nequi}
+                    valueLabel="NÃºmero Nequi"
+                    qrUrl={raffle.nequi_qr_visible ? raffle.nequi_qr_url : null}
+                    logoUrl={raffle.nequi_logo_url}
+                    accent="text-[#ff2ba6]"
+                  />
+                )}
+              {raffle.daviplata_enabled &&
+                ((raffle.daviplata_number_visible && raffle.daviplata) ||
+                  (raffle.daviplata_qr_visible && raffle.daviplata_qr_url)) && (
+                  <PendingPaymentCard
+                    name="Daviplata"
+                    value={raffle.daviplata}
+                    valueLabel="NÃºmero Daviplata"
+                    qrUrl={raffle.daviplata_qr_visible ? raffle.daviplata_qr_url : null}
+                    logoUrl={raffle.daviplata_logo_url}
+                    accent="text-[#ef3340]"
+                  />
+                )}
+              {raffle.bre_b_enabled &&
+                ((raffle.bre_b_key_visible && raffle.bre_b) ||
+                  (raffle.bre_b_qr_visible && raffle.bre_b_qr_url)) && (
+                  <PendingPaymentCard
+                    name="Bre-B"
+                    value={raffle.bre_b_key_visible ? raffle.bre_b : null}
+                    valueLabel="Llave Bre-B"
+                    qrUrl={raffle.bre_b_qr_visible ? raffle.bre_b_qr_url : null}
+                    logoUrl={raffle.bre_b_logo_url}
+                    accent="text-[#00a7c7]"
+                    keyIcon
+                  />
+                )}
+              {raffle.mercadopago_enabled && raffle.mercadopago_url && (
                 <a
                   href={raffle.mercadopago_url}
                   target="_blank"
                   rel="noreferrer"
                   className="flex min-h-24 flex-col items-center justify-center rounded-xl border border-[#00a650]/30 bg-[#00a650]/10 p-4 text-center"
                 >
+                  {raffle.mercadopago_logo_url && (
+                    <img
+                      src={raffle.mercadopago_logo_url}
+                      alt="Mercado Pago"
+                      className="mb-2 h-14 w-full object-contain"
+                    />
+                  )}
                   <strong className="text-[#00a650]">Mercado Pago</strong>
                   <span className="mt-2 text-sm font-semibold">Abrir enlace oficial</span>
                 </a>
@@ -424,14 +456,14 @@ function BoletaPage() {
           className="mt-4 print:hidden w-full inline-flex items-center justify-center gap-2 rounded-md bg-gold-gradient py-3 font-semibold text-primary-foreground disabled:opacity-60"
         >
           <Share2 className="h-5 w-5" />
-          {sharing ? "Generando imagen…" : "Enviar boleta al administrador"}
+          {sharing ? "Generando imagenâ€¦" : "Enviar boleta al administrador"}
         </button>
 
         {ticket.estado === "reservado" && raffle?.whatsapp_admin && (
           <a
             href={buildWhatsAppUrl(
               raffle.whatsapp_admin,
-              `Hola! Comprobante de pago para el número ${ticketNumber} — código ${ticket.codigo_verificacion}`,
+              `Hola! Comprobante de pago para el nÃºmero ${ticketNumber} â€” cÃ³digo ${ticket.codigo_verificacion}`,
             )}
             target="_blank"
             rel="noreferrer"
@@ -450,6 +482,7 @@ function PendingPaymentCard({
   value,
   valueLabel,
   qrUrl,
+  logoUrl,
   accent,
   keyIcon = false,
 }: {
@@ -457,6 +490,7 @@ function PendingPaymentCard({
   value: string | null;
   valueLabel: string;
   qrUrl: string | null;
+  logoUrl: string | null;
   accent: string;
   keyIcon?: boolean;
 }) {
@@ -468,6 +502,13 @@ function PendingPaymentCard({
           src={qrUrl}
           alt={`QR oficial de ${name}`}
           className="mx-auto mt-3 aspect-square w-full max-w-40 rounded-lg bg-white object-contain p-2"
+        />
+      )}
+      {!qrUrl && logoUrl && (
+        <img
+          src={logoUrl}
+          alt={`Logo de ${name}`}
+          className="mx-auto mt-3 h-20 w-full max-w-52 rounded-lg bg-white object-contain p-2"
         />
       )}
       {value && (

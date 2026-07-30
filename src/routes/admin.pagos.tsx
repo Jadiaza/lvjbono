@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -10,6 +10,7 @@ import { useSelectedRaffle } from "@/hooks/use-selected-raffle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/admin/pagos")({
   component: OrganizerPayments,
@@ -27,6 +28,20 @@ type PaymentRaffle = {
   daviplata_qr_url: string | null;
   bre_b_qr_url: string | null;
   mercadopago_url: string | null;
+  nequi_logo_url: string | null;
+  daviplata_logo_url: string | null;
+  bre_b_logo_url: string | null;
+  mercadopago_logo_url: string | null;
+  nequi_enabled: boolean;
+  nequi_number_visible: boolean;
+  nequi_qr_visible: boolean;
+  daviplata_enabled: boolean;
+  daviplata_number_visible: boolean;
+  daviplata_qr_visible: boolean;
+  bre_b_enabled: boolean;
+  bre_b_key_visible: boolean;
+  bre_b_qr_visible: boolean;
+  mercadopago_enabled: boolean;
 };
 
 type QrField = "nequi_qr_url" | "daviplata_qr_url" | "bre_b_qr_url";
@@ -40,6 +55,20 @@ const EMPTY = {
   daviplata_qr_url: "",
   bre_b_qr_url: "",
   mercadopago_url: "",
+  nequi_logo_url: "",
+  daviplata_logo_url: "",
+  bre_b_logo_url: "",
+  mercadopago_logo_url: "",
+  nequi_enabled: false,
+  nequi_number_visible: true,
+  nequi_qr_visible: true,
+  daviplata_enabled: false,
+  daviplata_number_visible: true,
+  daviplata_qr_visible: true,
+  bre_b_enabled: false,
+  bre_b_key_visible: true,
+  bre_b_qr_visible: true,
+  mercadopago_enabled: false,
 };
 
 function OrganizerPayments() {
@@ -70,6 +99,20 @@ function OrganizerPayments() {
       daviplata_qr_url: raffle.daviplata_qr_url ?? "",
       bre_b_qr_url: raffle.bre_b_qr_url ?? "",
       mercadopago_url: raffle.mercadopago_url ?? "",
+      nequi_logo_url: raffle.nequi_logo_url ?? "",
+      daviplata_logo_url: raffle.daviplata_logo_url ?? "",
+      bre_b_logo_url: raffle.bre_b_logo_url ?? "",
+      mercadopago_logo_url: raffle.mercadopago_logo_url ?? "",
+      nequi_enabled: raffle.nequi_enabled ?? false,
+      nequi_number_visible: raffle.nequi_number_visible ?? true,
+      nequi_qr_visible: raffle.nequi_qr_visible ?? true,
+      daviplata_enabled: raffle.daviplata_enabled ?? false,
+      daviplata_number_visible: raffle.daviplata_number_visible ?? true,
+      daviplata_qr_visible: raffle.daviplata_qr_visible ?? true,
+      bre_b_enabled: raffle.bre_b_enabled ?? false,
+      bre_b_key_visible: raffle.bre_b_key_visible ?? true,
+      bre_b_qr_visible: raffle.bre_b_qr_visible ?? true,
+      mercadopago_enabled: raffle.mercadopago_enabled ?? false,
     });
   }, [raffle]);
 
@@ -95,7 +138,7 @@ function OrganizerPayments() {
       if (error) throw error;
       const { data: publicData } = supabase.storage.from("payment-qr").getPublicUrl(objectPath);
       setForm((current) => ({ ...current, [field]: publicData.publicUrl }));
-      toast.success("QR cargado. Pulsa Guardar configuración para publicarlo.");
+      toast.success("QR cargado. Pulsa Guardar configuraciÃ³n para publicarlo.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No fue posible cargar el QR.");
     } finally {
@@ -119,11 +162,25 @@ function OrganizerPayments() {
           daviplata_qr_url: form.daviplata_qr_url || null,
           bre_b_qr_url: form.bre_b_qr_url || null,
           mercadopago_url: form.mercadopago_url.trim() || null,
+          nequi_logo_url: form.nequi_logo_url || null,
+          daviplata_logo_url: form.daviplata_logo_url || null,
+          bre_b_logo_url: form.bre_b_logo_url || null,
+          mercadopago_logo_url: form.mercadopago_logo_url || null,
+          nequi_enabled: form.nequi_enabled,
+          nequi_number_visible: form.nequi_number_visible,
+          nequi_qr_visible: form.nequi_qr_visible,
+          daviplata_enabled: form.daviplata_enabled,
+          daviplata_number_visible: form.daviplata_number_visible,
+          daviplata_qr_visible: form.daviplata_qr_visible,
+          bre_b_enabled: form.bre_b_enabled,
+          bre_b_key_visible: form.bre_b_key_visible,
+          bre_b_qr_visible: form.bre_b_qr_visible,
+          mercadopago_enabled: form.mercadopago_enabled,
         },
       });
       await qc.invalidateQueries({ queryKey: ["admin-raffles"] });
       await qc.invalidateQueries({ queryKey: ["raffle-public"] });
-      toast.success("Métodos de pago actualizados.");
+      toast.success("MÃ©todos de pago actualizados.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No fue posible guardar.");
     } finally {
@@ -131,13 +188,13 @@ function OrganizerPayments() {
     }
   }
 
-  if (isLoading) return <p className="text-muted-foreground">Cargando configuración…</p>;
+  if (isLoading) return <p className="text-muted-foreground">Cargando configuraciÃ³nâ€¦</p>;
   if (!isOrganizer) {
     return (
       <div className="rounded-xl border border-border bg-card p-6">
-        <h1 className="text-xl font-bold">Configuración personal de pagos</h1>
+        <h1 className="text-xl font-bold">ConfiguraciÃ³n personal de pagos</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Esta sección está disponible únicamente en la cuenta del arrendatario.
+          Esta secciÃ³n estÃ¡ disponible Ãºnicamente en la cuenta del arrendatario.
         </p>
       </div>
     );
@@ -149,11 +206,11 @@ function OrganizerPayments() {
       <div>
         <div className="flex items-center gap-2">
           <CreditCard className="h-6 w-6 text-brand" />
-          <h1 className="text-2xl font-bold">Mis métodos de pago</h1>
+          <h1 className="text-2xl font-bold">Mis mÃ©todos de pago</h1>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Configuración personal para {raffle.serie ? `[${raffle.serie}] ` : ""}
-          {raffle.nombre}. Solo se mostrarán los métodos que diligencies.
+          ConfiguraciÃ³n personal para {raffle.serie ? `[${raffle.serie}] ` : ""}
+          {raffle.nombre}. Solo se mostrarÃ¡n los mÃ©todos que diligencies.
         </p>
       </div>
 
@@ -171,28 +228,56 @@ function OrganizerPayments() {
 
       <PaymentSection
         title="Nequi"
+        enabled={form.nequi_enabled}
+        onEnabled={(enabled) => setForm({ ...form, nequi_enabled: enabled })}
+        showValue={form.nequi_number_visible}
+        onShowValue={(visible) => setForm({ ...form, nequi_number_visible: visible })}
+        showQr={form.nequi_qr_visible}
+        onShowQr={(visible) => setForm({ ...form, nequi_qr_visible: visible })}
         accent="text-[#ff2ba6]"
-        valueLabel="Número Nequi"
+        valueLabel="NÃºmero Nequi"
         value={form.nequi}
         onValue={(value) => setForm({ ...form, nequi: value })}
         qrUrl={form.nequi_qr_url}
         uploading={uploading === "nequi_qr_url"}
         onQr={(file) => uploadQr("nequi_qr_url", "nequi", file)}
         onRemoveQr={() => setForm({ ...form, nequi_qr_url: "" })}
+        logoUrl="/payment-logos/nequi.png"
+        useLogo={form.nequi_logo_url === "/payment-logos/nequi.png"}
+        onUseLogo={(use) =>
+          setForm({ ...form, nequi_logo_url: use ? "/payment-logos/nequi.png" : "" })
+        }
       />
       <PaymentSection
         title="Daviplata"
+        enabled={form.daviplata_enabled}
+        onEnabled={(enabled) => setForm({ ...form, daviplata_enabled: enabled })}
+        showValue={form.daviplata_number_visible}
+        onShowValue={(visible) => setForm({ ...form, daviplata_number_visible: visible })}
+        showQr={form.daviplata_qr_visible}
+        onShowQr={(visible) => setForm({ ...form, daviplata_qr_visible: visible })}
         accent="text-[#ef3340]"
-        valueLabel="Número Daviplata"
+        valueLabel="NÃºmero Daviplata"
         value={form.daviplata}
         onValue={(value) => setForm({ ...form, daviplata: value })}
         qrUrl={form.daviplata_qr_url}
         uploading={uploading === "daviplata_qr_url"}
         onQr={(file) => uploadQr("daviplata_qr_url", "daviplata", file)}
         onRemoveQr={() => setForm({ ...form, daviplata_qr_url: "" })}
+        logoUrl="/payment-logos/daviplata.png"
+        useLogo={form.daviplata_logo_url === "/payment-logos/daviplata.png"}
+        onUseLogo={(use) =>
+          setForm({ ...form, daviplata_logo_url: use ? "/payment-logos/daviplata.png" : "" })
+        }
       />
       <PaymentSection
         title="Bre-B"
+        enabled={form.bre_b_enabled}
+        onEnabled={(enabled) => setForm({ ...form, bre_b_enabled: enabled })}
+        showValue={form.bre_b_key_visible}
+        onShowValue={(visible) => setForm({ ...form, bre_b_key_visible: visible })}
+        showQr={form.bre_b_qr_visible}
+        onShowQr={(visible) => setForm({ ...form, bre_b_qr_visible: visible })}
         accent="text-[#00a7c7]"
         valueLabel="Llave Bre-B"
         value={form.bre_b}
@@ -201,6 +286,11 @@ function OrganizerPayments() {
         uploading={uploading === "bre_b_qr_url"}
         onQr={(file) => uploadQr("bre_b_qr_url", "bre-b", file)}
         onRemoveQr={() => setForm({ ...form, bre_b_qr_url: "" })}
+        logoUrl="/payment-logos/bre-b.png"
+        useLogo={form.bre_b_logo_url === "/payment-logos/bre-b.png"}
+        onUseLogo={(use) =>
+          setForm({ ...form, bre_b_logo_url: use ? "/payment-logos/bre-b.png" : "" })
+        }
         keyIcon
       />
 
@@ -213,16 +303,36 @@ function OrganizerPayments() {
         <Input
           id="mercadopago-url"
           type="url"
+          disabled={!form.mercadopago_enabled}
           value={form.mercadopago_url}
           onChange={(event) => setForm({ ...form, mercadopago_url: event.target.value })}
           placeholder="https://link.mercadopago.com.co/..."
           className="mt-1"
         />
+        <label className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-secondary/30 p-3">
+          <input
+            type="checkbox"
+            checked={form.mercadopago_logo_url === "/payment-logos/mercado-pago.png"}
+            disabled={!form.mercadopago_enabled}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                mercadopago_logo_url: event.target.checked ? "/payment-logos/mercado-pago.png" : "",
+              })
+            }
+          />
+          <img
+            src="/payment-logos/mercado-pago.png"
+            alt="Mercado Pago"
+            className="h-12 w-24 rounded bg-white object-contain p-1"
+          />
+          <span className="text-xs font-medium">Mostrar logo de Mercado Pago</span>
+        </label>
       </section>
 
       <Button type="submit" disabled={saving || uploading !== null} className="w-full">
         <Save className="mr-2 h-4 w-4" />
-        {saving ? "Guardando…" : "Guardar configuración"}
+        {saving ? "Guardandoâ€¦" : "Guardar configuraciÃ³n"}
       </Button>
     </form>
   );
@@ -230,6 +340,12 @@ function OrganizerPayments() {
 
 function PaymentSection({
   title,
+  enabled,
+  onEnabled,
+  showValue,
+  onShowValue,
+  showQr,
+  onShowQr,
   accent,
   valueLabel,
   value,
@@ -238,9 +354,18 @@ function PaymentSection({
   uploading,
   onQr,
   onRemoveQr,
+  logoUrl,
+  useLogo,
+  onUseLogo,
   keyIcon = false,
 }: {
   title: string;
+  enabled: boolean;
+  onEnabled: (enabled: boolean) => void;
+  showValue: boolean;
+  onShowValue: (visible: boolean) => void;
+  showQr: boolean;
+  onShowQr: (visible: boolean) => void;
   accent: string;
   valueLabel: string;
   value: string;
@@ -249,6 +374,9 @@ function PaymentSection({
   uploading: boolean;
   onQr: (file?: File) => void;
   onRemoveQr: () => void;
+  logoUrl: string;
+  useLogo: boolean;
+  onUseLogo: (use: boolean) => void;
   keyIcon?: boolean;
 }) {
   return (
@@ -261,22 +389,37 @@ function PaymentSection({
             {valueLabel}
           </Label>
           <Input
+            disabled={!enabled}
             value={value}
             onChange={(event) => onValue(event.target.value)}
-            placeholder={keyIcon ? "Celular, documento, correo o llave" : "Número de la cuenta"}
+            placeholder={keyIcon ? "Celular, documento, correo o llave" : "NÃºmero de la cuenta"}
             className="mt-1"
           />
           <Label className="mt-4 block">QR oficial generado por la entidad</Label>
           <label className="mt-1 inline-flex cursor-pointer items-center rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-secondary">
             <ImageUp className="mr-2 h-4 w-4" />
-            {uploading ? "Cargando…" : "Seleccionar imagen"}
+            {uploading ? "Cargandoâ€¦" : "Seleccionar imagen"}
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
               className="sr-only"
-              disabled={uploading}
+              disabled={uploading || !enabled}
               onChange={(event) => onQr(event.target.files?.[0])}
             />
+          </label>
+          <label className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-secondary/30 p-3">
+            <input
+              type="checkbox"
+              checked={useLogo}
+              disabled={!enabled}
+              onChange={(event) => onUseLogo(event.target.checked)}
+            />
+            <img
+              src={logoUrl}
+              alt={`Logo de ${title}`}
+              className="h-12 w-24 rounded bg-white object-contain p-1"
+            />
+            <span className="text-xs font-medium">Usar este logo si no tengo QR</span>
           </label>
         </div>
         <div className="grid min-h-40 place-items-center rounded-xl border border-dashed border-border bg-secondary/30 p-2">
