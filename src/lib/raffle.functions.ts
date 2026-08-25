@@ -1537,6 +1537,40 @@ export const adminSetRentalActive = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const adminRenewRental = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((d: unknown) =>
+    z
+      .object({
+        rentalId: z.string().uuid(),
+        startsAt: z.string().min(10),
+        endsAt: z.string().min(10),
+        prepaidAmount: z.number().int().min(0),
+      })
+      .refine((data) => new Date(data.endsAt) > new Date(data.startsAt), {
+        message: "La fecha final debe ser posterior a la fecha inicial.",
+        path: ["endsAt"],
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rental, error } = await (supabaseAdmin as any)
+      .from("raffle_rentals")
+      .update({
+        active: true,
+        starts_at: data.startsAt,
+        ends_at: data.endsAt,
+        prepaid_amount: data.prepaidAmount,
+      })
+      .eq("id", data.rentalId)
+      .select("id")
+      .maybeSingle();
+    if (error || !rental) throw new Error("No fue posible activar el alquiler.");
+    return { ok: true };
+  });
+
 export const adminSetRentalPublicPage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((d: unknown) =>

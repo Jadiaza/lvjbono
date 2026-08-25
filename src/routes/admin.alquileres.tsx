@@ -8,6 +8,7 @@ import {
   adminCreateRental,
   adminDeleteRentalUser,
   adminGetRentalCenter,
+  adminRenewRental,
   adminResetRentalPassword,
   adminSetRentalActive,
   adminSetRentalPublicPage,
@@ -46,10 +47,12 @@ function RentalCenter() {
   const getCenter = useServerFn(adminGetRentalCenter);
   const createRental = useServerFn(adminCreateRental);
   const setActive = useServerFn(adminSetRentalActive);
+  const renewRental = useServerFn(adminRenewRental);
   const setPublicPage = useServerFn(adminSetRentalPublicPage);
   const resetPassword = useServerFn(adminResetRentalPassword);
   const deleteUser = useServerFn(adminDeleteRentalUser);
   const [open, setOpen] = useState(false);
+  const [rentalToActivate, setRentalToActivate] = useState<RentalItem | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ["rental-center"],
     queryFn: () => getCenter(),
@@ -145,11 +148,22 @@ function RentalCenter() {
                     size="sm"
                     variant="outline"
                     onClick={async () => {
-                      await setActive({ data: { rentalId: rental.id, active: !rental.active } });
-                      qc.invalidateQueries({ queryKey: ["rental-center"] });
+                      if (!rental.currentlyActive) {
+                        setRentalToActivate(rental);
+                        return;
+                      }
+                      try {
+                        await setActive({ data: { rentalId: rental.id, active: false } });
+                        toast.success("Cuenta suspendida.");
+                        qc.invalidateQueries({ queryKey: ["rental-center"] });
+                      } catch (error) {
+                        toast.error(
+                          error instanceof Error ? error.message : "No fue posible suspenderla.",
+                        );
+                      }
                     }}
                   >
-                    {rental.active ? "Suspender" : "Reactivar"}
+                    {rental.currentlyActive ? "Suspender" : "Activar"}
                   </Button>
                   <Button
                     size="sm"
@@ -296,6 +310,70 @@ function RentalCenter() {
             </Field>
             <div className="sm:col-span-2 flex justify-end">
               <Button type="submit">Crear acceso temporal</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!rentalToActivate}
+        onOpenChange={(isOpen) => !isOpen && setRentalToActivate(null)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Activar cuenta existente</DialogTitle>
+            <DialogDescription>
+              Renueva el acceso de {rentalToActivate?.responsable}. Se conservarán la cuenta, la
+              contraseña y la rifa asignada.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="grid gap-3 sm:grid-cols-2"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (!rentalToActivate) return;
+              const formData = new FormData(event.currentTarget);
+              try {
+                await renewRental({
+                  data: {
+                    rentalId: rentalToActivate.id,
+                    startsAt: String(formData.get("startsAt")),
+                    endsAt: String(formData.get("endsAt")),
+                    prepaidAmount: Number(formData.get("prepaidAmount")),
+                  },
+                });
+                toast.success("Cuenta activada correctamente.");
+                setRentalToActivate(null);
+                qc.invalidateQueries({ queryKey: ["rental-center"] });
+              } catch (error) {
+                toast.error(
+                  error instanceof Error ? error.message : "No fue posible activar la cuenta.",
+                );
+              }
+            }}
+          >
+            <Field label="Inicio">
+              <Input name="startsAt" type="datetime-local" required />
+            </Field>
+            <Field label="Finalización">
+              <Input name="endsAt" type="datetime-local" required />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Alquiler pagado (COP)">
+                <Input
+                  name="prepaidAmount"
+                  type="number"
+                  min={0}
+                  defaultValue={rentalToActivate?.prepaid_amount ?? 0}
+                  required
+                />
+              </Field>
+            </div>
+            <div className="sm:col-span-2 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setRentalToActivate(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit">Activar cuenta</Button>
             </div>
           </form>
         </DialogContent>
