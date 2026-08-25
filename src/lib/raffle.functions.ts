@@ -280,7 +280,7 @@ export const reservarNumero = createServerFn({ method: "POST" })
     z
       .object({
         raffleId: z.string().uuid(),
-        numero: z.number().int().min(0).max(999),
+        numeros: z.array(z.number().int().min(0).max(999)).min(1).max(20),
         nombre: z.string().trim().min(2).max(80),
         telefono: z.string().trim().min(7).max(20),
         ciudad: z.string().trim().min(2).max(60),
@@ -301,29 +301,40 @@ export const reservarNumero = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!raffle || !raffle.activa) throw new Error("La rifa no está disponible.");
 
-    if (data.numero >= 10 ** raffle.digitos) throw new Error("El número no pertenece a esta rifa.");
-    const { data: rows, error } = await supabaseAdmin.rpc("reserve_ticket", {
-      _raffle_id: data.raffleId,
-      _numero: data.numero,
-      _nombre: data.nombre,
-      _telefono: data.telefono,
-      _ciudad: data.ciudad,
-      _email: data.email || "",
-      _medio_pago: data.medio_pago,
-    });
-    if (error) {
-      if (error.message.includes("ticket_unavailable"))
-        throw new Error("Ese número ya no está disponible. Elige otro.");
-      throw new Error("No fue posible completar la reserva.");
-    }
-    const updated = rows?.[0];
-    if (!updated) throw new Error("Ese número ya no está disponible. Elige otro.");
+    const numeros = [...new Set(data.numeros)];
+    if (numeros.some((numero) => numero >= 10 ** raffle.digitos))
+      throw new Error("Uno de los números no pertenece a esta rifa.");
 
-    return {
-      codigo: updated.codigo_verificacion,
-      numero: updated.numero,
-      numeroAlterno: updated.numero_alterno,
-    };
+    const reservas: Array<{ codigo: string; numero: number; numeroAlterno: number | null }> = [];
+    const noDisponibles: number[] = [];
+    for (const numero of numeros) {
+      const { data: rows, error } = await supabaseAdmin.rpc("reserve_ticket", {
+        _raffle_id: data.raffleId,
+        _numero: numero,
+        _nombre: data.nombre,
+        _telefono: data.telefono,
+        _ciudad: data.ciudad,
+        _email: data.email || "",
+        _medio_pago: data.medio_pago,
+      });
+      if (error?.message.includes("ticket_unavailable")) {
+        noDisponibles.push(numero);
+        continue;
+      }
+      if (error) throw new Error("No fue posible completar la reserva.");
+      if (!rows?.[0]) {
+        noDisponibles.push(numero);
+        continue;
+      }
+      reservas.push({
+        codigo: rows[0].codigo_verificacion,
+        numero: rows[0].numero,
+        numeroAlterno: rows[0].numero_alterno,
+      });
+    }
+    if (reservas.length === 0)
+      throw new Error("Los números seleccionados ya no están disponibles. Elige otros.");
+    return { reservas, noDisponibles };
   });
 
 export const getBoletaByCodigo = createServerFn({ method: "GET" })

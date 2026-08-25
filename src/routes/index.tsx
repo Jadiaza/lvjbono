@@ -21,6 +21,7 @@ import {
   Menu,
   X,
   KeyRound,
+  ShoppingCart,
 } from "lucide-react";
 
 import {
@@ -207,7 +208,8 @@ export function RafflePublicPage({ slug }: { slug: string }) {
     refetchInterval: 15000,
   });
 
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number[]>([]);
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [purchaseIntent, setPurchaseIntent] = useState<"pay" | "reserve">("pay");
   const [ownedReservationCodes, setOwnedReservationCodes] = useState<Record<number, string>>({});
   const [resumePayment, setResumePayment] = useState<{ number: number; code: string } | null>(null);
@@ -225,6 +227,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
     telefono: string;
     intent: "pay" | "reserve";
     paymentMethod: "nequi" | "daviplata" | "bre_b" | "mercadopago_url" | "transferencia";
+    reservations: Array<{ codigo: string; numero: number; numeroAlterno: number | null }>;
   } | null>(null);
 
   const raffle = data?.raffle;
@@ -277,7 +280,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
   }, [tickets]);
 
   async function handleReservar(fd: FormData) {
-    if (selected == null || !raffle) return;
+    if (selected.length === 0 || !raffle) return;
     if (!turnstileToken) {
       toast.error("Confirma que no eres un robot.");
       return;
@@ -286,7 +289,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
     try {
       const payload = {
         raffleId: raffle.id,
-        numero: selected,
+        numeros: selected,
         nombre: String(fd.get("nombre") ?? ""),
         telefono: String(fd.get("telefono") ?? ""),
         ciudad: String(fd.get("ciudad") ?? ""),
@@ -302,20 +305,36 @@ export function RafflePublicPage({ slug }: { slug: string }) {
         turnstileToken,
       };
       const res = await reservar({ data: payload });
-      localStorage.setItem(`rifaya.reservation.${raffle.id}.${res.numero}`, res.codigo);
-      setOwnedReservationCodes((current) => ({ ...current, [res.numero]: res.codigo }));
+      const newCodes: Record<number, string> = {};
+      for (const reservation of res.reservas) {
+        localStorage.setItem(
+          `rifaya.reservation.${raffle.id}.${reservation.numero}`,
+          reservation.codigo,
+        );
+        newCodes[reservation.numero] = reservation.codigo;
+      }
+      setOwnedReservationCodes((current) => ({ ...current, ...newCodes }));
+      const primary = res.reservas[0];
       setConfirmed({
-        ...res,
+        ...primary,
+        reservations: res.reservas,
         nombre: payload.nombre,
         telefono: payload.telefono,
         intent: purchaseIntent,
         paymentMethod: payload.medio_pago,
       });
-      setSelected(null);
+      setSelected([]);
+      setPurchaseDialogOpen(false);
       setTurnstileToken(null);
       setTurnstileResetKey((value) => value + 1);
       qc.invalidateQueries({ queryKey: ["raffle-public"] });
-      toast.success(`¡Reservaste el número ${padNumber(res.numero, raffle.digitos as 2 | 3)}!`);
+      toast.success(
+        res.reservas.length === 1
+          ? `¡Reservaste el número ${padNumber(primary.numero, raffle.digitos as 2 | 3)}!`
+          : `¡Reservaste ${res.reservas.length} números!`,
+      );
+      if (res.noDisponibles.length > 0)
+        toast.warning(`${res.noDisponibles.length} número(s) ya no estaban disponibles.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al reservar");
       setTurnstileToken(null);
@@ -333,9 +352,13 @@ export function RafflePublicPage({ slug }: { slug: string }) {
       backgroundColor: getComputedStyle(confirmedTicketRef.current).backgroundColor || "#ffffff",
     });
     const blob = await (await fetch(dataUrl)).blob();
-    const file = new File([blob], `boleta-${padded(confirmed.numero)}.png`, {
-      type: "image/png",
-    });
+    const file = new File(
+      [blob],
+      confirmed.reservations.length === 1
+        ? `boleta-${padded(confirmed.numero)}.png`
+        : `boletas-${confirmed.reservations.map((item) => padded(item.numero)).join("-")}.png`,
+      { type: "image/png" },
+    );
     return { dataUrl, file };
   }
 
@@ -363,12 +386,15 @@ export function RafflePublicPage({ slug }: { slug: string }) {
     try {
       const generated = await generateConfirmedTicketImage();
       if (!generated) return;
-      const ticketUrl = `${window.location.origin}/boleta/${confirmed.codigo}`;
+      const ticketLinks = confirmed.reservations.map(
+        (item) => `${padded(item.numero)}: ${window.location.origin}/boleta/${item.codigo}`,
+      );
       const message = [
-        `Boleta ${padded(confirmed.numero)} de ${raffle.nombre}`,
+        `${confirmed.reservations.length === 1 ? "Boleta" : "Boletas"} ${confirmed.reservations.map((item) => padded(item.numero)).join(", ")} de ${raffle.nombre}`,
         `Nombre: ${confirmed.nombre}`,
         `Teléfono: ${confirmed.telefono}`,
-        `Ver boleta: ${ticketUrl}`,
+        "Ver boletas:",
+        ...ticketLinks,
       ].join("\n");
       if (!raffle.whatsapp_admin) {
         toast.error("No hay un WhatsApp de administrador configurado.");
@@ -391,9 +417,11 @@ export function RafflePublicPage({ slug }: { slug: string }) {
 
   async function copyConfirmedTicketUrl() {
     if (!confirmed) return;
-    const ticketUrl = `${window.location.origin}/boleta/${confirmed.codigo}`;
-    await navigator.clipboard.writeText(ticketUrl);
-    toast.success("Enlace de la boleta copiado.");
+    const ticketUrls = confirmed.reservations
+      .map((item) => `${padded(item.numero)}: ${window.location.origin}/boleta/${item.codigo}`)
+      .join("\n");
+    await navigator.clipboard.writeText(ticketUrls);
+    toast.success(confirmed.reservations.length === 1 ? "Enlace copiado." : "Enlaces copiados.");
   }
 
   if (isLoading) {
@@ -729,12 +757,42 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                 key={t.numero}
                 ticket={t}
                 digits={digits}
-                onClick={() => setSelected(t.numero)}
+                selected={selected.includes(t.numero)}
+                onClick={() =>
+                  setSelected((current) => {
+                    if (current.includes(t.numero))
+                      return current.filter((numero) => numero !== t.numero);
+                    if (current.length >= 20) {
+                      toast.error("Puedes seleccionar hasta 20 números por compra.");
+                      return current;
+                    }
+                    return [...current, t.numero].sort((a, b) => a - b);
+                  })
+                }
                 paymentCode={ownedReservationCodes[t.numero]}
                 onResumePayment={(code) => setResumePayment({ number: t.numero, code })}
               />
             ))}
           </div>
+          {selected.length > 0 && (
+            <div className="sticky bottom-3 z-20 mt-4 flex flex-col gap-2 rounded-2xl border border-brand/30 bg-card/95 p-3 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 text-sm">
+                <strong>{selected.length} número(s) seleccionado(s)</strong>
+                <p className="truncate text-xs text-muted-foreground">
+                  {selected.map(padded).join(", ")} {"·"} Total{" "}
+                  {formatCOP(selected.length * raffle.valor_boleta)}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" variant="ghost" onClick={() => setSelected([])}>
+                  Limpiar
+                </Button>
+                <Button type="button" onClick={() => setPurchaseDialogOpen(true)}>
+                  <ShoppingCart className="mr-2 h-4 w-4" /> Continuar
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
             <Legend swatch="bg-white border-2 border-border" label="Disponible" />
             <Legend swatch="bg-warning" label="Reservado" />
@@ -840,10 +898,10 @@ export function RafflePublicPage({ slug }: { slug: string }) {
       </Dialog>
       {/* Dialog reservar */}
       <Dialog
-        open={selected != null}
+        open={purchaseDialogOpen}
         onOpenChange={(open) => {
+          setPurchaseDialogOpen(open);
           if (!open) {
-            setSelected(null);
             setTurnstileToken(null);
             setTurnstileResetKey((value) => value + 1);
           }
@@ -852,8 +910,8 @@ export function RafflePublicPage({ slug }: { slug: string }) {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
-              Reservar número{" "}
-              <span className="text-brand">{selected != null ? padded(selected) : ""}</span>
+              Reservar {selected.length === 1 ? "número" : `${selected.length} números`}{" "}
+              <span className="text-brand">{selected.map(padded).join(", ")}</span>
             </DialogTitle>
             <DialogDescription>
               Completa tus datos. Te mostraremos los datos de pago y podrás enviar el comprobante
@@ -955,7 +1013,9 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                 ? "Procesando…"
                 : purchaseIntent === "pay"
                   ? "Continuar al pago"
-                  : "Separar mi número"}
+                  : selected.length === 1
+                    ? "Separar mi número"
+                    : "Separar mis números"}
             </Button>
           </form>
         </DialogContent>
@@ -963,7 +1023,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
 
       {/* Dialog confirmación */}
       <Dialog open={!!confirmed} onOpenChange={(o) => !o && setConfirmed(null)}>
-        <DialogContent className="mobile-confirmation-dialog max-h-[calc(100dvh-1rem)] overflow-x-hidden overscroll-contain gap-2 p-2 sm:w-[calc(100%-2rem)] sm:max-w-md sm:gap-4 sm:p-5">
+        <DialogContent className="mobile-confirmation-dialog max-h-[calc(100dvh-1rem)] overflow-x-hidden overscroll-contain gap-2 p-2 sm:max-w-xl sm:gap-4 sm:p-5">
           <div
             ref={confirmedTicketRef}
             className="confirmation-ticket-image box-border w-full max-w-full min-w-0 overflow-hidden rounded-2xl bg-card p-2.5 text-card-foreground sm:p-4"
@@ -976,9 +1036,11 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                 Boleta digital
               </DialogTitle>
               <DialogDescription className="min-w-0 text-center text-xs break-words sm:text-sm">
-                Tu número{" "}
-                <strong className="text-ink">{confirmed ? padded(confirmed.numero) : ""}</strong>{" "}
-                quedó reservado.{" "}
+                {confirmed?.reservations.length === 1 ? "Tu número" : "Tus números"}{" "}
+                <strong className="text-ink">
+                  {confirmed?.reservations.map((item) => padded(item.numero)).join(", ")}
+                </strong>{" "}
+                {confirmed?.reservations.length === 1 ? "quedó reservado." : "quedaron reservados."}{" "}
                 {confirmed?.intent === "pay"
                   ? "Abre el enlace de pago o usa los datos indicados y envía el comprobante."
                   : "Puedes pagar después desde esta boleta para confirmarla."}
@@ -1001,9 +1063,16 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 {raffle.nombre}
               </p>
-              <p className="mt-1 font-display text-6xl text-brand">
-                {confirmed ? padded(confirmed.numero) : ""}
-              </p>
+              <div className="mt-2 flex flex-wrap justify-center gap-2">
+                {confirmed?.reservations.map((item) => (
+                  <span
+                    key={item.codigo}
+                    className="rounded-xl border border-brand/25 bg-card px-3 py-1 font-display text-3xl text-brand sm:text-4xl"
+                  >
+                    {padded(item.numero)}
+                  </span>
+                ))}
+              </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 Sorteo {formatDate(raffle.fecha_sorteo)}
                 {raffle.loteria ? ` · ${raffle.loteria}` : ""}
@@ -1036,8 +1105,10 @@ export function RafflePublicPage({ slug }: { slug: string }) {
           {confirmed && (
             <div className="space-y-3">
               <div className="flex min-w-0 items-center gap-1.5 rounded-xl border border-border bg-secondary/40 p-1.5 sm:gap-2 sm:p-2">
-                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                  {`${window.location.origin}/boleta/${confirmed.codigo}`}
+                <span className="min-w-0 flex-1 text-xs text-muted-foreground">
+                  {confirmed.reservations.length === 1
+                    ? `${window.location.origin}/boleta/${confirmed.codigo}`
+                    : `${confirmed.reservations.length} enlaces individuales de boleta`}
                 </span>
                 <Button
                   type="button"
@@ -1046,7 +1117,8 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                   onClick={copyConfirmedTicketUrl}
                   className="shrink-0 px-2 sm:px-3"
                 >
-                  <Copy className="mr-1.5 h-4 w-4" /> Copiar enlace
+                  <Copy className="mr-1.5 h-4 w-4" />
+                  {confirmed.reservations.length === 1 ? "Copiar enlace" : "Copiar enlaces"}
                 </Button>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
@@ -1071,7 +1143,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
               </div>
             </div>
           )}{" "}
-          {confirmed && (
+          {confirmed && confirmed.reservations.length === 1 && (
             <Link
               to="/boleta/$codigo"
               params={{ codigo: confirmed.codigo }}
@@ -1175,12 +1247,14 @@ function StatCard({
 function NumberCell({
   ticket,
   digits,
+  selected,
   onClick,
   paymentCode,
   onResumePayment,
 }: {
   ticket: TicketRow;
   digits: 2 | 3;
+  selected: boolean;
   onClick: () => void;
   paymentCode?: string;
   onResumePayment: (code: string) => void;
@@ -1203,8 +1277,15 @@ function NumberCell({
   if (ticket.estado === "disponible") {
     return (
       <button
+        type="button"
         onClick={onClick}
-        className={`${base} number-cell--available bg-white border-2 border-border text-ink hover:border-brand hover:bg-brand hover:text-brand-foreground hover:scale-105 active:scale-95`}
+        aria-pressed={selected}
+        aria-label={`Número ${padNumber(ticket.numero, digits)}${selected ? " seleccionado" : " disponible"}`}
+        className={`${base} number-cell--available border-2 hover:scale-105 active:scale-95 ${
+          selected
+            ? "border-brand bg-brand text-brand-foreground ring-2 ring-brand/30 scale-95"
+            : "bg-white border-border text-ink hover:border-brand hover:bg-brand hover:text-brand-foreground"
+        }`}
       >
         {padNumber(ticket.numero, digits)}
       </button>
