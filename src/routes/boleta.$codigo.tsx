@@ -157,6 +157,23 @@ function BoletaPage() {
       ? ticketValue
       : (ticket.valor_pagado ?? totalPaid);
   const paymentProgress = ticketValue > 0 ? Math.min(100, (totalPaid / ticketValue) * 100) : 0;
+  const hasNequi = Boolean(
+    raffle?.nequi_enabled &&
+    ((raffle.nequi_number_visible && raffle.nequi) ||
+      (raffle.nequi_qr_visible && raffle.nequi_qr_url)),
+  );
+  const hasDaviplata = Boolean(
+    raffle?.daviplata_enabled &&
+    ((raffle.daviplata_number_visible && raffle.daviplata) ||
+      (raffle.daviplata_qr_visible && raffle.daviplata_qr_url)),
+  );
+  const hasBreB = Boolean(
+    raffle?.bre_b_enabled &&
+    ((raffle.bre_b_key_visible && raffle.bre_b) ||
+      (raffle.bre_b_qr_visible && raffle.bre_b_qr_url)),
+  );
+  const hasMercadoPago = Boolean(raffle?.mercadopago_enabled && raffle.mercadopago_url);
+  const hasPaymentMethods = hasNequi || hasDaviplata || hasBreB || hasMercadoPago;
 
   useEffect(() => {
     if (!raffle?.public_skin) return;
@@ -386,44 +403,38 @@ function BoletaPage() {
               Elige uno de los métodos habilitados por el organizador y envía el comprobante.
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {raffle.nequi_enabled &&
-                ((raffle.nequi_number_visible && raffle.nequi) ||
-                  (raffle.nequi_qr_visible && raffle.nequi_qr_url)) && (
-                  <PendingPaymentCard
-                    name="Nequi"
-                    value={raffle.nequi}
-                    valueLabel="Número Nequi"
-                    qrUrl={raffle.nequi_qr_visible ? raffle.nequi_qr_url : null}
-                    logoUrl={raffle.nequi_logo_url}
-                    accent="text-[#ff2ba6]"
-                  />
-                )}
-              {raffle.daviplata_enabled &&
-                ((raffle.daviplata_number_visible && raffle.daviplata) ||
-                  (raffle.daviplata_qr_visible && raffle.daviplata_qr_url)) && (
-                  <PendingPaymentCard
-                    name="Daviplata"
-                    value={raffle.daviplata}
-                    valueLabel="Número Daviplata"
-                    qrUrl={raffle.daviplata_qr_visible ? raffle.daviplata_qr_url : null}
-                    logoUrl={raffle.daviplata_logo_url}
-                    accent="text-[#ef3340]"
-                  />
-                )}
-              {raffle.bre_b_enabled &&
-                ((raffle.bre_b_key_visible && raffle.bre_b) ||
-                  (raffle.bre_b_qr_visible && raffle.bre_b_qr_url)) && (
-                  <PendingPaymentCard
-                    name="Bre-B"
-                    value={raffle.bre_b_key_visible ? raffle.bre_b : null}
-                    valueLabel="Llave Bre-B"
-                    qrUrl={raffle.bre_b_qr_visible ? raffle.bre_b_qr_url : null}
-                    logoUrl={raffle.bre_b_logo_url}
-                    accent="text-[#00a7c7]"
-                    keyIcon
-                  />
-                )}
-              {raffle.mercadopago_enabled && raffle.mercadopago_url && (
+              {hasNequi && (
+                <PendingPaymentCard
+                  name="Nequi"
+                  value={raffle.nequi}
+                  valueLabel="Número Nequi"
+                  qrUrl={raffle.nequi_qr_visible ? raffle.nequi_qr_url : null}
+                  logoUrl={raffle.nequi_logo_url}
+                  accent="text-[#ff2ba6]"
+                />
+              )}
+              {hasDaviplata && (
+                <PendingPaymentCard
+                  name="Daviplata"
+                  value={raffle.daviplata}
+                  valueLabel="Número Daviplata"
+                  qrUrl={raffle.daviplata_qr_visible ? raffle.daviplata_qr_url : null}
+                  logoUrl={raffle.daviplata_logo_url}
+                  accent="text-[#ef3340]"
+                />
+              )}
+              {hasBreB && (
+                <PendingPaymentCard
+                  name="Bre-B"
+                  value={raffle.bre_b_key_visible ? raffle.bre_b : null}
+                  valueLabel="Llave Bre-B"
+                  qrUrl={raffle.bre_b_qr_visible ? raffle.bre_b_qr_url : null}
+                  logoUrl={raffle.bre_b_logo_url}
+                  accent="text-[#00a7c7]"
+                  keyIcon
+                />
+              )}
+              {hasMercadoPago && raffle.mercadopago_url && (
                 <a
                   href={raffle.mercadopago_url}
                   target="_blank"
@@ -442,6 +453,27 @@ function BoletaPage() {
                 </a>
               )}
             </div>
+            {!hasPaymentMethods && (
+              <div className="mt-4 rounded-xl border border-warning/40 bg-warning/10 p-4 text-center">
+                <p className="font-semibold">El organizador aún no habilitó un método de pago.</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Consulta por WhatsApp antes de enviar dinero. Tu número continúa reservado.
+                </p>
+                {raffle.whatsapp_admin && (
+                  <a
+                    href={buildWhatsAppUrl(
+                      raffle.whatsapp_admin,
+                      `Hola, quiero pagar la boleta ${ticketNumber}. ¿Qué método de pago debo usar?`,
+                    )}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Consultar método por WhatsApp
+                  </a>
+                )}
+              </div>
+            )}
             <p className="mt-4 text-center text-sm">
               Saldo pendiente: <strong className="text-brand">{formatCOP(amountValue)}</strong>
             </p>

@@ -248,9 +248,13 @@ export function RafflePublicPage({ slug }: { slug: string }) {
           : raffle?.mercadopago_enabled && raffle.mercadopago_url
             ? "mercadopago_url"
             : "transferencia";
+  const hasPaymentMethods = defaultPaymentMethod !== "transferencia";
   const tickets = useMemo(() => (data?.tickets ?? []) as TicketRow[], [data?.tickets]);
   const stages = data?.stages ?? [];
 
+  useEffect(() => {
+    if (raffle && !hasPaymentMethods) setPurchaseIntent("reserve");
+  }, [raffle, hasPaymentMethods]);
   useEffect(() => {
     if (!raffle) return;
     const owned: Record<number, string> = {};
@@ -957,6 +961,7 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                   type="button"
                   variant={purchaseIntent === "pay" ? "default" : "outline"}
                   onClick={() => setPurchaseIntent("pay")}
+                  disabled={!hasPaymentMethods}
                 >
                   Pagar ahora
                 </Button>
@@ -969,9 +974,11 @@ export function RafflePublicPage({ slug }: { slug: string }) {
                 </Button>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {purchaseIntent === "pay"
-                  ? "Reserva el número y continúa con el medio de pago elegido."
-                  : "Aparta el número y paga después; quedará pendiente de confirmación."}
+                {!hasPaymentMethods
+                  ? "El organizador aún no habilitó métodos de pago. Puedes separar tus números y consultarle por WhatsApp."
+                  : purchaseIntent === "pay"
+                    ? "Reserva el número y continúa con el medio de pago elegido."
+                    : "Aparta el número y paga después; quedará pendiente de confirmación."}
               </p>
             </div>
             {purchaseIntent === "pay" && (
