@@ -113,12 +113,12 @@ function AdminLayout() {
   return (
     <div className="admin-ecosystem min-h-screen bg-background" data-public-skin={adminSkin}>
       <header className="admin-header border-b border-border bg-card">
-        <div className="mx-auto flex min-h-14 max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 sm:flex-nowrap">
-          <div className="flex items-center gap-4 min-w-0">
+        <div className="mx-auto flex min-h-14 max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+          <div className="flex min-w-0 flex-wrap items-center gap-4">
             <Link to="/admin" className="font-display text-xl text-gold shrink-0">
               Rifaya · Administración
             </Link>
-            <nav className="hidden sm:flex gap-1 text-sm">
+            <nav className="order-2 hidden basis-full flex-wrap gap-1 border-t border-border/60 pt-2 text-sm sm:flex">
               <Link
                 to="/admin"
                 activeOptions={{ exact: true }}
@@ -217,7 +217,7 @@ function AdminLayout() {
               )}
             </nav>
           </div>
-          <div className="flex w-full min-w-0 items-center justify-between gap-2 sm:w-auto sm:justify-end">
+          <div className="flex w-full min-w-0 items-center justify-between gap-2 sm:w-auto sm:shrink-0 sm:justify-end">
             {raffles.length > 0 && (
               <select
                 value={selectedId ?? ""}
