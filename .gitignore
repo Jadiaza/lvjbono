@@ -26,6 +26,9 @@ tsconfig.tsbuildinfo
 .dev.vars
 .workspace/
 
+# Supabase CLI local link metadata
+supabase/.temp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
