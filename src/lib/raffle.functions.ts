@@ -1471,7 +1471,7 @@ export const adminCreateRental = createServerFn({ method: "POST" })
       .object({
         raffleId: z.string().uuid(),
         email: z.string().trim().email(),
-        password: z.string().min(8).max(72),
+        password: z.string().max(72).optional().default(""),
         responsable: z.string().trim().min(2).max(120),
         slug: z
           .string()
@@ -1493,26 +1493,37 @@ export const adminCreateRental = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: created, error: userError } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email,
-      password: data.password,
-      email_confirm: true,
-      user_metadata: { responsable: data.responsable },
+    const normalizedEmail = data.email.toLowerCase();
+    const { data: usersPage, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
     });
-    if (userError || !created.user) {
-      throw new Error(
-        userError?.message.includes("already")
-          ? "Ya existe un usuario con ese correo."
-          : "No fue posible crear el usuario.",
-      );
+    if (usersError) throw new Error("No fue posible consultar los usuarios existentes.");
+    let authUser = usersPage.users.find((user) => user.email?.toLowerCase() === normalizedEmail);
+    let createdUser = false;
+    if (!authUser) {
+      if (data.password.length < 8) {
+        throw new Error("La contraseña es obligatoria para crear un usuario nuevo.");
+      }
+      const { data: created, error: userError } = await supabaseAdmin.auth.admin.createUser({
+        email: normalizedEmail,
+        password: data.password,
+        email_confirm: true,
+        user_metadata: { responsable: data.responsable },
+      });
+      if (userError || !created.user) throw new Error("No fue posible crear el usuario.");
+      authUser = created.user;
+      createdUser = true;
     }
-    const { error: roleError } = await (supabaseAdmin as any).from("user_roles").insert({
-      user_id: created.user.id,
-      role: "organizer",
-    });
+    const { error: roleError } = await (supabaseAdmin as any)
+      .from("user_roles")
+      .upsert(
+        { user_id: authUser.id, role: "organizer" },
+        { onConflict: "user_id,role", ignoreDuplicates: true },
+      );
     const { error: rentalError } = await (supabaseAdmin as any).from("raffle_rentals").insert({
       raffle_id: data.raffleId,
-      user_id: created.user.id,
+      user_id: authUser.id,
       responsable: data.responsable,
       prepaid_amount: data.prepaidAmount,
       starts_at: data.startsAt,
@@ -1520,7 +1531,7 @@ export const adminCreateRental = createServerFn({ method: "POST" })
       notes: data.notes || null,
     });
     if (roleError || rentalError) {
-      await supabaseAdmin.auth.admin.deleteUser(created.user.id);
+      if (createdUser) await supabaseAdmin.auth.admin.deleteUser(authUser.id);
       throw new Error(
         "No fue posible asignar el alquiler. Verifica que la migración esté aplicada.",
       );
@@ -1529,7 +1540,7 @@ export const adminCreateRental = createServerFn({ method: "POST" })
       .from("raffles")
       .update({ responsable: data.responsable, slug: data.slug, activa: true })
       .eq("id", data.raffleId);
-    return { ok: true };
+    return { ok: true, linkedExisting: !createdUser };
   });
 
 export const adminSetRentalActive = createServerFn({ method: "POST" })

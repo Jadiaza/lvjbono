@@ -60,7 +60,7 @@ function RentalCenter() {
 
   async function submit(formData: FormData) {
     try {
-      await createRental({
+      const result = await createRental({
         data: {
           raffleId: String(formData.get("raffleId")),
           email: String(formData.get("email")),
@@ -73,7 +73,11 @@ function RentalCenter() {
           notes: String(formData.get("notes") ?? ""),
         },
       });
-      toast.success("Usuario y alquiler creados.");
+      toast.success(
+        result.linkedExisting
+          ? "Usuario existente asignado a la rifa."
+          : "Usuario y alquiler creados.",
+      );
       setOpen(false);
       qc.invalidateQueries({ queryKey: ["rental-center"] });
     } catch (error) {
@@ -293,8 +297,8 @@ function RentalCenter() {
             <Field label="Correo de acceso">
               <Input name="email" type="email" required />
             </Field>
-            <Field label="Contraseña temporal">
-              <Input name="password" type="password" minLength={8} required />
+            <Field label="Contraseña (solo para usuario nuevo)">
+              <Input name="password" type="password" minLength={8} />
             </Field>
             <Field label="Inicio">
               <Input name="startsAt" type="datetime-local" required />
