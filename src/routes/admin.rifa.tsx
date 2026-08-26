@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -203,6 +203,23 @@ function AdminRaffles() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={submitCreate} className="space-y-3">
+            <div className="rounded-xl border bg-secondary/40 p-4">
+              <Label className="mb-2 block">Modalidad</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button type="button" variant="secondary" className="justify-start">
+                  Cartón tradicional
+                </Button>
+                <Button type="button" variant="outline" className="justify-start" asChild>
+                  <Link to="/admin/bonos" onClick={() => setShowCreate(false)}>
+                    Bono personalizado en duplas
+                  </Link>
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                La modalidad en duplas se configura en su módulo independiente para conservar
+                intacto el flujo de rifas tradicionales.
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Nombre del cartón *">
                 <Input

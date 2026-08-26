@@ -11,19 +11,27 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResultadosRouteImport } from './routes/resultados'
 import { Route as RestablecerContrasenaRouteImport } from './routes/restablecer-contrasena'
+import { Route as ResponsableLoginRouteImport } from './routes/responsable-login'
+import { Route as ResponsableRouteImport } from './routes/responsable'
 import { Route as RecuperarContrasenaRouteImport } from './routes/recuperar-contrasena'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as VendedorSlugRouteImport } from './routes/vendedor.$slug'
+import { Route as BonoCodigoRouteImport } from './routes/bono.$codigo'
 import { Route as BoletaCodigoRouteImport } from './routes/boleta.$codigo'
 import { Route as AdminSorteoRouteImport } from './routes/admin.sorteo'
 import { Route as AdminRifaRouteImport } from './routes/admin.rifa'
+import { Route as AdminResponsablesRouteImport } from './routes/admin.responsables'
 import { Route as AdminRecordatoriosRouteImport } from './routes/admin.recordatorios'
 import { Route as AdminPagosRouteImport } from './routes/admin.pagos'
 import { Route as AdminPadrinosRouteImport } from './routes/admin.padrinos'
+import { Route as AdminDistribucionRouteImport } from './routes/admin.distribucion'
+import { Route as AdminBonosRouteImport } from './routes/admin.bonos'
 import { Route as AdminAlquileresRouteImport } from './routes/admin.alquileres'
+import { Route as AdminBonosRaffleIdRouteImport } from './routes/admin.bonos.$raffleId'
 
 const ResultadosRoute = ResultadosRouteImport.update({
   id: '/resultados',
@@ -33,6 +41,16 @@ const ResultadosRoute = ResultadosRouteImport.update({
 const RestablecerContrasenaRoute = RestablecerContrasenaRouteImport.update({
   id: '/restablecer-contrasena',
   path: '/restablecer-contrasena',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResponsableLoginRoute = ResponsableLoginRouteImport.update({
+  id: '/responsable-login',
+  path: '/responsable-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResponsableRoute = ResponsableRouteImport.update({
+  id: '/responsable',
+  path: '/responsable',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RecuperarContrasenaRoute = RecuperarContrasenaRouteImport.update({
@@ -65,6 +83,16 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const VendedorSlugRoute = VendedorSlugRouteImport.update({
+  id: '/vendedor/$slug',
+  path: '/vendedor/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BonoCodigoRoute = BonoCodigoRouteImport.update({
+  id: '/bono/$codigo',
+  path: '/bono/$codigo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BoletaCodigoRoute = BoletaCodigoRouteImport.update({
   id: '/boleta/$codigo',
   path: '/boleta/$codigo',
@@ -78,6 +106,11 @@ const AdminSorteoRoute = AdminSorteoRouteImport.update({
 const AdminRifaRoute = AdminRifaRouteImport.update({
   id: '/rifa',
   path: '/rifa',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminResponsablesRoute = AdminResponsablesRouteImport.update({
+  id: '/responsables',
+  path: '/responsables',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminRecordatoriosRoute = AdminRecordatoriosRouteImport.update({
@@ -95,10 +128,25 @@ const AdminPadrinosRoute = AdminPadrinosRouteImport.update({
   path: '/padrinos',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDistribucionRoute = AdminDistribucionRouteImport.update({
+  id: '/distribucion',
+  path: '/distribucion',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBonosRoute = AdminBonosRouteImport.update({
+  id: '/bonos',
+  path: '/bonos',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAlquileresRoute = AdminAlquileresRouteImport.update({
   id: '/alquileres',
   path: '/alquileres',
   getParentRoute: () => AdminRoute,
+} as any)
+const AdminBonosRaffleIdRoute = AdminBonosRaffleIdRouteImport.update({
+  id: '/$raffleId',
+  path: '/$raffleId',
+  getParentRoute: () => AdminBonosRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -107,32 +155,48 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/recuperar-contrasena': typeof RecuperarContrasenaRoute
+  '/responsable': typeof ResponsableRoute
+  '/responsable-login': typeof ResponsableLoginRoute
   '/restablecer-contrasena': typeof RestablecerContrasenaRoute
   '/resultados': typeof ResultadosRoute
   '/admin/alquileres': typeof AdminAlquileresRoute
+  '/admin/bonos': typeof AdminBonosRouteWithChildren
+  '/admin/distribucion': typeof AdminDistribucionRoute
   '/admin/padrinos': typeof AdminPadrinosRoute
   '/admin/pagos': typeof AdminPagosRoute
   '/admin/recordatorios': typeof AdminRecordatoriosRoute
+  '/admin/responsables': typeof AdminResponsablesRoute
   '/admin/rifa': typeof AdminRifaRoute
   '/admin/sorteo': typeof AdminSorteoRoute
   '/boleta/$codigo': typeof BoletaCodigoRoute
+  '/bono/$codigo': typeof BonoCodigoRoute
+  '/vendedor/$slug': typeof VendedorSlugRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin/bonos/$raffleId': typeof AdminBonosRaffleIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
   '/recuperar-contrasena': typeof RecuperarContrasenaRoute
+  '/responsable': typeof ResponsableRoute
+  '/responsable-login': typeof ResponsableLoginRoute
   '/restablecer-contrasena': typeof RestablecerContrasenaRoute
   '/resultados': typeof ResultadosRoute
   '/admin/alquileres': typeof AdminAlquileresRoute
+  '/admin/bonos': typeof AdminBonosRouteWithChildren
+  '/admin/distribucion': typeof AdminDistribucionRoute
   '/admin/padrinos': typeof AdminPadrinosRoute
   '/admin/pagos': typeof AdminPagosRoute
   '/admin/recordatorios': typeof AdminRecordatoriosRoute
+  '/admin/responsables': typeof AdminResponsablesRoute
   '/admin/rifa': typeof AdminRifaRoute
   '/admin/sorteo': typeof AdminSorteoRoute
   '/boleta/$codigo': typeof BoletaCodigoRoute
+  '/bono/$codigo': typeof BonoCodigoRoute
+  '/vendedor/$slug': typeof VendedorSlugRoute
   '/admin': typeof AdminIndexRoute
+  '/admin/bonos/$raffleId': typeof AdminBonosRaffleIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -141,16 +205,24 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/recuperar-contrasena': typeof RecuperarContrasenaRoute
+  '/responsable': typeof ResponsableRoute
+  '/responsable-login': typeof ResponsableLoginRoute
   '/restablecer-contrasena': typeof RestablecerContrasenaRoute
   '/resultados': typeof ResultadosRoute
   '/admin/alquileres': typeof AdminAlquileresRoute
+  '/admin/bonos': typeof AdminBonosRouteWithChildren
+  '/admin/distribucion': typeof AdminDistribucionRoute
   '/admin/padrinos': typeof AdminPadrinosRoute
   '/admin/pagos': typeof AdminPagosRoute
   '/admin/recordatorios': typeof AdminRecordatoriosRoute
+  '/admin/responsables': typeof AdminResponsablesRoute
   '/admin/rifa': typeof AdminRifaRoute
   '/admin/sorteo': typeof AdminSorteoRoute
   '/boleta/$codigo': typeof BoletaCodigoRoute
+  '/bono/$codigo': typeof BonoCodigoRoute
+  '/vendedor/$slug': typeof VendedorSlugRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin/bonos/$raffleId': typeof AdminBonosRaffleIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -160,32 +232,48 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/recuperar-contrasena'
+    | '/responsable'
+    | '/responsable-login'
     | '/restablecer-contrasena'
     | '/resultados'
     | '/admin/alquileres'
+    | '/admin/bonos'
+    | '/admin/distribucion'
     | '/admin/padrinos'
     | '/admin/pagos'
     | '/admin/recordatorios'
+    | '/admin/responsables'
     | '/admin/rifa'
     | '/admin/sorteo'
     | '/boleta/$codigo'
+    | '/bono/$codigo'
+    | '/vendedor/$slug'
     | '/admin/'
+    | '/admin/bonos/$raffleId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$slug'
     | '/auth'
     | '/recuperar-contrasena'
+    | '/responsable'
+    | '/responsable-login'
     | '/restablecer-contrasena'
     | '/resultados'
     | '/admin/alquileres'
+    | '/admin/bonos'
+    | '/admin/distribucion'
     | '/admin/padrinos'
     | '/admin/pagos'
     | '/admin/recordatorios'
+    | '/admin/responsables'
     | '/admin/rifa'
     | '/admin/sorteo'
     | '/boleta/$codigo'
+    | '/bono/$codigo'
+    | '/vendedor/$slug'
     | '/admin'
+    | '/admin/bonos/$raffleId'
   id:
     | '__root__'
     | '/'
@@ -193,16 +281,24 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/recuperar-contrasena'
+    | '/responsable'
+    | '/responsable-login'
     | '/restablecer-contrasena'
     | '/resultados'
     | '/admin/alquileres'
+    | '/admin/bonos'
+    | '/admin/distribucion'
     | '/admin/padrinos'
     | '/admin/pagos'
     | '/admin/recordatorios'
+    | '/admin/responsables'
     | '/admin/rifa'
     | '/admin/sorteo'
     | '/boleta/$codigo'
+    | '/bono/$codigo'
+    | '/vendedor/$slug'
     | '/admin/'
+    | '/admin/bonos/$raffleId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -211,9 +307,13 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   RecuperarContrasenaRoute: typeof RecuperarContrasenaRoute
+  ResponsableRoute: typeof ResponsableRoute
+  ResponsableLoginRoute: typeof ResponsableLoginRoute
   RestablecerContrasenaRoute: typeof RestablecerContrasenaRoute
   ResultadosRoute: typeof ResultadosRoute
   BoletaCodigoRoute: typeof BoletaCodigoRoute
+  BonoCodigoRoute: typeof BonoCodigoRoute
+  VendedorSlugRoute: typeof VendedorSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -230,6 +330,20 @@ declare module '@tanstack/react-router' {
       path: '/restablecer-contrasena'
       fullPath: '/restablecer-contrasena'
       preLoaderRoute: typeof RestablecerContrasenaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/responsable-login': {
+      id: '/responsable-login'
+      path: '/responsable-login'
+      fullPath: '/responsable-login'
+      preLoaderRoute: typeof ResponsableLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/responsable': {
+      id: '/responsable'
+      path: '/responsable'
+      fullPath: '/responsable'
+      preLoaderRoute: typeof ResponsableRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/recuperar-contrasena': {
@@ -274,6 +388,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/vendedor/$slug': {
+      id: '/vendedor/$slug'
+      path: '/vendedor/$slug'
+      fullPath: '/vendedor/$slug'
+      preLoaderRoute: typeof VendedorSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bono/$codigo': {
+      id: '/bono/$codigo'
+      path: '/bono/$codigo'
+      fullPath: '/bono/$codigo'
+      preLoaderRoute: typeof BonoCodigoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/boleta/$codigo': {
       id: '/boleta/$codigo'
       path: '/boleta/$codigo'
@@ -293,6 +421,13 @@ declare module '@tanstack/react-router' {
       path: '/rifa'
       fullPath: '/admin/rifa'
       preLoaderRoute: typeof AdminRifaRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/responsables': {
+      id: '/admin/responsables'
+      path: '/responsables'
+      fullPath: '/admin/responsables'
+      preLoaderRoute: typeof AdminResponsablesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/recordatorios': {
@@ -316,6 +451,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPadrinosRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/distribucion': {
+      id: '/admin/distribucion'
+      path: '/distribucion'
+      fullPath: '/admin/distribucion'
+      preLoaderRoute: typeof AdminDistribucionRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/bonos': {
+      id: '/admin/bonos'
+      path: '/bonos'
+      fullPath: '/admin/bonos'
+      preLoaderRoute: typeof AdminBonosRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/alquileres': {
       id: '/admin/alquileres'
       path: '/alquileres'
@@ -323,14 +472,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAlquileresRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/bonos/$raffleId': {
+      id: '/admin/bonos/$raffleId'
+      path: '/$raffleId'
+      fullPath: '/admin/bonos/$raffleId'
+      preLoaderRoute: typeof AdminBonosRaffleIdRouteImport
+      parentRoute: typeof AdminBonosRoute
+    }
   }
 }
 
+interface AdminBonosRouteChildren {
+  AdminBonosRaffleIdRoute: typeof AdminBonosRaffleIdRoute
+}
+
+const AdminBonosRouteChildren: AdminBonosRouteChildren = {
+  AdminBonosRaffleIdRoute: AdminBonosRaffleIdRoute,
+}
+
+const AdminBonosRouteWithChildren = AdminBonosRoute._addFileChildren(
+  AdminBonosRouteChildren,
+)
+
 interface AdminRouteChildren {
   AdminAlquileresRoute: typeof AdminAlquileresRoute
+  AdminBonosRoute: typeof AdminBonosRouteWithChildren
+  AdminDistribucionRoute: typeof AdminDistribucionRoute
   AdminPadrinosRoute: typeof AdminPadrinosRoute
   AdminPagosRoute: typeof AdminPagosRoute
   AdminRecordatoriosRoute: typeof AdminRecordatoriosRoute
+  AdminResponsablesRoute: typeof AdminResponsablesRoute
   AdminRifaRoute: typeof AdminRifaRoute
   AdminSorteoRoute: typeof AdminSorteoRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -338,9 +509,12 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAlquileresRoute: AdminAlquileresRoute,
+  AdminBonosRoute: AdminBonosRouteWithChildren,
+  AdminDistribucionRoute: AdminDistribucionRoute,
   AdminPadrinosRoute: AdminPadrinosRoute,
   AdminPagosRoute: AdminPagosRoute,
   AdminRecordatoriosRoute: AdminRecordatoriosRoute,
+  AdminResponsablesRoute: AdminResponsablesRoute,
   AdminRifaRoute: AdminRifaRoute,
   AdminSorteoRoute: AdminSorteoRoute,
   AdminIndexRoute: AdminIndexRoute,
@@ -354,9 +528,13 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   RecuperarContrasenaRoute: RecuperarContrasenaRoute,
+  ResponsableRoute: ResponsableRoute,
+  ResponsableLoginRoute: ResponsableLoginRoute,
   RestablecerContrasenaRoute: RestablecerContrasenaRoute,
   ResultadosRoute: ResultadosRoute,
   BoletaCodigoRoute: BoletaCodigoRoute,
+  BonoCodigoRoute: BonoCodigoRoute,
+  VendedorSlugRoute: VendedorSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

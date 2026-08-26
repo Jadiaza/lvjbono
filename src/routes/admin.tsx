@@ -15,6 +15,9 @@ import {
   Layers,
   CalendarClock,
   CreditCard,
+  ContactRound,
+  PackageCheck,
+  Tickets,
 } from "lucide-react";
 import { useSelectedRaffle } from "@/hooks/use-selected-raffle";
 import { getPublicSkinDefinition } from "@/lib/public-skins";
@@ -147,6 +150,33 @@ function AdminLayout() {
               )}
               {isPlatformAdmin && (
                 <Link
+                  to="/admin/bonos"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md hover:bg-secondary"
+                  activeProps={{ className: "bg-secondary text-gold" }}
+                >
+                  <Tickets className="h-4 w-4" /> Bonos
+                </Link>
+              )}
+              {isPlatformAdmin && (
+                <Link
+                  to="/admin/responsables"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md hover:bg-secondary"
+                  activeProps={{ className: "bg-secondary text-gold" }}
+                >
+                  <ContactRound className="h-4 w-4" /> Responsables
+                </Link>
+              )}
+              {isPlatformAdmin && (
+                <Link
+                  to="/admin/distribucion"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md hover:bg-secondary"
+                  activeProps={{ className: "bg-secondary text-gold" }}
+                >
+                  <PackageCheck className="h-4 w-4" /> Distribución
+                </Link>
+              )}
+              {isPlatformAdmin && (
+                <Link
                   to="/admin/sorteo"
                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md hover:bg-secondary"
                   activeProps={{ className: "bg-secondary text-gold" }}
@@ -233,6 +263,15 @@ function AdminLayout() {
               <>
                 <Link to="/admin/rifa" className="rounded-md px-3 py-2 hover:bg-secondary">
                   Cartones
+                </Link>
+                <Link to="/admin/bonos" className="rounded-md px-3 py-2 hover:bg-secondary">
+                  Bonos
+                </Link>
+                <Link to="/admin/responsables" className="rounded-md px-3 py-2 hover:bg-secondary">
+                  Responsables
+                </Link>
+                <Link to="/admin/distribucion" className="rounded-md px-3 py-2 hover:bg-secondary">
+                  Distribución
                 </Link>
                 <Link to="/admin/sorteo" className="rounded-md px-3 py-2 hover:bg-secondary">
                   Sorteo
