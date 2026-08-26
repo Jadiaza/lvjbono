@@ -38,6 +38,7 @@ import { formatCOP } from "@/lib/format";
 import { PUBLIC_SKINS, type PublicSkin } from "@/lib/public-skins";
 import { getPublicRaffleSlug } from "@/lib/public-raffle-url";
 import { RaffleShareCard } from "@/components/raffle-share-card";
+import { BonoShareCard } from "@/components/bono-share-card";
 
 export const Route = createFileRoute("/admin/rifa")({
   component: AdminRaffles,
@@ -66,6 +67,16 @@ type Raffle = {
   installment_amount: number | null;
   total: number;
   counts: { disponible: number; reservado: number; vendido: number; ganador: number };
+  raffle_mode?: "standard" | "dual_bono";
+  bono_total?: number | null;
+  bono_title?: string | null;
+  bono_subtitle?: string | null;
+  bono_prize_name?: string | null;
+  bono_prize_description?: string | null;
+  bono_prize_dimensions?: string | null;
+  bono_prize_image_url?: string | null;
+  bono_logo_url?: string | null;
+  bono_accent_color?: string | null;
 };
 
 function AdminRaffles() {
@@ -635,6 +646,27 @@ function RaffleCard({
 
   function whatsappMessage() {
     const raffleUrl = `${window.location.origin}/${getPublicRaffleSlug(r)}`;
+    if (r.raffle_mode === "dual_bono") {
+      return [
+        `🎟️ *${form.nombre.toUpperCase()}*`,
+        "",
+        `🎁 *Premio:* ${r.bono_prize_name || "Premio especial"}`,
+        r.bono_prize_description || null,
+        r.bono_prize_dimensions ? `📐 *Características:* ${r.bono_prize_dimensions}` : null,
+        `📅 *Fecha del sorteo:* ${form.fecha_sorteo || "Por definir"}`,
+        `🎰 *Lotería:* ${form.loteria || "Por definir"}`,
+        `💳 *Aporte por bono:* ${formatCOP(Number(form.valor_boleta))}`,
+        "",
+        `✅ ${r.bono_total ?? 500} bonos con 2 números únicos cada uno.`,
+        "✅ 1.000 números distribuidos en parejas, del 000 al 999.",
+        "✅ El premio es físico y no se entrega dinero en efectivo.",
+        "",
+        `🌐 *Consulta los bonos aquí:* ${raffleUrl}`,
+        form.whatsapp_admin ? `📲 *Información:* ${form.whatsapp_admin}` : null,
+      ]
+        .filter((line): line is string => line !== null)
+        .join("\n");
+    }
     return [
       `🎟️ *${form.nombre.toUpperCase()}*`,
       form.serie ? `🔖 Serie: *${form.serie}*` : null,
@@ -881,53 +913,67 @@ function RaffleCard({
               ))}
             </div>
           </div>
-          <div className="rounded-md border border-border bg-background p-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              Premios (COP)
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-              <Field label="Mayor">
-                <Input
-                  type="number"
-                  min={0}
-                  value={form.premio_mayor}
-                  onChange={(e) => setForm({ ...form, premio_mayor: Number(e.target.value) })}
-                />
-              </Field>
-              <Field label="Seco 1">
-                <Input
-                  type="number"
-                  min={0}
-                  value={form.premio_seco1}
-                  onChange={(e) => setForm({ ...form, premio_seco1: Number(e.target.value) })}
-                />
-              </Field>
-              <Field label="Seco 2">
-                <Input
-                  type="number"
-                  min={0}
-                  value={form.premio_seco2}
-                  onChange={(e) => setForm({ ...form, premio_seco2: Number(e.target.value) })}
-                />
-              </Field>
-              <Field label="Aprox. Ant.">
-                <Input
-                  type="number"
-                  min={0}
-                  value={form.premio_aprox_ant}
-                  onChange={(e) => setForm({ ...form, premio_aprox_ant: Number(e.target.value) })}
-                />
-              </Field>
-              <Field label="Aprox. Pos.">
-                <Input
-                  type="number"
-                  min={0}
-                  value={form.premio_aprox_pos}
-                  onChange={(e) => setForm({ ...form, premio_aprox_pos: Number(e.target.value) })}
-                />
-              </Field>
+          {r.raffle_mode === "dual_bono" ? (
+            <div className="rounded-md border border-gold/30 bg-gold/5 p-4 text-sm">
+              <p className="font-semibold">Premio físico</p>
+              <p className="mt-1 text-muted-foreground">
+                {r.bono_prize_name || "Premio especial"}
+                {r.bono_prize_description ? ` · ${r.bono_prize_description}` : ""}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                La imagen y los detalles del premio se editan desde el módulo Bonos. Esta campaña no
+                utiliza premios en efectivo.
+              </p>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-md border border-border bg-background p-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                Premios (COP)
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                <Field label="Mayor">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={form.premio_mayor}
+                    onChange={(e) => setForm({ ...form, premio_mayor: Number(e.target.value) })}
+                  />
+                </Field>
+                <Field label="Seco 1">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={form.premio_seco1}
+                    onChange={(e) => setForm({ ...form, premio_seco1: Number(e.target.value) })}
+                  />
+                </Field>
+                <Field label="Seco 2">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={form.premio_seco2}
+                    onChange={(e) => setForm({ ...form, premio_seco2: Number(e.target.value) })}
+                  />
+                </Field>
+                <Field label="Aprox. Ant.">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={form.premio_aprox_ant}
+                    onChange={(e) => setForm({ ...form, premio_aprox_ant: Number(e.target.value) })}
+                  />
+                </Field>
+                <Field label="Aprox. Pos.">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={form.premio_aprox_pos}
+                    onChange={(e) => setForm({ ...form, premio_aprox_pos: Number(e.target.value) })}
+                  />
+                </Field>
+              </div>
+            </div>
+          )}
           <div className="flex justify-end">
             <Button
               type="submit"
@@ -942,9 +988,15 @@ function RaffleCard({
       <Dialog open={posterOpen} onOpenChange={setPosterOpen}>
         <DialogContent className="max-w-[96vw] max-h-[94vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Cartón para WhatsApp</DialogTitle>
+            <DialogTitle>
+              {r.raffle_mode === "dual_bono"
+                ? "Pieza del bono para WhatsApp"
+                : "Cartón para WhatsApp"}
+            </DialogTitle>
             <DialogDescription>
-              Se genera con los datos, números y apariencia pública activa de esta rifa.
+              {r.raffle_mode === "dual_bono"
+                ? "Presenta el premio físico y la mecánica de parejas, sin premios en efectivo."
+                : "Se genera con los datos, números y apariencia pública activa de esta rifa."}
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[50vh] overflow-auto rounded-xl border border-border bg-secondary/30 p-3">
@@ -952,13 +1004,20 @@ function RaffleCard({
               <div className="grid min-h-64 place-items-center text-sm text-muted-foreground">
                 Preparando cartón…
               </div>
-            ) : (
-              <RaffleShareCard
+            ) : r.raffle_mode === "dual_bono" ? (
+              <BonoShareCard
                 ref={posterRef}
                 raffle={{
                   ...r,
-                  public_skin: form.public_skin,
+                  valor_boleta: Number(form.valor_boleta),
+                  fecha_sorteo: form.fecha_sorteo || null,
+                  loteria: form.loteria || null,
                 }}
+              />
+            ) : (
+              <RaffleShareCard
+                ref={posterRef}
+                raffle={{ ...r, public_skin: form.public_skin }}
                 tickets={posterData.tickets}
               />
             )}
@@ -976,8 +1035,9 @@ function RaffleCard({
                   Incluir mensaje con las condiciones
                 </span>
                 <span className="block text-xs text-muted-foreground">
-                  Adjunta un texto estructurado con emojis, sorteo, premios, condiciones y enlace
-                  para elegir número.
+                  {r.raffle_mode === "dual_bono"
+                    ? "Adjunta premio físico, aporte, fecha, mecánica de parejas y enlace de consulta."
+                    : "Adjunta un texto estructurado con emojis, sorteo, premios, condiciones y enlace para elegir número."}
                 </span>
               </span>
             </label>

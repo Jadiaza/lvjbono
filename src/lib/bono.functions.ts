@@ -11,6 +11,17 @@ import {
 
 type AuthContext = { supabase: any; userId: string };
 
+function shuffleBonos<T>(items: T[]) {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index--) {
+    const random = new Uint32Array(1);
+    crypto.getRandomValues(random);
+    const target = random[0] % (index + 1);
+    [shuffled[index], shuffled[target]] = [shuffled[target], shuffled[index]];
+  }
+  return shuffled;
+}
+
 async function requireAdmin(context: AuthContext) {
   const { data } = await context.supabase
     .from("user_roles")
@@ -93,7 +104,42 @@ export const adminCreateDualBonoCampaign = createServerFn({ method: "POST" })
       await (supabaseAdmin as any).from("raffles").delete().eq("id", raffle.id);
       throw new Error(`No fue posible generar los bonos: ${generationError.message}`);
     }
-    return { raffle, generated: Number(generated) };
+    const [
+      { count: bonoCount, error: bonoCountError },
+      { data: generatedNumbers, error: numberError },
+    ] = await Promise.all([
+      (supabaseAdmin as any)
+        .from("raffle_bonos")
+        .select("id", { count: "exact", head: true })
+        .eq("raffle_id", raffle.id),
+      (supabaseAdmin as any)
+        .from("raffle_bono_numbers")
+        .select("bono_id, numero")
+        .eq("raffle_id", raffle.id),
+    ]);
+    const expectedBonos = data.bono_total;
+    const expectedNumbers = expectedBonos * 2;
+    const numbers = generatedNumbers ?? [];
+    const uniqueNumbers = new Set(numbers.map((item: any) => item.numero));
+    const numbersPerBono = new Map<string, number>();
+    for (const item of numbers) {
+      numbersPerBono.set(item.bono_id, (numbersPerBono.get(item.bono_id) ?? 0) + 1);
+    }
+    const generationIsComplete =
+      !bonoCountError &&
+      !numberError &&
+      bonoCount === expectedBonos &&
+      numbers.length === expectedNumbers &&
+      uniqueNumbers.size === expectedNumbers &&
+      numbersPerBono.size === expectedBonos &&
+      [...numbersPerBono.values()].every((count) => count === 2);
+    if (!generationIsComplete) {
+      await (supabaseAdmin as any).from("raffles").delete().eq("id", raffle.id);
+      throw new Error(
+        `La generación quedó incompleta. Se esperaban ${expectedBonos} bonos y ${expectedNumbers} números únicos.`,
+      );
+    }
+    return { raffle, generated: Number(generated), generatedNumbers: numbers.length };
   });
 
 export const adminListDualBonoCampaigns = createServerFn({ method: "GET" })
@@ -307,7 +353,7 @@ export const adminListBonoBatches = createServerFn({ method: "GET" })
     const [{ data: batches, error }, { data: bonos, error: bonosError }] = await Promise.all([
       (supabaseAdmin as any)
         .from("raffle_bono_batches")
-        .select("*, raffles(nombre), raffle_responsibles(display_name, username)")
+        .select("*, raffles(nombre), raffle_responsibles(display_name, username, slug)")
         .order("assigned_at", { ascending: false }),
       (supabaseAdmin as any)
         .from("raffle_bonos")
@@ -329,6 +375,132 @@ export const adminListBonoBatches = createServerFn({ method: "GET" })
         counts: counts.get(batch.id) ?? { total: 0 },
       })),
     };
+  });
+
+export const adminGenerateBalancedBatches = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((value: unknown) =>
+    z
+      .object({ raffleId: z.string().uuid(), lotCount: z.number().int().min(1).max(500) })
+      .parse(value),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: available, error } = await (supabaseAdmin as any)
+      .from("raffle_bonos")
+      .select("id")
+      .eq("raffle_id", data.raffleId)
+      .in("status", ["disponible", "devuelto"])
+      .is("current_batch_id", null);
+    if (error) throw new Error(error.message);
+    if (!available?.length) throw new Error("No hay bonos sin lote para distribuir.");
+    if (data.lotCount > available.length)
+      throw new Error("No puede haber más lotes que bonos disponibles.");
+
+    const shuffled = shuffleBonos(available);
+    const baseSize = Math.floor(shuffled.length / data.lotCount);
+    const remainder = shuffled.length % data.lotCount;
+    const batchSizes = Array.from(
+      { length: data.lotCount },
+      (_, index) => baseSize + (index < remainder ? 1 : 0),
+    );
+    const created: Array<{ id: string; code: string; size: number }> = [];
+    let cursor = 0;
+    for (let index = 0; index < batchSizes.length; index++) {
+      const size = batchSizes[index];
+      const code = `LOT-${Date.now().toString(36).toUpperCase()}-${String(index + 1).padStart(2, "0")}`;
+      const { data: batch, error: batchError } = await (supabaseAdmin as any)
+        .from("raffle_bono_batches")
+        .insert({
+          raffle_id: data.raffleId,
+          responsible_id: null,
+          code,
+          name: `Lote ${String(index + 1).padStart(2, "0")}`,
+          created_by: context.userId,
+        })
+        .select("id, code")
+        .single();
+      if (batchError) throw new Error(batchError.message);
+      const ids = shuffled.slice(cursor, cursor + size).map((bono: any) => bono.id);
+      cursor += size;
+      const { error: updateError } = await (supabaseAdmin as any)
+        .from("raffle_bonos")
+        .update({ current_batch_id: batch.id })
+        .in("id", ids)
+        .is("current_batch_id", null);
+      if (updateError) throw new Error(updateError.message);
+      created.push({ ...batch, size });
+    }
+    return {
+      batches: created,
+      total: shuffled.length,
+      minSize: baseSize,
+      maxSize: baseSize + (remainder ? 1 : 0),
+    };
+  });
+
+export const adminAssignResponsibleToBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((value: unknown) =>
+    z.object({ batchId: z.string().uuid(), responsibleId: z.string().uuid() }).parse(value),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: batch, error: batchError } = await (supabaseAdmin as any)
+      .from("raffle_bono_batches")
+      .select("id, raffle_id, responsible_id")
+      .eq("id", data.batchId)
+      .single();
+    if (batchError || !batch) throw new Error("Lote no encontrado.");
+    if (batch.responsible_id) throw new Error("Este lote ya tiene un responsable asignado.");
+    const { data: bonos, error: bonosError } = await (supabaseAdmin as any)
+      .from("raffle_bonos")
+      .select("id, status")
+      .eq("current_batch_id", batch.id)
+      .is("current_responsible_id", null)
+      .in("status", ["disponible", "devuelto"]);
+    if (bonosError || !bonos?.length) throw new Error("El lote no tiene bonos disponibles.");
+    const ids = bonos.map((bono: any) => bono.id);
+    const { error: updateError } = await (supabaseAdmin as any)
+      .from("raffle_bonos")
+      .update({ current_responsible_id: data.responsibleId, status: "asignado" })
+      .in("id", ids)
+      .is("current_responsible_id", null);
+    if (updateError) throw new Error(updateError.message);
+    const { error: batchUpdateError } = await (supabaseAdmin as any)
+      .from("raffle_bono_batches")
+      .update({ responsible_id: data.responsibleId })
+      .eq("id", batch.id)
+      .is("responsible_id", null);
+    if (batchUpdateError) throw new Error(batchUpdateError.message);
+    await (supabaseAdmin as any).from("raffle_bono_assignments").insert(
+      ids.map((bonoId: string) => ({
+        raffle_id: batch.raffle_id,
+        bono_id: bonoId,
+        responsible_id: data.responsibleId,
+        batch_id: batch.id,
+        created_by: context.userId,
+      })),
+    );
+    await (supabaseAdmin as any).from("raffle_bono_events").insert(
+      ids.map((bonoId: string) => ({
+        raffle_id: batch.raffle_id,
+        bono_id: bonoId,
+        actor_user_id: context.userId,
+        responsible_id: data.responsibleId,
+        event_type: "asignado",
+        from_status: "disponible",
+        to_status: "asignado",
+        metadata: { batch_id: batch.id },
+      })),
+    );
+    await (supabaseAdmin as any)
+      .from("raffle_responsibles")
+      .update({ public_page_enabled: true })
+      .eq("id", data.responsibleId);
+    return { assigned: ids.length };
   });
 
 export const adminSetResponsibleActive = createServerFn({ method: "POST" })
@@ -399,11 +571,13 @@ export const adminAssignBonoBatch = createServerFn({ method: "POST" })
       .in("status", ["disponible", "devuelto"])
       .order("serial");
     if (data.bonoIds?.length) query = query.in("id", data.bonoIds);
-    else query = query.limit(data.quantity!);
     const { data: bonos, error } = await query;
     if (error || !bonos?.length) throw new Error(error?.message ?? "No hay bonos disponibles.");
-    if (data.quantity && bonos.length !== data.quantity)
+    if (data.quantity && bonos.length < data.quantity)
       throw new Error("No hay suficientes bonos disponibles.");
+    const selectedBonos = data.bonoIds?.length
+      ? bonos
+      : shuffleBonos(bonos).slice(0, data.quantity!);
     const code = `LOT-${Date.now().toString(36).toUpperCase()}`;
     const { data: batch, error: batchError } = await (supabaseAdmin as any)
       .from("raffle_bono_batches")
@@ -417,7 +591,7 @@ export const adminAssignBonoBatch = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (batchError) throw new Error(batchError.message);
-    const ids = bonos.map((bono: any) => bono.id);
+    const ids = selectedBonos.map((bono: any) => bono.id);
     const { error: updateError } = await (supabaseAdmin as any)
       .from("raffle_bonos")
       .update({

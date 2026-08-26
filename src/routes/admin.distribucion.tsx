@@ -5,7 +5,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
-  adminAssignBonoBatch,
+  adminAssignResponsibleToBatch,
+  adminGenerateBalancedBatches,
   adminListBonoBatches,
   adminListDualBonoCampaigns,
   adminListResponsibles,
@@ -18,8 +19,9 @@ export const Route = createFileRoute("/admin/distribucion")({ component: Distrib
 function DistributionPage() {
   const campaignsFn = useServerFn(adminListDualBonoCampaigns),
     responsiblesFn = useServerFn(adminListResponsibles),
-    assign = useServerFn(adminAssignBonoBatch),
     listBatches = useServerFn(adminListBonoBatches),
+    generate = useServerFn(adminGenerateBalancedBatches),
+    assign = useServerFn(adminAssignResponsibleToBatch),
     qc = useQueryClient();
   const { data: campaigns } = useQuery({
     queryKey: ["dual-bono-campaigns"],
@@ -33,30 +35,44 @@ function DistributionPage() {
     queryKey: ["bono-batches"],
     queryFn: () => listBatches(),
   });
-  const [form, setForm] = useState({
-    raffleId: "",
-    responsibleId: "",
-    quantity: 25,
-    name: "Lote 01",
-  });
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  const [form, setForm] = useState({ raffleId: "", lotCount: 10 });
+  const [choices, setChoices] = useState<Record<string, string>>({});
+  const activeResponsibles = (responsibles?.responsibles ?? []).filter((item: any) => item.active);
+
+  async function generateLots(event: React.FormEvent) {
+    event.preventDefault();
     try {
-      const r = await assign({ data: form });
-      toast.success(`${r.assigned} bonos asignados en ${r.batch.code}.`);
-      await qc.invalidateQueries();
+      const result = await generate({ data: form });
+      toast.success(
+        `${result.total} bonos distribuidos en ${result.batches.length} lotes equilibrados (${result.minSize}–${result.maxSize} por lote).`,
+      );
+      await qc.invalidateQueries({ queryKey: ["bono-batches"] });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error");
+      toast.error(error instanceof Error ? error.message : "No fue posible generar los lotes.");
     }
   }
+
+  async function assignResponsible(batchId: string) {
+    const responsibleId = choices[batchId];
+    if (!responsibleId) return toast.error("Selecciona un responsable.");
+    try {
+      const result = await assign({ data: { batchId, responsibleId } });
+      toast.success(`${result.assigned} bonos asignados al responsable.`);
+      await qc.invalidateQueries();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No fue posible asignar el lote.");
+    }
+  }
+
   return (
     <div className="space-y-7">
       <div className="mx-auto max-w-xl">
-        <h1 className="font-display text-2xl text-gold">Distribución de bonos</h1>
+        <h1 className="font-display text-2xl text-gold">Distribución equilibrada</h1>
         <p className="mb-5 text-sm text-muted-foreground">
-          Asigna bonos ya generados a un responsable. Cada bono conserva sus dos números únicos.
+          Primero genera lotes aleatorios y equilibrados. Después asigna un responsable diferente a
+          cada lote.
         </p>
-        <form onSubmit={submit} className="space-y-4 rounded-xl border bg-card p-6">
+        <form onSubmit={generateLots} className="space-y-4 rounded-xl border bg-card p-6">
           <Field label="Campaña">
             <select
               required
@@ -65,63 +81,38 @@ function DistributionPage() {
               onChange={(e) => setForm({ ...form, raffleId: e.target.value })}
             >
               <option value="">Seleccionar…</option>
-              {(campaigns?.campaigns ?? []).map((x: any) => (
-                <option key={x.id} value={x.id}>
-                  {x.nombre}
+              {(campaigns?.campaigns ?? []).map((item: any) => (
+                <option key={item.id} value={item.id}>
+                  {item.nombre}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Responsable">
-            <select
-              required
-              className="h-10 w-full rounded-md border bg-background px-3"
-              value={form.responsibleId}
-              onChange={(e) => setForm({ ...form, responsibleId: e.target.value })}
-            >
-              <option value="">Seleccionar…</option>
-              {(responsibles?.responsibles ?? [])
-                .filter((x: any) => x.active)
-                .map((x: any) => (
-                  <option key={x.id} value={x.id}>
-                    {x.display_name} (@{x.username})
-                  </option>
-                ))}
-            </select>
-          </Field>
-          <Field label="Cantidad de bonos">
+          <Field label="Cantidad de lotes">
             <Input
               type="number"
               min={1}
               max={500}
-              value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })}
+              value={form.lotCount}
+              onChange={(e) => setForm({ ...form, lotCount: Number(e.target.value) })}
             />
           </Field>
-          <Field label="Nombre del lote">
-            <Input
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-          </Field>
-          <Button className="w-full">Asignar lote</Button>
+          <Button className="w-full">Generar lotes equilibrados</Button>
         </form>
       </div>
       <section>
-        <h2 className="mb-3 font-display text-xl">Lotes asignados</h2>
+        <h2 className="mb-3 font-display text-xl">Lotes y responsables</h2>
         <div className="overflow-x-auto rounded-xl border bg-card">
           <table className="w-full text-sm">
             <thead className="bg-secondary">
               <tr>
                 <th className="p-3 text-left">Lote</th>
                 <th className="p-3 text-left">Campaña</th>
-                <th className="p-3 text-left">Responsable</th>
                 <th>Bonos</th>
+                <th className="p-3 text-left">Responsable / acceso</th>
                 <th>Vendidos</th>
                 <th>Pagados</th>
                 <th>Estado</th>
-                <th>Fecha</th>
               </tr>
             </thead>
             <tbody>
@@ -132,23 +123,64 @@ function DistributionPage() {
                     <div className="text-xs text-muted-foreground">{batch.name}</div>
                   </td>
                   <td className="p-3">{batch.raffles?.nombre ?? "—"}</td>
-                  <td className="p-3">
-                    {batch.raffle_responsibles?.display_name ?? "—"}
-                    <div className="text-xs text-muted-foreground">
-                      @{batch.raffle_responsibles?.username}
-                    </div>
+                  <td className="text-center font-semibold">{batch.counts.total ?? 0}</td>
+                  <td className="min-w-64 p-3">
+                    {batch.raffle_responsibles ? (
+                      <div>
+                        <strong>{batch.raffle_responsibles.display_name}</strong>
+                        <div className="text-xs text-muted-foreground">
+                          @{batch.raffle_responsibles.username}
+                        </div>
+                        <div className="mt-1 flex gap-3 text-xs">
+                          <a
+                            className="text-gold underline"
+                            href="/responsable-login"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Panel privado
+                          </a>
+                          <a
+                            className="text-gold underline"
+                            href={`/vendedor/${batch.raffle_responsibles.slug}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Página pública
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <select
+                          className="h-9 min-w-44 rounded-md border bg-background px-2"
+                          value={choices[batch.id] ?? ""}
+                          onChange={(e) => setChoices({ ...choices, [batch.id]: e.target.value })}
+                        >
+                          <option value="">Asignar responsable…</option>
+                          {activeResponsibles.map((item: any) => (
+                            <option key={item.id} value={item.id}>
+                              {item.display_name}
+                            </option>
+                          ))}
+                        </select>
+                        <Button size="sm" onClick={() => assignResponsible(batch.id)}>
+                          Asignar
+                        </Button>
+                      </div>
+                    )}
                   </td>
-                  <td className="text-center">{batch.counts.total ?? 0}</td>
                   <td className="text-center">{batch.counts.vendido ?? 0}</td>
                   <td className="text-center">{batch.counts.pagado ?? 0}</td>
-                  <td className="text-center capitalize">{batch.status}</td>
-                  <td className="p-3">{new Date(batch.assigned_at).toLocaleDateString("es-CO")}</td>
+                  <td className="text-center capitalize">
+                    {batch.raffle_responsibles ? batch.status : "pendiente"}
+                  </td>
                 </tr>
               ))}
               {!batchData?.batches?.length && (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-muted-foreground">
-                    Aún no hay lotes asignados.
+                  <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                    Aún no hay lotes. Genera la distribución inicial.
                   </td>
                 </tr>
               )}

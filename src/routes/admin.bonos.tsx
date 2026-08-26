@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -36,6 +36,7 @@ const initialForm = {
 };
 
 function AdminBonos() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const list = useServerFn(adminListDualBonoCampaigns);
   const create = useServerFn(adminCreateDualBonoCampaign);
   const qc = useQueryClient();
@@ -44,6 +45,7 @@ function AdminBonos() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(initialForm);
+  if (pathname.replace(/\/$/, "") !== "/admin/bonos") return <Outlet />;
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -52,7 +54,7 @@ function AdminBonos() {
         data: { ...form, fecha_sorteo: form.fecha_sorteo || null, loteria: form.loteria || null },
       });
       toast.success(
-        `${result.generated} bonos y ${result.generated * 2} números generados sin repetición.`,
+        `${result.generated} bonos y ${result.generatedNumbers} números generados sin repetición.`,
       );
       setOpen(false);
       setForm(initialForm);
