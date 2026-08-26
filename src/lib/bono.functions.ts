@@ -234,6 +234,103 @@ export const adminListResponsibles = createServerFn({ method: "GET" })
     return { responsibles: data ?? [] };
   });
 
+const updateResponsibleSchema = z.object({
+  responsibleId: z.string().uuid(),
+  display_name: z.string().trim().min(2).max(120),
+  phone: z.string().trim().max(30).nullable().optional(),
+  public_page_enabled: z.boolean(),
+});
+
+export const adminUpdateResponsible = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((value: unknown) => updateResponsibleSchema.parse(value))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { responsibleId, ...patch } = data;
+    const { data: responsible, error } = await (supabaseAdmin as any)
+      .from("raffle_responsibles")
+      .update({ ...patch, phone: patch.phone || null })
+      .eq("id", responsibleId)
+      .select("id, username, display_name, phone, slug, active, public_page_enabled")
+      .single();
+    if (error) throw new Error(error.message);
+    return { responsible };
+  });
+
+export const adminDeleteResponsible = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((value: unknown) => z.object({ responsibleId: z.string().uuid() }).parse(value))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: responsible, error: lookupError } = await (supabaseAdmin as any)
+      .from("raffle_responsibles")
+      .select("auth_user_id")
+      .eq("id", data.responsibleId)
+      .single();
+    if (lookupError || !responsible) throw new Error("Responsable no encontrado.");
+
+    const relatedTables = ["raffle_bono_batches", "raffle_bono_assignments", "raffle_bono_sales"];
+    for (const table of relatedTables) {
+      const { count, error } = await (supabaseAdmin as any)
+        .from(table)
+        .select("id", { count: "exact", head: true })
+        .eq("responsible_id", data.responsibleId);
+      if (error) throw new Error(error.message);
+      if (count) {
+        throw new Error(
+          "Este responsable tiene historial de bonos. Desactívalo para conservar la trazabilidad.",
+        );
+      }
+    }
+    const { error } = await (supabaseAdmin as any)
+      .from("raffle_responsibles")
+      .delete()
+      .eq("id", data.responsibleId);
+    if (error) throw new Error(error.message);
+    if (responsible.auth_user_id) {
+      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(
+        responsible.auth_user_id,
+      );
+      if (authError)
+        throw new Error(`Se eliminó el perfil, pero no el acceso: ${authError.message}`);
+    }
+    return { deleted: true };
+  });
+
+export const adminListBonoBatches = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: batches, error }, { data: bonos, error: bonosError }] = await Promise.all([
+      (supabaseAdmin as any)
+        .from("raffle_bono_batches")
+        .select("*, raffles(nombre), raffle_responsibles(display_name, username)")
+        .order("assigned_at", { ascending: false }),
+      (supabaseAdmin as any)
+        .from("raffle_bonos")
+        .select("current_batch_id, status")
+        .not("current_batch_id", "is", null),
+    ]);
+    if (error) throw new Error(error.message);
+    if (bonosError) throw new Error(bonosError.message);
+    const counts = new Map<string, Record<string, number>>();
+    for (const bono of bonos ?? []) {
+      const current = counts.get(bono.current_batch_id) ?? { total: 0 };
+      current.total = (current.total ?? 0) + 1;
+      current[bono.status] = (current[bono.status] ?? 0) + 1;
+      counts.set(bono.current_batch_id, current);
+    }
+    return {
+      batches: (batches ?? []).map((batch: any) => ({
+        ...batch,
+        counts: counts.get(batch.id) ?? { total: 0 },
+      })),
+    };
+  });
+
 export const adminSetResponsibleActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((value: unknown) =>
