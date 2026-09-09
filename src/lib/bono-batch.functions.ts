@@ -23,7 +23,7 @@ export const responsibleGetOfferBatches = createServerFn({ method: "GET" })
     const { data: bonos, error } = await (supabaseAdmin as any)
       .from("raffle_bonos")
       .select(
-        "id, serial, status, verification_code, current_batch_id, raffle_id, raffle_bono_numbers(option_number, numero), raffle_bono_batches(id, code, name), raffles(id, nombre, valor_boleta, fecha_sorteo, loteria, bono_title, bono_subtitle, bono_prize_name, bono_prize_image_url, bono_logo_url, bono_number_color, bono_accent_color, bono_footer_text)",
+        "id, serial, status, verification_code, current_batch_id, raffle_id, buyer_name, buyer_phone, buyer_city, buyer_notes, amount_paid, sale_value, raffle_bono_numbers(option_number, numero), raffle_bono_batches(id, code, name), raffles(id, nombre, valor_boleta, fecha_sorteo, loteria, bono_title, bono_subtitle, bono_prize_name, bono_prize_description, bono_prize_dimensions, bono_prize_image_url, bono_side_image_url, bono_logo_url, bono_number_color, bono_accent_color, bono_footer_text, bono_show_qr, bono_show_platform_branding)",
       )
       .eq("current_responsible_id", responsible.id)
       .not("current_batch_id", "is", null)
