@@ -45,20 +45,30 @@ function drawParts(value?: string | null) {
 function NumberPanel({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="overflow-hidden rounded-[clamp(.35rem,.8vw,.65rem)] border border-[#5b331b]/50 bg-white/94 shadow-md">
-      <div className="bg-[#4b2814] px-1 py-[1.1%] text-center text-[clamp(.24rem,.46vw,.38rem)] font-black uppercase tracking-[.08em] text-white">
+      <div className="bg-[#4b2814] px-1 py-[1.15%] text-center text-[clamp(.24rem,.46vw,.39rem)] font-black uppercase tracking-[.08em] text-white">
         {label}
       </div>
-      <div className="grid grid-cols-3 gap-[3%] px-[6%] py-[2.2%]">
+      <div className="grid grid-cols-3 gap-[2.8%] px-[6.4%] py-[2.2%]">
         {padBonoNumber(value).split("").map((digit, index) => (
           <div
             key={index}
             className="flex aspect-[1.18/1] items-center justify-center border border-[#5b331b]/45 bg-white font-black leading-none shadow-inner"
-            style={{ color, fontSize: "clamp(.64rem,1.55vw,1.28rem)" }}
+            style={{ color, fontSize: "clamp(.66rem,1.82vw,1.45rem)" }}
           >
             {digit}
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function OrnamentDivider() {
+  return (
+    <div className="my-[3.6%] flex items-center gap-2 text-[#9a6a25]">
+      <span className="h-px flex-1 border-t border-dashed border-[#6c4a2a]/60" />
+      <span className="text-[clamp(.6rem,1.15vw,.95rem)] leading-none">✦</span>
+      <span className="h-px flex-1 border-t border-dashed border-[#6c4a2a]/60" />
     </div>
   );
 }
@@ -86,21 +96,21 @@ export const BonoDualCard = forwardRef<HTMLDivElement, { bono: DualBonoCardData;
         />
 
         <div className="relative grid h-full grid-cols-[64%_36%]">
-          <section className="relative min-w-0 overflow-hidden border-r border-dashed border-[#6c4a2a]/45 px-[2.6%] pb-[7%] pt-[1.6%]">
+          <section className="relative min-w-0 overflow-hidden border-r border-dashed border-[#6c4a2a]/45 px-[3%] pb-[7%] pt-[1.6%]">
             <div className="flex items-start gap-2">
               {logoImage && <img src={logoImage} alt="Logo" className="max-h-10 max-w-[9%] object-contain" />}
               <div className="min-w-0 flex-1 text-center">
                 <div
-                  className="leading-[.82]"
-                  style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "clamp(1.55rem,5.15vw,4rem)", fontWeight: 700 }}
+                  className="leading-[.8]"
+                  style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "clamp(1.65rem,5.35vw,4.18rem)", fontWeight: 700 }}
                 >
                   {raffle.bono_title || "Bono"}
                 </div>
                 <div
-                  className="mx-auto mt-[.8%] max-w-[96%] leading-[.88]"
+                  className="mx-auto mt-[.4%] max-w-[98%] leading-[.88]"
                   style={{
                     fontFamily: "'Brush Script MT', 'Segoe Script', 'Apple Chancery', cursive",
-                    fontSize: "clamp(1.05rem,3.45vw,2.75rem)",
+                    fontSize: "clamp(1.08rem,3.55vw,2.82rem)",
                     fontWeight: 500,
                   }}
                 >
@@ -109,42 +119,38 @@ export const BonoDualCard = forwardRef<HTMLDivElement, { bono: DualBonoCardData;
               </div>
             </div>
 
-            <div className="mt-[1.2%] grid h-[68%] grid-cols-[64%_36%] gap-[1.4%]">
-              <div className="flex items-center justify-center overflow-hidden pt-[.5%]">
+            <div className="mt-[.9%] grid h-[66%] grid-cols-[60%_40%] gap-[1.4%]">
+              <div className="flex items-end justify-center overflow-hidden pb-[1%]">
                 {prizeImage ? (
-                  <img src={prizeImage} alt={raffle.bono_prize_name || "Premio"} className="h-[102%] w-full object-contain object-center" />
+                  <img src={prizeImage} alt={raffle.bono_prize_name || "Premio"} className="h-[99%] w-full object-contain object-bottom" />
                 ) : (
                   <div className="text-xs text-[#6b5a48]">Imagen del premio</div>
                 )}
               </div>
 
-              <div className="flex min-w-0 flex-col justify-between pr-[2%] pb-[1.5%] text-left">
+              <div className="flex min-w-0 flex-col justify-start pr-[2.4%] pt-[8%] text-left">
                 <div
-                  className="pt-[5%] leading-[1.02]"
-                  style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "clamp(.65rem,1.82vw,1.38rem)", fontWeight: 700 }}
+                  className="leading-[1.06]"
+                  style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "clamp(.54rem,1.55vw,1.1rem)", fontWeight: 700 }}
                 >
                   {raffle.bono_prize_description || `Se rifa esta hermosa ${raffle.bono_prize_name?.toLowerCase() || "cajonera archivador"}.`}
                 </div>
 
-                <div className="my-[3%] flex items-center gap-1.5">
-                  <span className="h-px flex-1 border-t border-dashed border-[#6c4a2a]/60" />
-                  <span className="text-[#9a6a25]">✦</span>
-                  <span className="h-px flex-1 border-t border-dashed border-[#6c4a2a]/60" />
-                </div>
+                <OrnamentDivider />
 
                 {raffle.bono_prize_dimensions && (
-                  <div className="text-center leading-tight" style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "clamp(.48rem,1.22vw,.9rem)", fontWeight: 700 }}>
+                  <div className="text-center leading-tight text-[#3e2415]" style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "clamp(.4rem,1.02vw,.77rem)", fontWeight: 700 }}>
                     <div>Medidas</div>
                     <div>{raffle.bono_prize_dimensions}</div>
                   </div>
                 )}
 
                 {date && (
-                  <div className="mx-auto mt-[2.3%] w-[92%] -translate-y-[2%] rounded-[clamp(.3rem,.75vw,.6rem)] border-2 border-[#b99249] bg-[#0b315d] px-[4%] py-[2.4%] text-center text-white shadow-md">
-                    <div className="text-[clamp(.25rem,.52vw,.42rem)] font-black uppercase tracking-wide">Juega el día</div>
-                    <div className="text-[clamp(1.05rem,2.8vw,2.05rem)] font-black leading-[.9] text-[#f6c431]">{date.day}</div>
-                    <div className="text-[clamp(.27rem,.58vw,.46rem)] font-black uppercase">de {date.month}</div>
-                    {raffle.loteria && <div className="mt-[.5%] text-[clamp(.21rem,.4vw,.32rem)] font-bold uppercase opacity-90">{raffle.loteria}</div>}
+                  <div className="mx-auto mt-[2.2%] w-[84%] rounded-[clamp(.3rem,.75vw,.6rem)] border-2 border-[#b99249] bg-[#0b315d] px-[4%] py-[2.5%] text-center text-white shadow-md">
+                    <div className="text-[clamp(.24rem,.48vw,.4rem)] font-black uppercase tracking-wide">Juega el día</div>
+                    <div className="text-[clamp(1rem,2.7vw,2rem)] font-black leading-[.88] text-[#f6c431]">{date.day}</div>
+                    <div className="text-[clamp(.26rem,.55vw,.44rem)] font-black uppercase">de {date.month}</div>
+                    {raffle.loteria && <div className="mt-[1%] text-[clamp(.2rem,.4vw,.32rem)] font-bold uppercase opacity-90">{raffle.loteria}</div>}
                   </div>
                 )}
               </div>
@@ -161,14 +167,14 @@ export const BonoDualCard = forwardRef<HTMLDivElement, { bono: DualBonoCardData;
             ) : (
               <div className="absolute inset-0 bg-gradient-to-b from-[#f3d79c] to-[#c98e31]" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#9d681f]/18" />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#9d681f]/25" />
 
-            <div className="absolute inset-x-[8%] bottom-[3%] z-10 space-y-[1.55%]">
+            <div className="absolute inset-x-[6.2%] bottom-[3.2%] z-10 space-y-[1.7%]">
               <NumberPanel label="Opción 1" value={bono.numbers[0] ?? 0} color={numberColor} />
               <NumberPanel label="Opción 2" value={bono.numbers[1] ?? 0} color={numberColor} />
-              <div className="flex min-h-[12%] items-center justify-center rounded-[clamp(.4rem,.85vw,.72rem)] border border-[#5b331b]/45 bg-white/96 px-[6%] py-[3.2%] text-center shadow-md">
-                <span className="mr-2 text-[clamp(.62rem,1.45vw,1.08rem)] font-black" style={{ color: numberColor }}>Nº</span>
-                <span className="text-[clamp(.82rem,1.9vw,1.5rem)] font-black tracking-[.04em]">{padBonoNumber(bono.serial)}</span>
+              <div className="rounded-[clamp(.35rem,.8vw,.65rem)] border border-[#5b331b]/45 bg-white/95 px-[6%] py-[2.6%] text-center shadow-md">
+                <span className="mr-3 text-[clamp(.68rem,1.55vw,1.2rem)] font-black" style={{ color: numberColor }}>Nº</span>
+                <span className="text-[clamp(1.05rem,2.45vw,1.95rem)] font-black tracking-[.03em]">{padBonoNumber(bono.serial)}</span>
               </div>
               {verifyUrl && raffle.bono_show_qr !== false && (
                 <div className="truncate rounded bg-white/75 px-1 text-center text-[clamp(.2rem,.38vw,.3rem)] font-semibold text-[#3f2b1b]">Verificación: {verifyUrl}</div>
