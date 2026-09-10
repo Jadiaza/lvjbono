@@ -110,3 +110,60 @@ export const responsibleCancelBonoReservation = createServerFn({ method: "POST" 
     });
     return { ok: true };
   });
+
+export const responsibleRevertBonoSale = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((value: unknown) => z.object({ bonoId: z.string().uuid() }).parse(value))
+  .handler(async ({ data, context }) => {
+    const responsible = await getResponsible(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: bono, error: bonoError } = await (supabaseAdmin as any)
+      .from("raffle_bonos")
+      .select("id, raffle_id, status, sale_id, amount_paid, buyer_name")
+      .eq("id", data.bonoId)
+      .eq("current_responsible_id", responsible.id)
+      .maybeSingle();
+
+    if (bonoError || !bono) throw new Error("Bono no encontrado o no asignado a tu cuenta.");
+    if (bono.status === "pagado" || Number(bono.amount_paid ?? 0) > 0) {
+      throw new Error("Un bono pagado no puede ser revertido por el responsable. Debe hacerlo el administrador general.");
+    }
+    if (bono.status !== "vendido") throw new Error("Solo se puede revertir una venta que esté en estado Vendido.");
+
+    const { error } = await (supabaseAdmin as any)
+      .from("raffle_bonos")
+      .update({
+        status: "reservado",
+        sold_at: null,
+        amount_paid: 0,
+        payment_reference: null,
+        paid_at: null,
+        sale_id: null,
+      })
+      .eq("id", bono.id)
+      .eq("status", "vendido")
+      .eq("current_responsible_id", responsible.id);
+    if (error) throw new Error(error.message);
+
+    if (bono.sale_id) {
+      await (supabaseAdmin as any)
+        .from("raffle_bono_sales")
+        .update({ total_value: 0, amount_paid: 0, payment_reference: null, paid_at: null })
+        .eq("id", bono.sale_id)
+        .eq("responsible_id", responsible.id);
+    }
+
+    await (supabaseAdmin as any).from("raffle_bono_events").insert({
+      raffle_id: bono.raffle_id,
+      bono_id: bono.id,
+      actor_user_id: context.userId,
+      responsible_id: responsible.id,
+      event_type: "venta_revertida",
+      from_status: "vendido",
+      to_status: "reservado",
+      metadata: { buyer_name: bono.buyer_name ?? null },
+    });
+
+    return { ok: true };
+  });
