@@ -1,6 +1,5 @@
 import { forwardRef } from "react";
 import { padBonoNumber } from "@/lib/bono-domain";
-import { formatDate } from "@/lib/format";
 
 export type DualBonoCardData = {
   serial: number;
@@ -31,24 +30,34 @@ export type DualBonoCardData = {
   };
 };
 
+const MONTHS = [
+  "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+  "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
+];
+
+function drawParts(value?: string | null) {
+  if (!value) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return { day: String(day), month: MONTHS[month - 1], year: String(year) };
+}
+
 function NumberPanel({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="overflow-hidden rounded-[clamp(.45rem,1.1vw,.9rem)] border border-[#5d3318]/45 bg-white/92 shadow-md backdrop-blur-[1px]">
-      <div className="bg-[#4d2812] px-2 py-[2.2%] text-center text-[clamp(.34rem,.72vw,.58rem)] font-black uppercase tracking-[.08em] text-white">
+    <div className="overflow-hidden rounded-[clamp(.35rem,.8vw,.65rem)] border border-[#5b331b]/50 bg-white/94 shadow-md">
+      <div className="bg-[#4b2814] px-1 py-[1.4%] text-center text-[clamp(.26rem,.52vw,.43rem)] font-black uppercase tracking-[.08em] text-white">
         {label}
       </div>
-      <div className="grid grid-cols-3 gap-[3%] p-[4%]">
-        {padBonoNumber(value)
-          .split("")
-          .map((digit, index) => (
-            <div
-              key={index}
-              className="flex aspect-[.95/1] items-center justify-center border border-[#5d3318]/45 bg-white text-[clamp(.9rem,3vw,2.3rem)] font-black leading-none shadow-inner"
-              style={{ color }}
-            >
-              {digit}
-            </div>
-          ))}
+      <div className="grid grid-cols-3 gap-[3%] px-[6%] py-[2.5%]">
+        {padBonoNumber(value).split("").map((digit, index) => (
+          <div
+            key={index}
+            className="flex aspect-[1/1] items-center justify-center border border-[#5b331b]/45 bg-white font-black leading-none shadow-inner"
+            style={{ color, fontSize: "clamp(.72rem,2.15vw,1.7rem)" }}
+          >
+            {digit}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -63,106 +72,106 @@ export const BonoDualCard = forwardRef<HTMLDivElement, { bono: DualBonoCardData;
     const prizeImage = raffle.bono_prize_image_data_url || raffle.bono_prize_image_url;
     const sideImage = raffle.bono_side_image_data_url || raffle.bono_side_image_url;
     const logoImage = raffle.bono_logo_data_url || raffle.bono_logo_url;
-    const drawDate = raffle.fecha_sorteo ? formatDate(raffle.fecha_sorteo) : null;
+    const date = drawParts(raffle.fecha_sorteo);
 
     return (
       <div
         ref={ref}
-        className="relative aspect-[3/2] w-full overflow-hidden rounded-[1.3rem] border bg-[#f6ead1] text-[#2f1a0d] shadow-xl"
+        className="relative aspect-[3/2] w-full overflow-hidden rounded-[1.3rem] border bg-[#f5e8ce] text-[#30190c] shadow-xl"
         style={{ borderColor: accent }}
       >
         <div
           className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(circle at 40% 10%, rgba(255,255,255,.96), rgba(252,244,224,.82) 38%, rgba(225,198,148,.5) 100%)",
-          }}
+          style={{ background: "radial-gradient(circle at 36% 8%, #fffdf7 0%, #f8efd9 42%, #e5c895 100%)" }}
         />
 
         <div className="relative grid h-full grid-cols-[64%_36%]">
-          <section className="relative min-w-0 overflow-hidden border-r border-dashed border-[#5d3318]/35 px-[3%] pb-[6%] pt-[2%]">
+          <section className="relative min-w-0 overflow-hidden border-r border-dashed border-[#6c4a2a]/45 px-[3%] pb-[7%] pt-[2%]">
             <div className="flex items-start gap-2">
-              {logoImage && <img src={logoImage} alt="Logo" className="h-[8%] max-h-12 max-w-[10%] object-contain" />}
+              {logoImage && <img src={logoImage} alt="Logo" className="max-h-10 max-w-[9%] object-contain" />}
               <div className="min-w-0 flex-1 text-center">
-                <div className="text-[clamp(1.55rem,5.5vw,4.4rem)] font-serif font-bold leading-[.8]">
+                <div
+                  className="leading-[.82]"
+                  style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "clamp(1.55rem,5.15vw,4rem)", fontWeight: 700 }}
+                >
                   {raffle.bono_title || "Bono"}
                 </div>
-                <div className="mt-[.8%] text-[clamp(.95rem,3.3vw,2.6rem)] font-serif italic leading-[.95]">
+                <div
+                  className="mx-auto mt-[.8%] max-w-[96%] leading-[.88]"
+                  style={{
+                    fontFamily: "'Brush Script MT', 'Segoe Script', 'Apple Chancery', cursive",
+                    fontSize: "clamp(1.05rem,3.45vw,2.75rem)",
+                    fontWeight: 500,
+                  }}
+                >
                   {raffle.bono_subtitle || raffle.nombre}
                 </div>
               </div>
             </div>
 
-            <div className="mt-[2.2%] grid h-[59%] grid-cols-[60%_40%] gap-[2.5%]">
+            <div className="mt-[2%] grid h-[62%] grid-cols-[61%_39%] gap-[2%]">
               <div className="flex items-end justify-center overflow-hidden">
                 {prizeImage ? (
-                  <img
-                    src={prizeImage}
-                    alt={raffle.bono_prize_name || "Premio"}
-                    className="h-full w-full object-contain object-bottom"
-                  />
+                  <img src={prizeImage} alt={raffle.bono_prize_name || "Premio"} className="h-full w-full object-contain object-bottom" />
                 ) : (
-                  <div className="text-sm text-slate-500">Imagen del premio</div>
+                  <div className="text-xs text-[#6b5a48]">Imagen del premio</div>
                 )}
               </div>
+
               <div className="flex min-w-0 flex-col justify-center pr-[3%] text-left">
-                <div className="text-[clamp(.72rem,2vw,1.55rem)] font-serif font-bold leading-tight">
-                  {raffle.bono_prize_description ||
-                    `Se rifa esta hermosa ${raffle.bono_prize_name?.toLowerCase() || "cajonera archivador"}.`}
+                <div
+                  className="leading-[1.02]"
+                  style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "clamp(.65rem,1.82vw,1.38rem)", fontWeight: 700 }}
+                >
+                  {raffle.bono_prize_description || `Se rifa esta hermosa ${raffle.bono_prize_name?.toLowerCase() || "cajonera archivador"}.`}
                 </div>
-                <div className="my-[7%] flex items-center gap-2">
-                  <span className="h-px flex-1 border-t border-dashed border-[#5d3318]/55" />
-                  <span className="text-[#8b5b20]">✦</span>
-                  <span className="h-px flex-1 border-t border-dashed border-[#5d3318]/55" />
+
+                <div className="my-[5%] flex items-center gap-1.5">
+                  <span className="h-px flex-1 border-t border-dashed border-[#6c4a2a]/60" />
+                  <span className="text-[#9a6a25]">✦</span>
+                  <span className="h-px flex-1 border-t border-dashed border-[#6c4a2a]/60" />
                 </div>
+
                 {raffle.bono_prize_dimensions && (
-                  <div className="text-center text-[clamp(.58rem,1.55vw,1.15rem)] font-serif font-bold leading-tight">
+                  <div className="text-center leading-tight" style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "clamp(.48rem,1.25vw,.92rem)", fontWeight: 700 }}>
                     <div>Medidas</div>
                     <div>{raffle.bono_prize_dimensions}</div>
                   </div>
                 )}
-                {drawDate && (
-                  <div className="mt-[8%] rounded-xl border-2 border-[#b08a44] bg-[#0d315b] px-[5%] py-[4%] text-center text-white shadow-sm">
-                    <div className="text-[clamp(.42rem,.95vw,.75rem)] font-black uppercase">Juega el día</div>
-                    <div className="text-[clamp(1.05rem,3vw,2.5rem)] font-black leading-none">{drawDate}</div>
-                    {raffle.loteria && (
-                      <div className="mt-1 text-[clamp(.36rem,.75vw,.58rem)] font-bold uppercase">{raffle.loteria}</div>
-                    )}
+
+                {date && (
+                  <div className="mx-auto mt-[5%] w-[88%] rounded-[clamp(.3rem,.75vw,.6rem)] border-2 border-[#b99249] bg-[#0b315d] px-[4%] py-[3%] text-center text-white shadow-md">
+                    <div className="text-[clamp(.25rem,.52vw,.42rem)] font-black uppercase tracking-wide">Juega el día</div>
+                    <div className="text-[clamp(1rem,2.65vw,2rem)] font-black leading-[.9] text-[#f6c431]">{date.day}</div>
+                    <div className="text-[clamp(.27rem,.58vw,.46rem)] font-black uppercase">de {date.month}</div>
+                    {raffle.loteria && <div className="mt-[1%] text-[clamp(.22rem,.43vw,.34rem)] font-bold uppercase opacity-90">{raffle.loteria}</div>}
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="absolute bottom-0 left-0 right-0 flex h-[7%] items-center justify-center bg-[#4d2812] px-4 text-center text-[clamp(.48rem,1.05vw,.82rem)] font-serif italic text-white">
+            <div className="absolute bottom-0 left-0 right-0 flex h-[7%] items-center justify-center bg-[#4d2812] px-4 text-center text-[clamp(.46rem,1vw,.78rem)] italic text-white" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
               {raffle.bono_footer_text || "¡Gracias por apoyar nuestra misión!"}
             </div>
           </section>
 
           <section className="relative min-w-0 overflow-hidden bg-[#d9a94f]">
             {sideImage ? (
-              <img
-                src={sideImage}
-                alt="San Miguel Arcángel"
-                className="absolute inset-x-0 top-0 h-[58%] w-full object-cover object-top"
-              />
+              <img src={sideImage} alt="San Miguel Arcángel" className="absolute inset-0 h-full w-full object-cover object-top" />
             ) : (
-              <div className="absolute inset-x-0 top-0 h-[58%] bg-gradient-to-b from-[#f2d59c] to-[#c89237]" />
+              <div className="absolute inset-0 bg-gradient-to-b from-[#f3d79c] to-[#c98e31]" />
             )}
-            <div className="absolute inset-x-0 top-0 h-[58%] bg-gradient-to-b from-transparent via-transparent to-[#d9a94f]/35" />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#9d681f]/25" />
 
-            <div className="absolute inset-x-[5%] bottom-[3%] z-10 space-y-[2.5%]">
+            <div className="absolute inset-x-[7%] bottom-[3.2%] z-10 space-y-[1.8%]">
               <NumberPanel label="Opción 1" value={bono.numbers[0] ?? 0} color={numberColor} />
               <NumberPanel label="Opción 2" value={bono.numbers[1] ?? 0} color={numberColor} />
-              <div className="rounded-[clamp(.45rem,1.1vw,.9rem)] border border-[#5d3318]/45 bg-white/95 px-[5%] py-[2.6%] text-left shadow-md">
-                <span className="mr-2 text-[clamp(.72rem,1.7vw,1.3rem)] font-black" style={{ color: numberColor }}>
-                  Nº
-                </span>
-                <span className="text-[clamp(.72rem,1.7vw,1.3rem)] font-black">{padBonoNumber(bono.serial)}</span>
+              <div className="rounded-[clamp(.35rem,.8vw,.65rem)] border border-[#5b331b]/45 bg-white/95 px-[6%] py-[1.8%] text-left shadow-md">
+                <span className="mr-2 text-[clamp(.58rem,1.35vw,1rem)] font-black" style={{ color: numberColor }}>Nº</span>
+                <span className="text-[clamp(.58rem,1.35vw,1rem)] font-black">{padBonoNumber(bono.serial)}</span>
               </div>
               {verifyUrl && raffle.bono_show_qr !== false && (
-                <div className="truncate rounded bg-white/70 px-1 text-center text-[clamp(.28rem,.48vw,.4rem)] font-semibold text-[#3f2b1b]">
-                  Verificación: {verifyUrl}
-                </div>
+                <div className="truncate rounded bg-white/75 px-1 text-center text-[clamp(.2rem,.38vw,.3rem)] font-semibold text-[#3f2b1b]">Verificación: {verifyUrl}</div>
               )}
             </div>
           </section>
@@ -170,9 +179,7 @@ export const BonoDualCard = forwardRef<HTMLDivElement, { bono: DualBonoCardData;
 
         {isReserved && (
           <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center overflow-hidden">
-            <div className="-rotate-[24deg] border-y-[5px] border-red-700/80 bg-white/75 px-[14%] py-[1.5%] text-[clamp(1.5rem,5vw,4.2rem)] font-black uppercase tracking-[0.18em] text-red-700/85 shadow-sm backdrop-blur-[1px]">
-              RESERVADO
-            </div>
+            <div className="-rotate-[24deg] border-y-[5px] border-red-700/80 bg-white/75 px-[14%] py-[1.5%] text-[clamp(1.5rem,5vw,4.2rem)] font-black uppercase tracking-[0.18em] text-red-700/85 shadow-sm backdrop-blur-[1px]">RESERVADO</div>
           </div>
         )}
       </div>
