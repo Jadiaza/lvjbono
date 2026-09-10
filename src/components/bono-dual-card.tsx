@@ -17,8 +17,11 @@ export type DualBonoCardData = {
     bono_prize_description?: string | null;
     bono_prize_dimensions?: string | null;
     bono_prize_image_url?: string | null;
+    bono_prize_image_data_url?: string | null;
     bono_side_image_url?: string | null;
+    bono_side_image_data_url?: string | null;
     bono_logo_url?: string | null;
+    bono_logo_data_url?: string | null;
     bono_number_color?: string | null;
     bono_accent_color?: string | null;
     bono_footer_text?: string | null;
@@ -35,6 +38,9 @@ export const BonoDualCard = forwardRef<
   const numberColor = raffle.bono_number_color || "#C51B1B";
   const accent = raffle.bono_accent_color || "#C51B1B";
   const isReserved = bono.status?.toLowerCase() === "reservado";
+  const prizeImage = raffle.bono_prize_image_data_url || raffle.bono_prize_image_url;
+  const sideImage = raffle.bono_side_image_data_url || raffle.bono_side_image_url;
+  const logoImage = raffle.bono_logo_data_url || raffle.bono_logo_url;
 
   return (
     <div
@@ -56,24 +62,20 @@ export const BonoDualCard = forwardRef<
                 {raffle.bono_subtitle || raffle.nombre}
               </div>
             </div>
-            {raffle.bono_logo_url && (
+            {logoImage && (
               <img
-                src={raffle.bono_logo_url}
+                src={logoImage}
                 alt="Logo"
-                crossOrigin="anonymous"
-                referrerPolicy="no-referrer"
                 className="h-[12%] max-h-14 max-w-[24%] object-contain"
               />
             )}
           </div>
           <div className="mt-3 grid min-h-0 flex-1 grid-cols-[1.15fr_1fr] gap-4">
             <div className="flex items-center justify-center overflow-hidden rounded-xl bg-slate-100">
-              {raffle.bono_prize_image_url ? (
+              {prizeImage ? (
                 <img
-                  src={raffle.bono_prize_image_url}
+                  src={prizeImage}
                   alt={raffle.bono_prize_name || "Premio"}
-                  crossOrigin="anonymous"
-                  referrerPolicy="no-referrer"
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -86,22 +88,10 @@ export const BonoDualCard = forwardRef<
               <strong className="text-[clamp(.7rem,1.5vw,1.1rem)]">
                 {raffle.bono_prize_name || "Premio"}
               </strong>
-              {raffle.bono_prize_description && (
-                <p className="mt-1">{raffle.bono_prize_description}</p>
-              )}
-              {raffle.bono_prize_dimensions && (
-                <p className="mt-1 font-medium">{raffle.bono_prize_dimensions}</p>
-              )}
-              {raffle.fecha_sorteo && (
-                <p className="mt-3">
-                  <strong>Sorteo:</strong> {raffle.fecha_sorteo}
-                </p>
-              )}
-              {raffle.loteria && (
-                <p>
-                  <strong>Lotería:</strong> {raffle.loteria}
-                </p>
-              )}
+              {raffle.bono_prize_description && <p className="mt-1">{raffle.bono_prize_description}</p>}
+              {raffle.bono_prize_dimensions && <p className="mt-1 font-medium">{raffle.bono_prize_dimensions}</p>}
+              {raffle.fecha_sorteo && <p className="mt-3"><strong>Sorteo:</strong> {raffle.fecha_sorteo}</p>}
+              {raffle.loteria && <p><strong>Lotería:</strong> {raffle.loteria}</p>}
             </div>
           </div>
         </section>
@@ -109,47 +99,30 @@ export const BonoDualCard = forwardRef<
           className="relative flex flex-col items-center justify-center overflow-hidden border-l p-[5%] text-center"
           style={{ borderColor: accent, background: `${accent}10` }}
         >
-          {raffle.bono_side_image_url && (
+          {sideImage && (
             <img
-              src={raffle.bono_side_image_url}
+              src={sideImage}
               alt=""
-              crossOrigin="anonymous"
-              referrerPolicy="no-referrer"
               className="absolute inset-0 h-full w-full object-cover opacity-15"
             />
           )}
           <div className="relative z-10 w-full">
             {[0, 1].map((index) => (
               <div key={index} className={index ? "mt-[6%]" : ""}>
-                <div className="text-[clamp(.5rem,1.2vw,.8rem)] font-black tracking-[.2em]">
-                  OPCIÓN {index + 1}
-                </div>
+                <div className="text-[clamp(.5rem,1.2vw,.8rem)] font-black tracking-[.2em]">OPCIÓN {index + 1}</div>
                 <div
                   className="mt-1 text-[clamp(1.6rem,5vw,3.7rem)] font-black leading-none tracking-[.16em]"
                   style={{ color: numberColor }}
                 >
-                  {padBonoNumber(bono.numbers[index] ?? 0)
-                    .split("")
-                    .join(" ")}
+                  {padBonoNumber(bono.numbers[index] ?? 0).split("").join(" ")}
                 </div>
               </div>
             ))}
-            <div className="mt-[8%] text-[clamp(.65rem,1.5vw,1rem)] font-black">
-              BONO Nº {padBonoNumber(bono.serial)}
-            </div>
-            {bono.status && (
-              <div
-                className="mt-1 text-[clamp(.45rem,1vw,.7rem)] font-bold uppercase"
-                style={{ color: accent }}
-              >
-                {bono.status}
-              </div>
-            )}
+            <div className="mt-[8%] text-[clamp(.65rem,1.5vw,1rem)] font-black">BONO Nº {padBonoNumber(bono.serial)}</div>
+            {bono.status && <div className="mt-1 text-[clamp(.45rem,1vw,.7rem)] font-bold uppercase" style={{ color: accent }}>{bono.status}</div>}
             {raffle.bono_show_qr !== false && verifyUrl && (
               <div className="mx-auto mt-2 max-w-[80%] break-all rounded border border-slate-300 bg-white/80 p-1 text-[clamp(.35rem,.7vw,.55rem)]">
-                Verificar
-                <br />
-                {verifyUrl}
+                Verificar<br />{verifyUrl}
               </div>
             )}
           </div>
@@ -160,9 +133,7 @@ export const BonoDualCard = forwardRef<
         style={{ background: accent }}
       >
         {raffle.bono_footer_text || "¡Gracias por apoyar nuestra misión!"}
-        {raffle.bono_show_platform_branding !== false && (
-          <span className="ml-2 opacity-75">· Rifaya</span>
-        )}
+        {raffle.bono_show_platform_branding !== false && <span className="ml-2 opacity-75">· Rifaya</span>}
       </footer>
 
       {isReserved && (
