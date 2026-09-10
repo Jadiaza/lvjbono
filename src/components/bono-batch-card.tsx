@@ -11,7 +11,9 @@ type BatchRaffle = {
   bono_subtitle?: string | null;
   bono_prize_name?: string | null;
   bono_prize_image_url?: string | null;
+  bono_prize_image_data_url?: string | null;
   bono_logo_url?: string | null;
+  bono_logo_data_url?: string | null;
   bono_number_color?: string | null;
   bono_accent_color?: string | null;
   bono_footer_text?: string | null;
@@ -41,6 +43,12 @@ export const BonoBatchCard = forwardRef<HTMLDivElement, BonoBatchCardProps>(
     const numberColor = raffle.bono_number_color || "#C51B1B";
     const ordered = [...bonos].sort((a, b) => a.serial - b.serial);
     const available = ordered.filter((bono) => !unavailableStatuses.has(bono.status)).length;
+    const prizeImage = exportMode
+      ? raffle.bono_prize_image_data_url || raffle.bono_prize_image_url
+      : raffle.bono_prize_image_url;
+    const logoImage = exportMode
+      ? raffle.bono_logo_data_url || raffle.bono_logo_url
+      : raffle.bono_logo_url;
 
     return (
       <div
@@ -59,11 +67,11 @@ export const BonoBatchCard = forwardRef<HTMLDivElement, BonoBatchCardProps>(
         >
           <div className="min-w-0">
             <div className="flex items-center gap-3 sm:gap-5">
-              {!exportMode && raffle.bono_logo_url && (
+              {logoImage && (
                 <img
-                  src={raffle.bono_logo_url}
+                  src={logoImage}
                   alt="Logo"
-                  className="h-14 w-14 rounded-xl object-contain sm:h-16 sm:w-16"
+                  className={exportMode ? "h-20 w-20 rounded-xl object-contain" : "h-14 w-14 rounded-xl object-contain sm:h-16 sm:w-16"}
                 />
               )}
               <div className="min-w-0">
@@ -90,17 +98,17 @@ export const BonoBatchCard = forwardRef<HTMLDivElement, BonoBatchCardProps>(
             </p>
           </div>
           <div className="flex min-w-0 flex-col items-center justify-center rounded-3xl bg-[#fff5db] p-4 text-center">
-            {!exportMode && raffle.bono_prize_image_url ? (
+            {prizeImage ? (
               <img
-                src={raffle.bono_prize_image_url}
+                src={prizeImage}
                 alt={raffle.bono_prize_name || "Premio"}
-                className="h-32 w-full object-contain sm:h-36"
+                className={exportMode ? "h-40 w-full object-contain" : "h-32 w-full object-contain sm:h-36"}
               />
-            ) : exportMode ? (
-              <div className="flex h-40 w-full items-center justify-center rounded-2xl border border-dashed border-amber-300 bg-white/70 px-5 text-center text-2xl font-black text-slate-700">
+            ) : (
+              <div className={exportMode ? "flex h-40 w-full items-center justify-center rounded-2xl border border-dashed border-amber-300 bg-white/70 px-5 text-center text-2xl font-black text-slate-700" : "hidden"}>
                 {raffle.bono_prize_name || "Premio especial"}
               </div>
-            ) : null}
+            )}
             <p className="mt-3 text-xs font-bold uppercase tracking-wider" style={{ color: accent }}>
               Premio
             </p>
