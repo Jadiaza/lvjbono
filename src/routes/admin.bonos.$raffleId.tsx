@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Download, Printer } from "lucide-react";
+import { Download, Printer, RotateCcw } from "lucide-react";
 import { toPng } from "html-to-image";
+import { toast } from "sonner";
 import { adminGetDualBonoCampaign } from "@/lib/bono.functions";
+import { adminRevertPaidBono } from "@/lib/admin-bono-corrections.functions";
 import { BonoDualCard } from "@/components/bono-dual-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +15,7 @@ import { formatCOP } from "@/lib/format";
 import { padBonoNumber } from "@/lib/bono-domain";
 
 export const Route = createFileRoute("/admin/bonos/$raffleId")({ component: CampaignDetail });
+
 const colors: Record<string, string> = {
   disponible: "bg-slate-200",
   asignado: "bg-blue-200",
@@ -22,23 +25,25 @@ const colors: Record<string, string> = {
   devuelto: "bg-purple-200",
   anulado: "bg-rose-700 text-white",
 };
+
 function CampaignDetail() {
   const { raffleId } = Route.useParams();
   const get = useServerFn(adminGetDualBonoCampaign);
+  const revertPaid = useServerFn(adminRevertPaidBono);
+  const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["dual-bono", raffleId],
     queryFn: () => get({ data: { raffleId } }),
   });
-  const [search, setSearch] = useState(""),
-    [selected, setSelected] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [reverting, setReverting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
-  const bonos = data?.bonos ?? [],
-    raffle = data?.raffle,
-    summary = data?.summary ?? {
-      counts: {},
-      paidValue: 0,
-      pending: 0,
-    };
+
+  const bonos = data?.bonos ?? [];
+  const raffle = data?.raffle;
+  const summary = data?.summary ?? { counts: {}, paidValue: 0, pending: 0 };
+
   const numberEntries = useMemo(
     () =>
       bonos
@@ -48,13 +53,16 @@ function CampaignDetail() {
         .sort((a: any, b: any) => a.numero - b.numero),
     [bonos],
   );
+
   const filtered = bonos.filter(
     (b: any) =>
       !search ||
       padBonoNumber(b.serial).includes(search) ||
       b.numbers.some((n: any) => padBonoNumber(n.numero).includes(search)),
   );
+
   const selectedBono = bonos.find((b: any) => b.id === selected) ?? filtered[0];
+
   function exportCsv() {
     const header =
       "Bono,Opción 1,Opción 2,Responsable,Lote,Estado,Comprador,Fecha venta,Valor,Pagado";
@@ -81,6 +89,7 @@ function CampaignDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }
+
   async function downloadPng() {
     if (!printRef.current || !selectedBono) return;
     const url = await toPng(printRef.current, { pixelRatio: 2, cacheBust: true });
@@ -89,12 +98,39 @@ function CampaignDetail() {
     anchor.href = url;
     anchor.click();
   }
+
+  async function revertSelectedPayment() {
+    if (!selectedBono || selectedBono.status !== "pagado") return;
+    const reason = window.prompt(
+      `Motivo para revertir el pago del Bono ${padBonoNumber(selectedBono.serial)}:`,
+      "Corrección administrativa",
+    );
+    if (!reason?.trim()) return;
+    const ok = window.confirm(
+      `El Bono ${padBonoNumber(selectedBono.serial)} volverá de PAGADO a VENDIDO y su valor pagado quedará en $0. ¿Continuar?`,
+    );
+    if (!ok) return;
+
+    setReverting(true);
+    try {
+      await revertPaid({ data: { bonoId: selectedBono.id, reason: reason.trim() } });
+      toast.success(`Pago del Bono ${padBonoNumber(selectedBono.serial)} revertido. Ahora está VENDIDO.`);
+      await qc.invalidateQueries({ queryKey: ["dual-bono", raffleId] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No fue posible revertir el pago.");
+    } finally {
+      setReverting(false);
+    }
+  }
+
   if (!raffle) return <p>Cargando campaña…</p>;
+
   const stats = [
     ...Object.entries(summary.counts).map(([k, v]) => [k, v]),
     ["Recaudo", formatCOP(summary.paidValue)],
     ["Pendiente", formatCOP(summary.pending)],
   ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -104,6 +140,7 @@ function CampaignDetail() {
           {formatCOP(bonos.length * raffle.valor_boleta)}
         </p>
       </div>
+
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-9">
         {stats.map(([label, value]) => (
           <div key={String(label)} className="rounded-lg border bg-card p-3">
@@ -112,6 +149,7 @@ function CampaignDetail() {
           </div>
         ))}
       </div>
+
       <div className="flex flex-wrap gap-2">
         <Input
           className="max-w-xs"
@@ -120,17 +158,22 @@ function CampaignDetail() {
           onChange={(e) => setSearch(e.target.value)}
         />
         <Button variant="outline" onClick={exportCsv}>
-          <Download className="mr-1 h-4 w-4" />
-          CSV
+          <Download className="mr-1 h-4 w-4" /> CSV
         </Button>
         <Button variant="outline" onClick={downloadPng} disabled={!selectedBono}>
           <Download className="mr-1 h-4 w-4" /> PNG
         </Button>
         <Button variant="outline" onClick={() => window.print()}>
-          <Printer className="mr-1 h-4 w-4" />
-          Imprimir
+          <Printer className="mr-1 h-4 w-4" /> Imprimir
         </Button>
+        {selectedBono?.status === "pagado" && (
+          <Button variant="destructive" onClick={revertSelectedPayment} disabled={reverting}>
+            <RotateCcw className="mr-1 h-4 w-4" />
+            {reverting ? "Revirtiendo…" : "Revertir pago"}
+          </Button>
+        )}
       </div>
+
       <section>
         <h2 className="mb-2 font-semibold">Matriz general 000–999</h2>
         <div className="grid grid-cols-10 gap-1 sm:grid-cols-[repeat(20,minmax(0,1fr))]">
@@ -146,6 +189,7 @@ function CampaignDetail() {
           ))}
         </div>
       </section>
+
       <section>
         <h2 className="mb-2 font-semibold">Consolidado por responsable</h2>
         <div className="overflow-x-auto rounded-xl border">
@@ -179,6 +223,7 @@ function CampaignDetail() {
           </table>
         </div>
       </section>
+
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <div ref={printRef}>
           {selectedBono && (
@@ -191,7 +236,14 @@ function CampaignDetail() {
               verifyUrl={`${typeof window === "undefined" ? "" : window.location.origin}/bono/${selectedBono.verification_code}`}
             />
           )}
+          {selectedBono?.status === "pagado" && (
+            <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+              <strong>Corrección administrativa:</strong> este bono está pagado. Solo el administrador puede usar
+              <span className="font-semibold"> Revertir pago</span> para devolverlo a Vendido.
+            </div>
+          )}
         </div>
+
         <aside className="max-h-[500px] overflow-auto rounded-xl border bg-card p-3">
           <h2 className="mb-2 font-semibold">Bonos ({filtered.length})</h2>
           {filtered.map((b: any) => (
@@ -201,8 +253,7 @@ function CampaignDetail() {
               className="flex w-full justify-between rounded px-2 py-2 text-sm hover:bg-secondary"
             >
               <span>
-                Bono {padBonoNumber(b.serial)} ·{" "}
-                {b.numbers.map((n: any) => padBonoNumber(n.numero)).join(" / ")}
+                Bono {padBonoNumber(b.serial)} · {b.numbers.map((n: any) => padBonoNumber(n.numero)).join(" / ")}
               </span>
               <span className="text-right capitalize">
                 {b.status}
