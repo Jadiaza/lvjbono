@@ -58,6 +58,8 @@ export const BonoDualCard = forwardRef<
               <img
                 src={raffle.bono_logo_url}
                 alt="Logo"
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
                 className="h-[12%] max-h-14 max-w-[24%] object-contain"
               />
             )}
@@ -68,6 +70,8 @@ export const BonoDualCard = forwardRef<
                 <img
                   src={raffle.bono_prize_image_url}
                   alt={raffle.bono_prize_name || "Premio"}
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -107,6 +111,8 @@ export const BonoDualCard = forwardRef<
             <img
               src={raffle.bono_side_image_url}
               alt=""
+              crossOrigin="anonymous"
+              referrerPolicy="no-referrer"
               className="absolute inset-0 h-full w-full object-cover opacity-15"
             />
           )}
