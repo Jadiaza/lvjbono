@@ -34,6 +34,8 @@ export const BonoDualCard = forwardRef<
   const raffle = bono.raffle;
   const numberColor = raffle.bono_number_color || "#C51B1B";
   const accent = raffle.bono_accent_color || "#C51B1B";
+  const isReserved = bono.status?.toLowerCase() === "reservado";
+
   return (
     <div
       ref={ref}
@@ -162,6 +164,14 @@ export const BonoDualCard = forwardRef<
           <span className="ml-2 opacity-75">· Rifaya</span>
         )}
       </footer>
+
+      {isReserved && (
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center overflow-hidden">
+          <div className="-rotate-[24deg] border-y-[5px] border-red-700/80 bg-white/75 px-[14%] py-[1.5%] text-[clamp(1.4rem,5vw,4rem)] font-black uppercase tracking-[0.18em] text-red-700/85 shadow-sm backdrop-blur-[1px]">
+            RESERVADO
+          </div>
+        </div>
+      )}
     </div>
   );
 });
