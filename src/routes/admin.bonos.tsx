@@ -6,6 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Plus, TicketCheck } from "lucide-react";
 import { toast } from "sonner";
 import { adminCreateDualBonoCampaign, adminListDualBonoCampaigns } from "@/lib/bono.functions";
+import { adminSetDualBonoPublicSlug } from "@/lib/bono-slug.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/admin/bonos")({ component: AdminBonos });
 
 const initialForm = {
   nombre: "",
+  public_code: "",
   valor_boleta: 10000,
   bono_total: 500,
   fecha_sorteo: "",
@@ -39,6 +41,7 @@ function AdminBonos() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const list = useServerFn(adminListDualBonoCampaigns);
   const create = useServerFn(adminCreateDualBonoCampaign);
+  const setPublicSlug = useServerFn(adminSetDualBonoPublicSlug);
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { data } = useQuery({ queryKey: ["dual-bono-campaigns"], queryFn: () => list() });
@@ -46,15 +49,27 @@ function AdminBonos() {
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(initialForm);
   if (pathname.replace(/\/$/, "") !== "/admin/bonos") return <Outlet />;
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    const publicCode = form.public_code.trim().toLowerCase();
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(publicCode)) {
+      toast.error("El código público debe verse como bsm-001: letras, números y guiones.");
+      return;
+    }
     setBusy(true);
     try {
+      const { public_code: _publicCode, ...campaignForm } = form;
       const result = await create({
-        data: { ...form, fecha_sorteo: form.fecha_sorteo || null, loteria: form.loteria || null },
+        data: {
+          ...campaignForm,
+          fecha_sorteo: form.fecha_sorteo || null,
+          loteria: form.loteria || null,
+        },
       });
+      await setPublicSlug({ data: { raffleId: result.raffle.id, slug: publicCode } });
       toast.success(
-        `${result.generated} bonos y ${result.generatedNumbers} números generados sin repetición.`,
+        `${result.generated} bonos y ${result.generatedNumbers} números generados. Enlace público: /${publicCode}`,
       );
       setOpen(false);
       setForm(initialForm);
@@ -66,6 +81,7 @@ function AdminBonos() {
       setBusy(false);
     }
   }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -94,6 +110,9 @@ function AdminBonos() {
               {campaign.bono_total} bonos · {campaign.bono_total * 2} números ·{" "}
               {formatCOP(campaign.valor_boleta)}
             </p>
+            {campaign.slug && (
+              <p className="mt-2 text-xs font-semibold text-gold">Enlace: /{campaign.slug}</p>
+            )}
           </Link>
         ))}
         {!data?.campaigns?.length && (
@@ -112,7 +131,7 @@ function AdminBonos() {
               Se crearán bonos con <strong>2 números de 3 cifras</strong>, mezclados sin repetición.
               No se crearán tickets tradicionales.
             </div>
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2">
               <Field label="Nombre *">
                 <Input
                   required
@@ -120,6 +139,24 @@ function AdminBonos() {
                   onChange={(e) => setForm({ ...form, nombre: e.target.value })}
                 />
               </Field>
+              <Field label="Código público *">
+                <Input
+                  required
+                  placeholder="bsm-001"
+                  value={form.public_code}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      public_code: e.target.value.toLowerCase().replace(/\s+/g, "-"),
+                    })
+                  }
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  El enlace quedará como rappibol.vercel.app/{form.public_code || "bsm-001"}
+                </p>
+              </Field>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
               <Field label="Cantidad">
                 <Input
                   type="number"
