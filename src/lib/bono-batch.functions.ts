@@ -15,6 +15,28 @@ async function getResponsible(context: AuthContext) {
   return data as any;
 }
 
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+async function imageToDataUrl(url: string | null | undefined) {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return null;
+    const response = await fetch(parsed.toString(), { redirect: "follow" });
+    if (!response.ok) return null;
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.startsWith("image/")) return null;
+    const declaredLength = Number(response.headers.get("content-length") || 0);
+    if (declaredLength > MAX_IMAGE_BYTES) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength > MAX_IMAGE_BYTES) return null;
+    const base64 = Buffer.from(bytes).toString("base64");
+    return `data:${contentType};base64,${base64}`;
+  } catch {
+    return null;
+  }
+}
+
 export const responsibleGetOfferBatches = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -30,16 +52,41 @@ export const responsibleGetOfferBatches = createServerFn({ method: "GET" })
       .order("serial");
     if (error) throw new Error(error.message);
 
+    const assetCache = new Map<string, Promise<string | null>>();
+    const inlineAsset = (url: string | null | undefined) => {
+      if (!url) return Promise.resolve(null);
+      if (!assetCache.has(url)) assetCache.set(url, imageToDataUrl(url));
+      return assetCache.get(url)!;
+    };
+
+    const raffleCache = new Map<string, any>();
+    for (const bono of bonos ?? []) {
+      const raffle = bono.raffles;
+      if (!raffle?.id || raffleCache.has(raffle.id)) continue;
+      const [prizeDataUrl, sideDataUrl, logoDataUrl] = await Promise.all([
+        inlineAsset(raffle.bono_prize_image_url),
+        inlineAsset(raffle.bono_side_image_url),
+        inlineAsset(raffle.bono_logo_url),
+      ]);
+      raffleCache.set(raffle.id, {
+        ...raffle,
+        bono_prize_image_data_url: prizeDataUrl,
+        bono_side_image_data_url: sideDataUrl,
+        bono_logo_data_url: logoDataUrl,
+      });
+    }
+
     const grouped = new Map<string, any>();
     for (const bono of bonos ?? []) {
       const batch = bono.raffle_bono_batches;
       const raffle = bono.raffles;
       if (!batch || !raffle) continue;
+      const enrichedRaffle = raffleCache.get(raffle.id) ?? raffle;
       const current = grouped.get(batch.id) ?? {
         id: batch.id,
         code: batch.code,
         name: batch.name,
-        raffle,
+        raffle: enrichedRaffle,
         bonos: [],
       };
       current.bonos.push(bono);
