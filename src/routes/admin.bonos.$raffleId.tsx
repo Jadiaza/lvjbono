@@ -61,7 +61,11 @@ function CampaignDetail() {
       b.numbers.some((n: any) => padBonoNumber(n.numero).includes(search)),
   );
 
-  const selectedBono = bonos.find((b: any) => b.id === selected) ?? filtered[0];
+  const selectedBono = selected ? bonos.find((b: any) => b.id === selected) ?? null : null;
+
+  function selectBono(bonoId: string) {
+    setSelected(bonoId);
+  }
 
   function exportCsv() {
     const header =
@@ -161,32 +165,39 @@ function CampaignDetail() {
           <Download className="mr-1 h-4 w-4" /> CSV
         </Button>
         <Button variant="outline" onClick={downloadPng} disabled={!selectedBono}>
-          <Download className="mr-1 h-4 w-4" /> PNG
+          <Download className="mr-1 h-4 w-4" /> PNG del bono seleccionado
         </Button>
         <Button variant="outline" onClick={() => window.print()}>
           <Printer className="mr-1 h-4 w-4" /> Imprimir
         </Button>
-        {selectedBono?.status === "pagado" && (
-          <Button variant="destructive" onClick={revertSelectedPayment} disabled={reverting}>
-            <RotateCcw className="mr-1 h-4 w-4" />
-            {reverting ? "Revirtiendo…" : "Revertir pago"}
-          </Button>
-        )}
       </div>
 
       <section>
-        <h2 className="mb-2 font-semibold">Matriz general 000–999</h2>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="font-semibold">Matriz general 000–999</h2>
+            <p className="text-xs text-muted-foreground">Toca cualquiera de los dos números para seleccionar su bono.</p>
+          </div>
+          {selectedBono && (
+            <div className="rounded-lg border bg-card px-3 py-2 text-sm">
+              Seleccionado: <strong>Bono {padBonoNumber(selectedBono.serial)}</strong> · <span className="capitalize">{selectedBono.status}</span>
+            </div>
+          )}
+        </div>
         <div className="grid grid-cols-10 gap-1 sm:grid-cols-[repeat(20,minmax(0,1fr))]">
-          {numberEntries.map((entry: any) => (
-            <button
-              key={entry.numero}
-              onClick={() => setSelected(entry.bono.id)}
-              title={`Bono ${padBonoNumber(entry.bono.serial)} · Opción ${entry.option} · ${entry.bono.status}`}
-              className={`aspect-square rounded text-[8px] sm:text-[10px] ${colors[entry.bono.status] ?? "bg-slate-200"}`}
-            >
-              {padBonoNumber(entry.numero)}
-            </button>
-          ))}
+          {numberEntries.map((entry: any) => {
+            const isSelected = selected === entry.bono.id;
+            return (
+              <button
+                key={entry.numero}
+                onClick={() => selectBono(entry.bono.id)}
+                title={`Bono ${padBonoNumber(entry.bono.serial)} · Opción ${entry.option} · ${entry.bono.status}`}
+                className={`aspect-square rounded text-[8px] ring-offset-1 sm:text-[10px] ${colors[entry.bono.status] ?? "bg-slate-200"} ${isSelected ? "ring-2 ring-gold" : ""}`}
+              >
+                {padBonoNumber(entry.numero)}
+              </button>
+            );
+          })}
         </div>
       </section>
 
@@ -225,21 +236,47 @@ function CampaignDetail() {
       </section>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-        <div ref={printRef}>
-          {selectedBono && (
-            <BonoDualCard
-              bono={{
-                ...selectedBono,
-                numbers: selectedBono.numbers.map((n: any) => n.numero),
-                raffle,
-              }}
-              verifyUrl={`${typeof window === "undefined" ? "" : window.location.origin}/bono/${selectedBono.verification_code}`}
-            />
-          )}
-          {selectedBono?.status === "pagado" && (
-            <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
-              <strong>Corrección administrativa:</strong> este bono está pagado. Solo el administrador puede usar
-              <span className="font-semibold"> Revertir pago</span> para devolverlo a Vendido.
+        <div>
+          {selectedBono ? (
+            <div className="space-y-3">
+              <div ref={printRef}>
+                <BonoDualCard
+                  bono={{
+                    ...selectedBono,
+                    numbers: selectedBono.numbers.map((n: any) => n.numero),
+                    raffle,
+                  }}
+                  verifyUrl={`${typeof window === "undefined" ? "" : window.location.origin}/bono/${selectedBono.verification_code}`}
+                />
+              </div>
+
+              <div className="rounded-xl border bg-card p-4">
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                  <div>
+                    <p className="font-semibold">Bono {padBonoNumber(selectedBono.serial)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Estado actual: <span className="font-medium capitalize text-foreground">{selectedBono.status}</span>
+                      {selectedBono.buyer_name ? ` · Comprador: ${selectedBono.buyer_name}` : ""}
+                    </p>
+                  </div>
+
+                  {selectedBono.status === "pagado" && (
+                    <Button variant="destructive" onClick={revertSelectedPayment} disabled={reverting}>
+                      <RotateCcw className="mr-1 h-4 w-4" />
+                      {reverting ? "Revirtiendo…" : `Revertir pago del Bono ${padBonoNumber(selectedBono.serial)}`}
+                    </Button>
+                  )}
+                </div>
+                {selectedBono.status === "pagado" && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Esta acción afecta únicamente al bono seleccionado y lo devuelve de Pagado a Vendido.
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed bg-card p-8 text-center text-muted-foreground">
+              Selecciona primero un bono en la matriz o en la lista. Las acciones administrativas aparecerán únicamente para ese bono.
             </div>
           )}
         </div>
@@ -249,8 +286,8 @@ function CampaignDetail() {
           {filtered.map((b: any) => (
             <button
               key={b.id}
-              onClick={() => setSelected(b.id)}
-              className="flex w-full justify-between rounded px-2 py-2 text-sm hover:bg-secondary"
+              onClick={() => selectBono(b.id)}
+              className={`flex w-full justify-between rounded px-2 py-2 text-sm hover:bg-secondary ${selected === b.id ? "bg-secondary ring-1 ring-gold" : ""}`}
             >
               <span>
                 Bono {padBonoNumber(b.serial)} · {b.numbers.map((n: any) => padBonoNumber(n.numero)).join(" / ")}
