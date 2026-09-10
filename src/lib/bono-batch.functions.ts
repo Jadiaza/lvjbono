@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { Buffer } from "node:buffer";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -30,8 +31,7 @@ async function imageToDataUrl(url: string | null | undefined) {
     if (declaredLength > MAX_IMAGE_BYTES) return null;
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (bytes.byteLength > MAX_IMAGE_BYTES) return null;
-    const base64 = Buffer.from(bytes).toString("base64");
-    return `data:${contentType};base64,${base64}`;
+    return `data:${contentType};base64,${Buffer.from(bytes).toString("base64")}`;
   } catch {
     return null;
   }
