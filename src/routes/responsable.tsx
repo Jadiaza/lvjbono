@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Download, Eye, LogOut, Search, Share2, Undo2 } from "lucide-react";
+import { Download, Eye, KeyRound, LogOut, Search, Share2, Undo2 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
 import { responsibleGetDashboard, responsibleUpdateBonos } from "@/lib/bono.functions";
@@ -45,6 +45,9 @@ function ResponsibleDashboard() {
   const [selectedBono, setSelectedBono] = useState<any | null>(null);
   const [reserveOpen, setReserveOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ password: "", confirmPassword: "" });
   const [busy, setBusy] = useState(false);
   const [customer, setCustomer] = useState({ buyer_name: "", buyer_phone: "", buyer_city: "", buyer_notes: "" });
   const [payment, setPayment] = useState({ amount_paid: "", payment_reference: "" });
@@ -101,6 +104,32 @@ function ResponsibleDashboard() {
   async function refresh() {
     await qc.invalidateQueries({ queryKey: ["responsible-dashboard"] });
     await qc.invalidateQueries({ queryKey: ["responsible-offer-batches"] });
+  }
+
+  async function submitPasswordChange(event: React.FormEvent) {
+    event.preventDefault();
+    if (passwordForm.password.length < 8) {
+      toast.error("La nueva contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    if (passwordForm.password !== passwordForm.confirmPassword) {
+      toast.error("Las contraseñas no coinciden.");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const { error: passwordError } = await supabase.auth.updateUser({ password: passwordForm.password });
+      if (passwordError) throw passwordError;
+      toast.success("Contraseña actualizada. Ingresa nuevamente con tu nueva contraseña.");
+      setPasswordOpen(false);
+      setPasswordForm({ password: "", confirmPassword: "" });
+      await supabase.auth.signOut();
+      navigate({ to: "/responsable-login", replace: true });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No fue posible cambiar la contraseña.");
+    } finally {
+      setChangingPassword(false);
+    }
   }
 
   async function submitReservation(event: React.FormEvent) {
@@ -249,9 +278,14 @@ function ResponsibleDashboard() {
           <h1 className="truncate font-display text-xl text-gold sm:text-2xl">{data.responsible.display_name}</h1>
           <p className="text-sm text-muted-foreground">Mis bonos · ventas y pagos</p>
         </div>
-        <Button variant="ghost" size="sm" onClick={async () => { await supabase.auth.signOut(); navigate({ to: "/responsable-login" }); }}>
-          <LogOut className="mr-1 h-4 w-4" /> Salir
-        </Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={() => setPasswordOpen(true)}>
+            <KeyRound className="mr-1 h-4 w-4" /> Cambiar contraseña
+          </Button>
+          <Button variant="ghost" size="sm" onClick={async () => { await supabase.auth.signOut(); navigate({ to: "/responsable-login" }); }}>
+            <LogOut className="mr-1 h-4 w-4" /> Salir
+          </Button>
+        </div>
       </header>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -320,6 +354,49 @@ function ResponsibleDashboard() {
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
         <DialogContent className="max-w-md"><DialogHeader><DialogTitle>Registrar pago</DialogTitle></DialogHeader>
           <form onSubmit={submitPayment} className="space-y-3"><Field label="Valor recibido"><Input inputMode="numeric" value={payment.amount_paid} onChange={(e) => setPayment({ ...payment, amount_paid: e.target.value.replace(/\D/g, "") })} /></Field><Field label="Referencia / comprobante"><Input value={payment.payment_reference} onChange={(e) => setPayment({ ...payment, payment_reference: e.target.value })} /></Field><Button disabled={busy} className="w-full">{busy ? "Guardando…" : "Confirmar pago"}</Button></form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={passwordOpen}
+        onOpenChange={(open) => {
+          setPasswordOpen(open);
+          if (!open) setPasswordForm({ password: "", confirmPassword: "" });
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Cambiar contraseña</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Crea una contraseña personal de al menos 8 caracteres. Después del cambio deberás iniciar sesión nuevamente.
+          </p>
+          <form onSubmit={submitPasswordChange} className="space-y-3">
+            <Field label="Nueva contraseña">
+              <Input
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                maxLength={128}
+                required
+                value={passwordForm.password}
+                onChange={(e) => setPasswordForm({ ...passwordForm, password: e.target.value })}
+              />
+            </Field>
+            <Field label="Confirmar nueva contraseña">
+              <Input
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                maxLength={128}
+                required
+                value={passwordForm.confirmPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+              />
+            </Field>
+            <Button className="w-full" disabled={changingPassword}>
+              <KeyRound className="mr-2 h-4 w-4" />
+              {changingPassword ? "Actualizando…" : "Guardar nueva contraseña"}
+            </Button>
+          </form>
         </DialogContent>
       </Dialog>
     </main>
