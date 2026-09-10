@@ -64,7 +64,7 @@ export const BonoBatchCard = forwardRef<HTMLDivElement, BonoBatchCardProps>(
                   src={raffle.bono_logo_url}
                   alt="Logo"
                   className={exportMode ? "h-20 w-20 rounded-xl object-contain" : "h-14 w-14 rounded-xl object-contain sm:h-16 sm:w-16"}
-                  crossOrigin="anonymous"
+                  crossOrigin={exportMode ? "anonymous" : undefined}
                 />
               )}
               <div className="min-w-0">
@@ -96,7 +96,7 @@ export const BonoBatchCard = forwardRef<HTMLDivElement, BonoBatchCardProps>(
                 src={raffle.bono_prize_image_url}
                 alt={raffle.bono_prize_name || "Premio"}
                 className={exportMode ? "h-40 w-full object-contain" : "h-32 w-full object-contain sm:h-36"}
-                crossOrigin="anonymous"
+                crossOrigin={exportMode ? "anonymous" : undefined}
               />
             ) : null}
             <p className="mt-3 text-xs font-bold uppercase tracking-wider" style={{ color: accent }}>
