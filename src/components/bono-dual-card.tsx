@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import { padBonoNumber } from "@/lib/bono-domain";
+import { formatDate } from "@/lib/format";
 
 export type DualBonoCardData = {
   serial: number;
@@ -30,120 +31,87 @@ export type DualBonoCardData = {
   };
 };
 
-export const BonoDualCard = forwardRef<
-  HTMLDivElement,
-  { bono: DualBonoCardData; verifyUrl?: string }
->(({ bono, verifyUrl }, ref) => {
-  const raffle = bono.raffle;
-  const numberColor = raffle.bono_number_color || "#C51B1B";
-  const accent = raffle.bono_accent_color || "#C51B1B";
-  const isReserved = bono.status?.toLowerCase() === "reservado";
-  const prizeImage = raffle.bono_prize_image_data_url || raffle.bono_prize_image_url;
-  const sideImage = raffle.bono_side_image_data_url || raffle.bono_side_image_url;
-  const logoImage = raffle.bono_logo_data_url || raffle.bono_logo_url;
-
+function NumberPanel({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div
-      ref={ref}
-      className="relative aspect-[1.72/1] w-full overflow-hidden rounded-2xl border bg-white text-slate-900 shadow-xl"
-      style={{ borderColor: accent }}
-    >
-      <div className="grid h-[88%] grid-cols-[3fr_2fr]">
-        <section className="flex min-w-0 flex-col p-[4%]">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div
-                className="text-[clamp(1rem,3vw,2rem)] font-black tracking-[0.18em]"
-                style={{ color: accent }}
-              >
-                {raffle.bono_title || "BONO"}
-              </div>
-              <div className="mt-1 text-[clamp(.55rem,1.3vw,.95rem)] font-semibold">
-                {raffle.bono_subtitle || raffle.nombre}
-              </div>
-            </div>
-            {logoImage && (
-              <img
-                src={logoImage}
-                alt="Logo"
-                className="h-[12%] max-h-14 max-w-[24%] object-contain"
-              />
-            )}
-          </div>
-          <div className="mt-3 grid min-h-0 flex-1 grid-cols-[1.15fr_1fr] gap-4">
-            <div className="flex items-center justify-center overflow-hidden rounded-xl bg-slate-100">
-              {prizeImage ? (
-                <img
-                  src={prizeImage}
-                  alt={raffle.bono_prize_name || "Premio"}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span className="px-3 text-center text-xs text-slate-400">
-                  Imagen del premio opcional
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col justify-center text-[clamp(.5rem,1.15vw,.85rem)]">
-              <strong className="text-[clamp(.7rem,1.5vw,1.1rem)]">
-                {raffle.bono_prize_name || "Premio"}
-              </strong>
-              {raffle.bono_prize_description && <p className="mt-1">{raffle.bono_prize_description}</p>}
-              {raffle.bono_prize_dimensions && <p className="mt-1 font-medium">{raffle.bono_prize_dimensions}</p>}
-              {raffle.fecha_sorteo && <p className="mt-3"><strong>Sorteo:</strong> {raffle.fecha_sorteo}</p>}
-              {raffle.loteria && <p><strong>Lotería:</strong> {raffle.loteria}</p>}
-            </div>
-          </div>
-        </section>
-        <section
-          className="relative flex flex-col items-center justify-center overflow-hidden border-l p-[5%] text-center"
-          style={{ borderColor: accent, background: `${accent}10` }}
-        >
-          {sideImage && (
-            <img
-              src={sideImage}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover opacity-15"
-            />
-          )}
-          <div className="relative z-10 w-full">
-            {[0, 1].map((index) => (
-              <div key={index} className={index ? "mt-[6%]" : ""}>
-                <div className="text-[clamp(.5rem,1.2vw,.8rem)] font-black tracking-[.2em]">OPCIÓN {index + 1}</div>
-                <div
-                  className="mt-1 text-[clamp(1.6rem,5vw,3.7rem)] font-black leading-none tracking-[.16em]"
-                  style={{ color: numberColor }}
-                >
-                  {padBonoNumber(bono.numbers[index] ?? 0).split("").join(" ")}
-                </div>
-              </div>
-            ))}
-            <div className="mt-[8%] text-[clamp(.65rem,1.5vw,1rem)] font-black">BONO Nº {padBonoNumber(bono.serial)}</div>
-            {bono.status && <div className="mt-1 text-[clamp(.45rem,1vw,.7rem)] font-bold uppercase" style={{ color: accent }}>{bono.status}</div>}
-            {raffle.bono_show_qr !== false && verifyUrl && (
-              <div className="mx-auto mt-2 max-w-[80%] break-all rounded border border-slate-300 bg-white/80 p-1 text-[clamp(.35rem,.7vw,.55rem)]">
-                Verificar<br />{verifyUrl}
-              </div>
-            )}
-          </div>
-        </section>
+    <div className="overflow-hidden rounded-xl border border-[#5d3318]/40 bg-white/95 shadow-sm">
+      <div className="bg-[#4d2812] px-2 py-1.5 text-center text-[clamp(.42rem,1vw,.78rem)] font-black uppercase tracking-[.08em] text-white">
+        {label}
       </div>
-      <footer
-        className="flex h-[12%] items-center justify-center px-4 text-center text-[clamp(.5rem,1.1vw,.8rem)] font-semibold text-white"
-        style={{ background: accent }}
-      >
-        {raffle.bono_footer_text || "¡Gracias por apoyar nuestra misión!"}
-        {raffle.bono_show_platform_branding !== false && <span className="ml-2 opacity-75">· Rifaya</span>}
-      </footer>
-
-      {isReserved && (
-        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center overflow-hidden">
-          <div className="-rotate-[24deg] border-y-[5px] border-red-700/80 bg-white/75 px-[14%] py-[1.5%] text-[clamp(1.4rem,5vw,4rem)] font-black uppercase tracking-[0.18em] text-red-700/85 shadow-sm backdrop-blur-[1px]">
-            RESERVADO
+      <div className="grid grid-cols-3 gap-1.5 p-2.5">
+        {padBonoNumber(value).split("").map((digit, index) => (
+          <div key={index} className="flex aspect-[.86/1] items-center justify-center border border-[#5d3318]/50 bg-white text-[clamp(1.2rem,4.6vw,3.5rem)] font-black leading-none" style={{ color }}>
+            {digit}
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
-});
+}
+
+export const BonoDualCard = forwardRef<HTMLDivElement, { bono: DualBonoCardData; verifyUrl?: string }>(
+  ({ bono, verifyUrl }, ref) => {
+    const raffle = bono.raffle;
+    const numberColor = raffle.bono_number_color || "#C51B1B";
+    const accent = raffle.bono_accent_color || "#B8860B";
+    const isReserved = bono.status?.toLowerCase() === "reservado";
+    const prizeImage = raffle.bono_prize_image_data_url || raffle.bono_prize_image_url;
+    const sideImage = raffle.bono_side_image_data_url || raffle.bono_side_image_url;
+    const logoImage = raffle.bono_logo_data_url || raffle.bono_logo_url;
+    const drawDate = raffle.fecha_sorteo ? formatDate(raffle.fecha_sorteo) : null;
+
+    return (
+      <div ref={ref} className="relative aspect-[3/2] w-full overflow-hidden rounded-[1.3rem] border bg-[#f6ead1] text-[#2f1a0d] shadow-xl" style={{ borderColor: accent }}>
+        <div className="absolute inset-0" style={{ background: "radial-gradient(circle at 40% 10%, rgba(255,255,255,.96), rgba(252,244,224,.82) 38%, rgba(225,198,148,.5) 100%)" }} />
+
+        <div className="relative grid h-full grid-cols-[64%_36%]">
+          <section className="relative min-w-0 overflow-hidden border-r border-dashed border-[#5d3318]/35 px-[3%] pb-[6%] pt-[2%]">
+            <div className="flex items-start gap-2">
+              {logoImage && <img src={logoImage} alt="Logo" className="h-[8%] max-h-12 max-w-[10%] object-contain" />}
+              <div className="min-w-0 flex-1 text-center">
+                <div className="text-[clamp(1.55rem,5.5vw,4.4rem)] font-serif font-bold leading-[.8]">{raffle.bono_title || "Bono"}</div>
+                <div className="mt-[.8%] text-[clamp(.95rem,3.3vw,2.6rem)] font-serif italic leading-[.95]">{raffle.bono_subtitle || raffle.nombre}</div>
+              </div>
+            </div>
+
+            <div className="mt-[2.2%] grid h-[59%] grid-cols-[60%_40%] gap-[2.5%]">
+              <div className="flex items-end justify-center overflow-hidden">
+                {prizeImage ? <img src={prizeImage} alt={raffle.bono_prize_name || "Premio"} className="h-full w-full object-contain object-bottom" /> : <div className="text-sm text-slate-500">Imagen del premio</div>}
+              </div>
+              <div className="flex min-w-0 flex-col justify-center pr-[3%] text-left">
+                <div className="text-[clamp(.72rem,2vw,1.55rem)] font-serif font-bold leading-tight">{raffle.bono_prize_description || `Se rifa esta hermosa ${raffle.bono_prize_name?.toLowerCase() || "cajonera archivador"}.`}</div>
+                <div className="my-[7%] flex items-center gap-2"><span className="h-px flex-1 border-t border-dashed border-[#5d3318]/55" /><span className="text-[#8b5b20]">✦</span><span className="h-px flex-1 border-t border-dashed border-[#5d3318]/55" /></div>
+                {raffle.bono_prize_dimensions && <div className="text-center text-[clamp(.58rem,1.55vw,1.15rem)] font-serif font-bold leading-tight"><div>Medidas</div><div>{raffle.bono_prize_dimensions}</div></div>}
+                {drawDate && <div className="mt-[8%] rounded-xl border-2 border-[#b08a44] bg-[#0d315b] px-[5%] py-[4%] text-center text-white shadow-sm"><div className="text-[clamp(.42rem,.95vw,.75rem)] font-black uppercase">Juega el día</div><div className="text-[clamp(1.05rem,3vw,2.5rem)] font-black leading-none">{drawDate}</div>{raffle.loteria && <div className="mt-1 text-[clamp(.36rem,.75vw,.58rem)] font-bold uppercase">{raffle.loteria}</div>}</div>}
+              </div>
+            </div>
+
+            <div className="absolute bottom-0 left-0 right-0 flex h-[7%] items-center justify-center bg-[#4d2812] px-4 text-center text-[clamp(.48rem,1.05vw,.82rem)] font-serif italic text-white">
+              {raffle.bono_footer_text || "¡Gracias por apoyar nuestra misión!"}
+            </div>
+          </section>
+
+          <section className="relative flex min-w-0 flex-col overflow-hidden px-[5%] pb-[4%] pt-[3%]">
+            {sideImage && <img src={sideImage} alt="San Miguel Arcángel" className="absolute inset-0 h-full w-full object-cover" />}
+            <div className="absolute inset-0 bg-gradient-to-b from-[#f4d99f]/20 via-[#f2d8a4]/8 to-[#c68c2e]/20" />
+            <div className="relative z-10 mt-auto space-y-[4%]">
+              <NumberPanel label="Opción 1" value={bono.numbers[0] ?? 0} color={numberColor} />
+              <NumberPanel label="Opción 2" value={bono.numbers[1] ?? 0} color={numberColor} />
+              <div className="rounded-lg border border-[#5d3318]/35 bg-white/95 px-[5%] py-[3%] text-left shadow-sm">
+                <span className="mr-2 text-[clamp(.8rem,2vw,1.55rem)] font-black" style={{ color: numberColor }}>Nº</span>
+                <span className="text-[clamp(.8rem,2vw,1.55rem)] font-black">{padBonoNumber(bono.serial)}</span>
+              </div>
+              {verifyUrl && raffle.bono_show_qr !== false && <div className="truncate text-center text-[clamp(.3rem,.55vw,.45rem)] font-semibold text-[#3f2b1b]">Verificación: {verifyUrl}</div>}
+            </div>
+          </section>
+        </div>
+
+        {isReserved && (
+          <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center overflow-hidden">
+            <div className="-rotate-[24deg] border-y-[5px] border-red-700/80 bg-white/75 px-[14%] py-[1.5%] text-[clamp(1.5rem,5vw,4.2rem)] font-black uppercase tracking-[0.18em] text-red-700/85 shadow-sm backdrop-blur-[1px]">RESERVADO</div>
+          </div>
+        )}
+      </div>
+    );
+  },
+);
 BonoDualCard.displayName = "BonoDualCard";
