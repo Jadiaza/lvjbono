@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Download, Eye, LogOut, Search, Share2 } from "lucide-react";
+import { Download, Eye, LogOut, Search, Share2, Undo2 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
 import { responsibleGetDashboard, responsibleUpdateBonos } from "@/lib/bono.functions";
@@ -11,6 +11,7 @@ import { responsibleGetOfferBatches } from "@/lib/bono-batch.functions";
 import {
   responsibleCancelBonoReservation,
   responsibleReserveBono,
+  responsibleRevertBonoSale,
 } from "@/lib/responsible-bono-sales.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { BonoBatchCard } from "@/components/bono-batch-card";
@@ -33,6 +34,7 @@ function ResponsibleDashboard() {
   const update = useServerFn(responsibleUpdateBonos);
   const reserve = useServerFn(responsibleReserveBono);
   const cancelReservation = useServerFn(responsibleCancelBonoReservation);
+  const revertSale = useServerFn(responsibleRevertBonoSale);
   const qc = useQueryClient();
   const { data, error } = useQuery({ queryKey: ["responsible-dashboard"], queryFn: () => get(), retry: false });
   const { data: offerData } = useQuery({ queryKey: ["responsible-offer-batches"], queryFn: () => getOfferBatches(), retry: false });
@@ -147,6 +149,23 @@ function ResponsibleDashboard() {
       await refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No fue posible registrar la venta.");
+    } finally { setBusy(false); }
+  }
+
+  async function revertSelectedSale() {
+    if (!selectedBono || selectedBono.status !== "vendido") return;
+    const ok = confirm(
+      `¿Revertir la venta del Bono ${padBonoNumber(selectedBono.serial)}? Volverá a RESERVADO y conservará los datos del comprador.`,
+    );
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await revertSale({ data: { bonoId: selectedBono.id } });
+      toast.success("Venta revertida. El bono volvió a Reservado.");
+      setSelectedBono(null);
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No fue posible revertir la venta.");
     } finally { setBusy(false); }
   }
 
@@ -285,7 +304,7 @@ function ResponsibleDashboard() {
             <div className="grid gap-2 sm:grid-cols-2">
               {AVAILABLE.has(selectedBono.status) && <Button onClick={() => setReserveOpen(true)}>Reservar este bono</Button>}
               {selectedBono.status === "reservado" && <><Button onClick={registerSale} disabled={busy}>Registrar venta</Button><Button variant="outline" onClick={cancelSelectedReservation} disabled={busy}>Cancelar reserva</Button></>}
-              {selectedBono.status === "vendido" && <Button onClick={() => setPayOpen(true)}>Registrar pago</Button>}
+              {selectedBono.status === "vendido" && <><Button onClick={() => setPayOpen(true)}>Registrar pago</Button><Button variant="outline" onClick={revertSelectedSale} disabled={busy}><Undo2 className="mr-1 h-4 w-4" /> Revertir venta</Button></>}
               <Button variant="outline" onClick={shareIndividualBono}><Share2 className="mr-1 h-4 w-4" /> Compartir bono</Button>
             </div>
           </>}
