@@ -354,6 +354,16 @@ function ResponsibleDashboard() {
         .map((n: any) => padBonoNumber(n.numero))
         .join(" y ");
       const text = `Hola ${selectedBono.buyer_name || ""}. Te envío tu Bono ${padBonoNumber(selectedBono.serial)}, números ${nums}. Gracias por apoyar la misión de Mensajeros de San Miguel Arcángel.`;
+      const shareData: ShareData = {
+        files: [generated.file],
+        title: `Bono ${padBonoNumber(selectedBono.serial)}`,
+        text,
+      };
+
+      if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [generated.file] }))) {
+        await navigator.share(shareData);
+        return;
+      }
 
       const a = document.createElement("a");
       a.href = generated.dataUrl;
@@ -362,11 +372,12 @@ function ResponsibleDashboard() {
       a.click();
       a.remove();
 
-      toast.success("Imagen del bono preparada. Abriendo el WhatsApp del comprador…");
+      toast.info("Tu dispositivo no permite adjuntar la imagen automáticamente. El bono fue descargado; adjúntalo en el chat de WhatsApp.");
       setTimeout(() => {
         window.location.href = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
       }, 250);
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       toast.error(e instanceof Error ? e.message : "No fue posible preparar el bono para WhatsApp.");
     }
   }
@@ -622,7 +633,7 @@ function ResponsibleDashboard() {
               </div>
 
               <p className="text-xs text-muted-foreground">
-                El botón genera la misma imagen que ves arriba y abre directamente el WhatsApp del número registrado del comprador. La imagen queda descargada y lista para adjuntarla al chat.
+                En dispositivos compatibles, el botón comparte directamente la imagen del bono para que puedas elegir WhatsApp con el PNG ya adjunto. Si el dispositivo no admite compartir archivos, se descargará la imagen y se abrirá el chat como respaldo.
               </p>
             </>
           )}
