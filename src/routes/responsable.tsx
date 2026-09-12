@@ -16,16 +16,24 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { BonoBatchCard } from "@/components/bono-batch-card";
 import { BonoDualCard } from "@/components/bono-dual-card";
+import { ResponsibleBuyersTable } from "@/components/responsible-buyers-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { formatCOP } from "@/lib/format";
 import { padBonoNumber } from "@/lib/bono-domain";
 
 export const Route = createFileRoute("/responsable")({ component: ResponsibleDashboard });
 
 const AVAILABLE = new Set(["asignado", "disponible", "devuelto"]);
+
+function normalizeWhatsAppPhone(value?: string | null) {
+  const digits = (value || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("57") && digits.length >= 12) return digits;
+  if (digits.length === 10 && digits.startsWith("3")) return `57${digits}`;
+  return digits;
+}
 
 function ResponsibleDashboard() {
   const navigate = useNavigate();
@@ -53,6 +61,7 @@ function ResponsibleDashboard() {
   const [payment, setPayment] = useState({ amount_paid: "", payment_reference: "" });
   const exportRef = useRef<HTMLDivElement>(null);
   const individualRef = useRef<HTMLDivElement>(null);
+  const cleanShareRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (error) {
@@ -66,31 +75,32 @@ function ResponsibleDashboard() {
   }, [offerData?.batches, selectedBatchId]);
 
   const bonos = data?.bonos ?? [];
-  const filtered = useMemo(() => {
-    return bonos.filter((b: any) => {
-      const matchesFilter =
-        filter === "todos" ||
-        (filter === "disponibles" && AVAILABLE.has(b.status)) ||
-        (filter === "reservados" && b.status === "reservado") ||
-        (filter === "vendidos" && b.status === "vendido") ||
-        (filter === "pagados" && b.status === "pagado");
-      const q = search.trim();
-      const matchesSearch = !q || padBonoNumber(b.serial).includes(q) || b.raffle_bono_numbers?.some((n: any) => padBonoNumber(n.numero).includes(q));
-      return matchesFilter && matchesSearch;
-    });
-  }, [bonos, filter, search]);
+  const filtered = useMemo(() => bonos.filter((b: any) => {
+    const matchesFilter =
+      filter === "todos" ||
+      (filter === "disponibles" && AVAILABLE.has(b.status)) ||
+      (filter === "reservados" && b.status === "reservado") ||
+      (filter === "vendidos" && b.status === "vendido") ||
+      (filter === "pagados" && b.status === "pagado");
+    const q = search.trim();
+    const matchesSearch = !q || padBonoNumber(b.serial).includes(q) || b.raffle_bono_numbers?.some((n: any) => padBonoNumber(n.numero).includes(q));
+    return matchesFilter && matchesSearch;
+  }), [bonos, filter, search]);
 
   const selectedBatch = useMemo(
     () => offerData?.batches?.find((batch: any) => batch.id === selectedBatchId) ?? null,
     [offerData?.batches, selectedBatchId],
   );
 
+  const raffleById = (raffleId: string) => offerData?.batches?.find((batch: any) => batch.raffle.id === raffleId)?.raffle ?? null;
+
   const selectedRaffle = useMemo(() => {
     if (!selectedBono) return null;
-    return offerData?.batches?.find((batch: any) => batch.raffle.id === selectedBono.raffle_id)?.raffle ?? selectedBatch?.raffle ?? null;
+    return raffleById(selectedBono.raffle_id) ?? selectedBatch?.raffle ?? null;
   }, [offerData?.batches, selectedBono, selectedBatch]);
 
   function openBono(bono: any) {
+    const raffle = raffleById(bono.raffle_id) ?? selectedBatch?.raffle ?? null;
     setSelectedBono(bono);
     setCustomer({
       buyer_name: bono.buyer_name ?? "",
@@ -98,7 +108,12 @@ function ResponsibleDashboard() {
       buyer_city: bono.buyer_city ?? "",
       buyer_notes: bono.buyer_notes ?? "",
     });
-    setPayment({ amount_paid: String(bono.amount_paid || selectedRaffle?.valor_boleta || ""), payment_reference: bono.payment_reference ?? "" });
+    setPayment({ amount_paid: String(bono.amount_paid || raffle?.valor_boleta || ""), payment_reference: bono.payment_reference ?? "" });
+  }
+
+  function openPaymentFor(bono: any) {
+    openBono(bono);
+    setPayOpen(true);
   }
 
   async function refresh() {
@@ -108,14 +123,8 @@ function ResponsibleDashboard() {
 
   async function submitPasswordChange(event: React.FormEvent) {
     event.preventDefault();
-    if (passwordForm.password.length < 8) {
-      toast.error("La nueva contraseña debe tener al menos 8 caracteres.");
-      return;
-    }
-    if (passwordForm.password !== passwordForm.confirmPassword) {
-      toast.error("Las contraseñas no coinciden.");
-      return;
-    }
+    if (passwordForm.password.length < 8) return toast.error("La nueva contraseña debe tener al menos 8 caracteres.");
+    if (passwordForm.password !== passwordForm.confirmPassword) return toast.error("Las contraseñas no coinciden.");
     setChangingPassword(true);
     try {
       const { error: passwordError } = await supabase.auth.updateUser({ password: passwordForm.password });
@@ -127,9 +136,7 @@ function ResponsibleDashboard() {
       navigate({ to: "/responsable-login", replace: true });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No fue posible cambiar la contraseña.");
-    } finally {
-      setChangingPassword(false);
-    }
+    } finally { setChangingPassword(false); }
   }
 
   async function submitReservation(event: React.FormEvent) {
@@ -148,8 +155,7 @@ function ResponsibleDashboard() {
   }
 
   async function cancelSelectedReservation() {
-    if (!selectedBono) return;
-    if (!confirm(`¿Cancelar la reserva del Bono ${padBonoNumber(selectedBono.serial)}?`)) return;
+    if (!selectedBono || !confirm(`¿Cancelar la reserva del Bono ${padBonoNumber(selectedBono.serial)}?`)) return;
     setBusy(true);
     try {
       await cancelReservation({ data: { bonoId: selectedBono.id } });
@@ -183,10 +189,7 @@ function ResponsibleDashboard() {
 
   async function revertSelectedSale() {
     if (!selectedBono || selectedBono.status !== "vendido") return;
-    const ok = confirm(
-      `¿Revertir la venta del Bono ${padBonoNumber(selectedBono.serial)}? Volverá a RESERVADO y conservará los datos del comprador.`,
-    );
-    if (!ok) return;
+    if (!confirm(`¿Revertir la venta del Bono ${padBonoNumber(selectedBono.serial)}? Volverá a RESERVADO y conservará los datos del comprador.`)) return;
     setBusy(true);
     try {
       await revertSale({ data: { bonoId: selectedBono.id } });
@@ -246,29 +249,47 @@ function ResponsibleDashboard() {
   }
 
   async function shareIndividualBono() {
-    if (!individualRef.current || !selectedBono) return;
+    if (!cleanShareRef.current || !selectedBono) return;
     try {
-      const dataUrl = await toPng(individualRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: "#ffffff" });
+      const dataUrl = await toPng(cleanShareRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: "#ffffff" });
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], `bono-${padBonoNumber(selectedBono.serial)}.png`, { type: "image/png" });
-      const nums = (selectedBono.raffle_bono_numbers ?? []).sort((a: any, b: any) => a.option_number - b.option_number).map((n: any) => padBonoNumber(n.numero)).join(" / ");
+      const nums = (selectedBono.raffle_bono_numbers ?? []).slice().sort((a: any, b: any) => a.option_number - b.option_number).map((n: any) => padBonoNumber(n.numero)).join(" / ");
       const text = `Bono ${padBonoNumber(selectedBono.serial)} · Números ${nums}`;
       if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
         await navigator.share({ title: `Bono ${padBonoNumber(selectedBono.serial)}`, text, files: [file] });
       } else {
         const a = document.createElement("a"); a.href = dataUrl; a.download = file.name; a.click();
-        toast.info("Bono descargado. Puedes enviarlo por WhatsApp.");
+        toast.info("Bono descargado sin leyenda de estado.");
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No fue posible generar el bono.");
     }
   }
 
+  async function sendSelectedBonoToWhatsApp() {
+    if (!selectedBono?.buyer_phone || !cleanShareRef.current) return toast.error("Este bono no tiene un WhatsApp registrado.");
+    const phone = normalizeWhatsAppPhone(selectedBono.buyer_phone);
+    if (!phone) return toast.error("El número de WhatsApp no es válido.");
+    try {
+      const dataUrl = await toPng(cleanShareRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: "#ffffff" });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `bono-${padBonoNumber(selectedBono.serial)}.png`;
+      a.click();
+      const nums = (selectedBono.raffle_bono_numbers ?? []).slice().sort((x: any, y: any) => x.option_number - y.option_number).map((n: any) => padBonoNumber(n.numero)).join(" y ");
+      const message = `Hola ${selectedBono.buyer_name || ""}. Te envío tu Bono ${padBonoNumber(selectedBono.serial)}, números ${nums}. Gracias por apoyar la misión de Mensajeros de San Miguel Arcángel.`;
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+      toast.success("Se descargó el bono limpio y se abrió el WhatsApp del comprador para enviarlo.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No fue posible preparar el bono para WhatsApp.");
+    }
+  }
+
   if (!data) return <main className="p-8">Cargando bonos asignados…</main>;
   const s = data.summary;
-
   const selectedNumbers = selectedBono
-    ? (selectedBono.raffle_bono_numbers ?? []).sort((a: any, b: any) => a.option_number - b.option_number).map((n: any) => n.numero)
+    ? (selectedBono.raffle_bono_numbers ?? []).slice().sort((a: any, b: any) => a.option_number - b.option_number).map((n: any) => n.numero)
     : [];
 
   return (
@@ -279,20 +300,14 @@ function ResponsibleDashboard() {
           <p className="text-sm text-muted-foreground">Mis bonos · ventas y pagos</p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={() => setPasswordOpen(true)}>
-            <KeyRound className="mr-1 h-4 w-4" /> Cambiar contraseña
-          </Button>
-          <Button variant="ghost" size="sm" onClick={async () => { await supabase.auth.signOut(); navigate({ to: "/responsable-login" }); }}>
-            <LogOut className="mr-1 h-4 w-4" /> Salir
-          </Button>
+          <Button variant="outline" size="sm" onClick={() => setPasswordOpen(true)}><KeyRound className="mr-1 h-4 w-4" /> Cambiar contraseña</Button>
+          <Button variant="ghost" size="sm" onClick={async () => { await supabase.auth.signOut(); navigate({ to: "/responsable-login" }); }}><LogOut className="mr-1 h-4 w-4" /> Salir</Button>
         </div>
       </header>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[["Disponibles", s.counts.asignado ?? 0], ["Reservados", s.counts.reservado ?? 0], ["Vendidos", s.counts.vendido ?? 0], ["Pagados", s.counts.pagado ?? 0]].map(([k, v]) => (
-          <button key={String(k)} type="button" onClick={() => setFilter(String(k).toLowerCase() as any)} className="rounded-xl border bg-card p-3 text-left transition hover:border-gold/60">
-            <p className="text-xs text-muted-foreground">{k}</p><strong className="text-xl">{v}</strong>
-          </button>
+          <button key={String(k)} type="button" onClick={() => setFilter(String(k).toLowerCase() as any)} className="rounded-xl border bg-card p-3 text-left transition hover:border-gold/60"><p className="text-xs text-muted-foreground">{k}</p><strong className="text-xl">{v}</strong></button>
         ))}
       </div>
 
@@ -307,9 +322,7 @@ function ResponsibleDashboard() {
             return <Button key={batch.id} size="sm" variant={selectedBatchId === batch.id ? "default" : "outline"} onClick={() => setSelectedBatchId(batch.id)}><Eye className="mr-1 h-4 w-4" /> {batch.name || batch.code} · {available}/{batch.bonos.length}</Button>;
           })}
         </div>
-        {selectedBatch ? (
-          <BonoBatchCard raffle={selectedBatch.raffle} batch={{ code: selectedBatch.code, name: selectedBatch.name }} responsibleName={offerData?.responsible?.display_name ?? data.responsible.display_name} bonos={selectedBatch.bonos} onSelectBono={(bono: any) => openBono(bonos.find((b: any) => b.id === bono.id) ?? bono)} />
-        ) : <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">No tienes lotes asignados todavía.</p>}
+        {selectedBatch ? <BonoBatchCard raffle={selectedBatch.raffle} batch={{ code: selectedBatch.code, name: selectedBatch.name }} responsibleName={offerData?.responsible?.display_name ?? data.responsible.display_name} bonos={selectedBatch.bonos} onSelectBono={(bono: any) => openBono(bonos.find((b: any) => b.id === bono.id) ?? bono)} /> : <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">No tienes lotes asignados todavía.</p>}
       </section>
 
       <section className="space-y-3 rounded-2xl border bg-card p-3 sm:p-5">
@@ -319,28 +332,33 @@ function ResponsibleDashboard() {
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((b: any) => {
-            const nums = (b.raffle_bono_numbers ?? []).sort((a: any, c: any) => a.option_number - c.option_number).map((n: any) => padBonoNumber(n.numero));
+            const nums = (b.raffle_bono_numbers ?? []).slice().sort((a: any, c: any) => a.option_number - c.option_number).map((n: any) => padBonoNumber(n.numero));
             return <button type="button" key={b.id} onClick={() => openBono(b)} className="rounded-xl border bg-background p-4 text-left transition hover:border-gold/60 hover:shadow-sm"><div className="flex items-center justify-between"><strong>Bono {padBonoNumber(b.serial)}</strong><span className="rounded-full bg-secondary px-2 py-1 text-[11px] font-bold uppercase">{b.status}</span></div><div className="mt-3 text-2xl font-black text-red-700">{nums.join(" · ")}</div>{b.buyer_name && <p className="mt-2 text-sm"><strong>Comprador:</strong> {b.buyer_name}</p>}</button>;
           })}
         </div>
         {!filtered.length && <p className="p-6 text-center text-sm text-muted-foreground">No hay bonos con este filtro.</p>}
       </section>
 
+      <ResponsibleBuyersTable bonos={bonos} raffleById={raffleById} onOpenBono={openBono} onRegisterPayment={openPaymentFor} />
+
       <div className="pointer-events-none fixed -left-[5000px] top-0 w-[1200px]">
         {selectedBatch && <BonoBatchCard ref={exportRef} exportMode raffle={selectedBatch.raffle} batch={{ code: selectedBatch.code, name: selectedBatch.name }} responsibleName={offerData?.responsible?.display_name ?? data.responsible.display_name} bonos={selectedBatch.bonos} />}
+        {selectedBono && selectedRaffle && <div ref={cleanShareRef}><BonoDualCard statusDisplay="hidden" bono={{ serial: selectedBono.serial, verification_code: selectedBono.verification_code, numbers: selectedNumbers, status: selectedBono.status, raffle: selectedRaffle }} /></div>}
       </div>
 
       <Dialog open={Boolean(selectedBono)} onOpenChange={(open) => !open && setSelectedBono(null)}>
         <DialogContent className="max-h-[94vh] max-w-2xl overflow-y-auto p-4 sm:p-6">
           {selectedBono && <><DialogHeader><DialogTitle>Bono {padBonoNumber(selectedBono.serial)}</DialogTitle></DialogHeader>
-            {selectedRaffle && <div ref={individualRef}><BonoDualCard bono={{ serial: selectedBono.serial, verification_code: selectedBono.verification_code, numbers: selectedNumbers, status: selectedBono.status, raffle: selectedRaffle }} /></div>}
+            {selectedRaffle && <div ref={individualRef}><BonoDualCard statusDisplay="review" bono={{ serial: selectedBono.serial, verification_code: selectedBono.verification_code, numbers: selectedNumbers, status: selectedBono.status, raffle: selectedRaffle }} /></div>}
             {selectedBono.buyer_name && <div className="rounded-xl bg-secondary p-3 text-sm"><p><strong>Comprador:</strong> {selectedBono.buyer_name}</p><p><strong>Teléfono:</strong> {selectedBono.buyer_phone || "—"}</p>{selectedBono.buyer_city && <p><strong>Ciudad:</strong> {selectedBono.buyer_city}</p>}</div>}
             <div className="grid gap-2 sm:grid-cols-2">
               {AVAILABLE.has(selectedBono.status) && <Button onClick={() => setReserveOpen(true)}>Reservar este bono</Button>}
               {selectedBono.status === "reservado" && <><Button onClick={registerSale} disabled={busy}>Registrar venta</Button><Button variant="outline" onClick={cancelSelectedReservation} disabled={busy}>Cancelar reserva</Button></>}
               {selectedBono.status === "vendido" && <><Button onClick={() => setPayOpen(true)}>Registrar pago</Button><Button variant="outline" onClick={revertSelectedSale} disabled={busy}><Undo2 className="mr-1 h-4 w-4" /> Revertir venta</Button></>}
-              <Button variant="outline" onClick={shareIndividualBono}><Share2 className="mr-1 h-4 w-4" /> Compartir bono</Button>
+              {selectedBono.buyer_phone && <Button onClick={sendSelectedBonoToWhatsApp}>Enviar bono por WhatsApp</Button>}
+              <Button variant="outline" onClick={shareIndividualBono}><Share2 className="mr-1 h-4 w-4" /> Compartir imagen limpia</Button>
             </div>
+            <p className="text-xs text-muted-foreground">La leyenda grande de estado se muestra solo en esta vista de revisión. La imagen que se comparte o descarga sale limpia, sin “Reservado”, “Vendido” ni “Pagado”.</p>
           </>}
         </DialogContent>
       </Dialog>
@@ -357,45 +375,14 @@ function ResponsibleDashboard() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={passwordOpen}
-        onOpenChange={(open) => {
-          setPasswordOpen(open);
-          if (!open) setPasswordForm({ password: "", confirmPassword: "" });
-        }}
-      >
+      <Dialog open={passwordOpen} onOpenChange={(open) => { setPasswordOpen(open); if (!open) setPasswordForm({ password: "", confirmPassword: "" }); }}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Cambiar contraseña</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Crea una contraseña personal de al menos 8 caracteres. Después del cambio deberás iniciar sesión nuevamente.
-          </p>
+          <p className="text-sm text-muted-foreground">Crea una contraseña personal de al menos 8 caracteres. Después del cambio deberás iniciar sesión nuevamente.</p>
           <form onSubmit={submitPasswordChange} className="space-y-3">
-            <Field label="Nueva contraseña">
-              <Input
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                maxLength={128}
-                required
-                value={passwordForm.password}
-                onChange={(e) => setPasswordForm({ ...passwordForm, password: e.target.value })}
-              />
-            </Field>
-            <Field label="Confirmar nueva contraseña">
-              <Input
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                maxLength={128}
-                required
-                value={passwordForm.confirmPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-              />
-            </Field>
-            <Button className="w-full" disabled={changingPassword}>
-              <KeyRound className="mr-2 h-4 w-4" />
-              {changingPassword ? "Actualizando…" : "Guardar nueva contraseña"}
-            </Button>
+            <Field label="Nueva contraseña"><Input type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={passwordForm.password} onChange={(e) => setPasswordForm({ ...passwordForm, password: e.target.value })} /></Field>
+            <Field label="Confirmar nueva contraseña"><Input type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={passwordForm.confirmPassword} onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })} /></Field>
+            <Button className="w-full" disabled={changingPassword}><KeyRound className="mr-2 h-4 w-4" />{changingPassword ? "Actualizando…" : "Guardar nueva contraseña"}</Button>
           </form>
         </DialogContent>
       </Dialog>
