@@ -68,7 +68,7 @@ function OrnamentDivider() {
 type StatusDisplay = "review" | "subtle" | "hidden";
 
 export const BonoDualCard = forwardRef<HTMLDivElement, { bono: DualBonoCardData; verifyUrl?: string; statusDisplay?: StatusDisplay }>(
-  ({ bono, verifyUrl, statusDisplay = "review" }, ref) => {
+  ({ bono, verifyUrl, statusDisplay = "subtle" }, ref) => {
     const raffle = bono.raffle;
     const numberColor = raffle.bono_number_color || "#C51B1B";
     const accent = raffle.bono_accent_color || "#B8860B";
@@ -125,16 +125,14 @@ export const BonoDualCard = forwardRef<HTMLDivElement, { bono: DualBonoCardData;
           </section>
         </div>
 
-        {statusDisplay === "review" && isReserved && (
-          <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center overflow-hidden"><div className="-rotate-[24deg] border-y-[5px] border-red-700/80 bg-white/75 px-[14%] py-[1.5%] text-[clamp(1.5rem,5vw,4.2rem)] font-black uppercase tracking-[0.18em] text-red-700/85 shadow-sm backdrop-blur-[1px]">RESERVADO</div></div>
-        )}
-        {statusDisplay === "subtle" && status && !AVAILABLE_FOR_PUBLIC.has(status) && (
-          <div className="pointer-events-none absolute right-[1.5%] top-[1.5%] z-30 rounded-full bg-black/45 px-[2%] py-[.7%] text-[clamp(.3rem,.62vw,.5rem)] font-bold uppercase tracking-wide text-white/80">{status}</div>
+        {statusDisplay !== "hidden" && isReserved && (
+          <div className="pointer-events-none absolute -left-[5.2%] top-[3.2%] z-30 w-[22%] -rotate-[38deg] border-y border-[#e0b45b] bg-[#8f1118]/92 py-[.55%] text-center text-[clamp(.34rem,.72vw,.62rem)] font-semibold italic tracking-[.03em] text-white shadow-md">
+            Reservado
+          </div>
         )}
       </div>
     );
   },
 );
 
-const AVAILABLE_FOR_PUBLIC = new Set(["disponible", "asignado", "devuelto"]);
 BonoDualCard.displayName = "BonoDualCard";
