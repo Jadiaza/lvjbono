@@ -61,7 +61,6 @@ function ResponsibleDashboard() {
   const [payment, setPayment] = useState({ amount_paid: "", payment_reference: "" });
   const exportRef = useRef<HTMLDivElement>(null);
   const individualRef = useRef<HTMLDivElement>(null);
-  const cleanShareRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (error) {
@@ -249,8 +248,8 @@ function ResponsibleDashboard() {
   }
 
   async function buildIndividualBonoFile() {
-    if (!cleanShareRef.current || !selectedBono) return null;
-    const dataUrl = await toPng(cleanShareRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: "#ffffff" });
+    if (!individualRef.current || !selectedBono) return null;
+    const dataUrl = await toPng(individualRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: "#ffffff" });
     const blob = await (await fetch(dataUrl)).blob();
     return {
       dataUrl,
@@ -365,7 +364,6 @@ function ResponsibleDashboard() {
 
       <div className="pointer-events-none fixed -left-[5000px] top-0 w-[1200px]">
         {selectedBatch && <BonoBatchCard ref={exportRef} exportMode raffle={selectedBatch.raffle} batch={{ code: selectedBatch.code, name: selectedBatch.name }} responsibleName={offerData?.responsible?.display_name ?? data.responsible.display_name} bonos={selectedBatch.bonos} />}
-        {selectedBono && selectedRaffle && <div ref={cleanShareRef}><BonoDualCard statusDisplay="subtle" bono={{ serial: selectedBono.serial, verification_code: selectedBono.verification_code, numbers: selectedNumbers, status: selectedBono.status, raffle: selectedRaffle }} /></div>}
       </div>
 
       <Dialog open={Boolean(selectedBono)} onOpenChange={(open) => !open && setSelectedBono(null)}>
