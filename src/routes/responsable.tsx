@@ -248,41 +248,63 @@ function ResponsibleDashboard() {
     toast.info("La imagen se descargó para que puedas compartirla.");
   }
 
+  async function buildIndividualBonoFile() {
+    if (!cleanShareRef.current || !selectedBono) return null;
+    const dataUrl = await toPng(cleanShareRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: "#ffffff" });
+    const blob = await (await fetch(dataUrl)).blob();
+    return {
+      dataUrl,
+      file: new File([blob], `bono-${padBonoNumber(selectedBono.serial)}.png`, { type: "image/png" }),
+    };
+  }
+
   async function shareIndividualBono() {
-    if (!cleanShareRef.current || !selectedBono) return;
+    if (!selectedBono) return;
     try {
-      const dataUrl = await toPng(cleanShareRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: "#ffffff" });
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], `bono-${padBonoNumber(selectedBono.serial)}.png`, { type: "image/png" });
+      const generated = await buildIndividualBonoFile();
+      if (!generated) return;
       const nums = (selectedBono.raffle_bono_numbers ?? []).slice().sort((a: any, b: any) => a.option_number - b.option_number).map((n: any) => padBonoNumber(n.numero)).join(" / ");
       const text = `Bono ${padBonoNumber(selectedBono.serial)} · Números ${nums}`;
-      if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
-        await navigator.share({ title: `Bono ${padBonoNumber(selectedBono.serial)}`, text, files: [file] });
+      if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [generated.file] }))) {
+        await navigator.share({ title: `Bono ${padBonoNumber(selectedBono.serial)}`, text, files: [generated.file] });
       } else {
-        const a = document.createElement("a"); a.href = dataUrl; a.download = file.name; a.click();
-        toast.info("Bono descargado sin leyenda de estado.");
+        const a = document.createElement("a");
+        a.href = generated.dataUrl;
+        a.download = generated.file.name;
+        a.click();
+        toast.info("La imagen del bono se descargó para compartirla.");
       }
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       toast.error(e instanceof Error ? e.message : "No fue posible generar el bono.");
     }
   }
 
   async function sendSelectedBonoToWhatsApp() {
-    if (!selectedBono?.buyer_phone || !cleanShareRef.current) return toast.error("Este bono no tiene un WhatsApp registrado.");
+    if (!selectedBono?.buyer_phone) return toast.error("Este bono no tiene un WhatsApp registrado.");
     const phone = normalizeWhatsAppPhone(selectedBono.buyer_phone);
     if (!phone) return toast.error("El número de WhatsApp no es válido.");
     try {
-      const dataUrl = await toPng(cleanShareRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: "#ffffff" });
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = `bono-${padBonoNumber(selectedBono.serial)}.png`;
-      a.click();
+      const generated = await buildIndividualBonoFile();
+      if (!generated) return;
       const nums = (selectedBono.raffle_bono_numbers ?? []).slice().sort((x: any, y: any) => x.option_number - y.option_number).map((n: any) => padBonoNumber(n.numero)).join(" y ");
-      const message = `Hola ${selectedBono.buyer_name || ""}. Te envío tu Bono ${padBonoNumber(selectedBono.serial)}, números ${nums}. Gracias por apoyar la misión de Mensajeros de San Miguel Arcángel.`;
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
-      toast.success("Se descargó el bono limpio y se abrió el WhatsApp del comprador para enviarlo.");
+      const text = `Hola ${selectedBono.buyer_name || ""}. Te envío tu Bono ${padBonoNumber(selectedBono.serial)}, números ${nums}. Gracias por apoyar la misión de Mensajeros de San Miguel Arcángel.`;
+
+      if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [generated.file] }))) {
+        await navigator.share({ title: `Bono ${padBonoNumber(selectedBono.serial)}`, text, files: [generated.file] });
+        toast.success(`Imagen compartida. WhatsApp registrado: +${phone}.`);
+        return;
+      }
+
+      const a = document.createElement("a");
+      a.href = generated.dataUrl;
+      a.download = generated.file.name;
+      a.click();
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+      toast.info("Tu dispositivo no permite adjuntar la imagen automáticamente. Se descargó el bono y se abrió el WhatsApp registrado para que lo adjuntes.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No fue posible preparar el bono para WhatsApp.");
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      toast.error(e instanceof Error ? e.message : "No fue posible compartir el bono por WhatsApp.");
     }
   }
 
@@ -343,22 +365,22 @@ function ResponsibleDashboard() {
 
       <div className="pointer-events-none fixed -left-[5000px] top-0 w-[1200px]">
         {selectedBatch && <BonoBatchCard ref={exportRef} exportMode raffle={selectedBatch.raffle} batch={{ code: selectedBatch.code, name: selectedBatch.name }} responsibleName={offerData?.responsible?.display_name ?? data.responsible.display_name} bonos={selectedBatch.bonos} />}
-        {selectedBono && selectedRaffle && <div ref={cleanShareRef}><BonoDualCard statusDisplay="hidden" bono={{ serial: selectedBono.serial, verification_code: selectedBono.verification_code, numbers: selectedNumbers, status: selectedBono.status, raffle: selectedRaffle }} /></div>}
+        {selectedBono && selectedRaffle && <div ref={cleanShareRef}><BonoDualCard statusDisplay="subtle" bono={{ serial: selectedBono.serial, verification_code: selectedBono.verification_code, numbers: selectedNumbers, status: selectedBono.status, raffle: selectedRaffle }} /></div>}
       </div>
 
       <Dialog open={Boolean(selectedBono)} onOpenChange={(open) => !open && setSelectedBono(null)}>
         <DialogContent className="max-h-[94vh] max-w-2xl overflow-y-auto p-4 sm:p-6">
           {selectedBono && <><DialogHeader><DialogTitle>Bono {padBonoNumber(selectedBono.serial)}</DialogTitle></DialogHeader>
-            {selectedRaffle && <div ref={individualRef}><BonoDualCard statusDisplay="review" bono={{ serial: selectedBono.serial, verification_code: selectedBono.verification_code, numbers: selectedNumbers, status: selectedBono.status, raffle: selectedRaffle }} /></div>}
+            {selectedRaffle && <div ref={individualRef}><BonoDualCard statusDisplay="subtle" bono={{ serial: selectedBono.serial, verification_code: selectedBono.verification_code, numbers: selectedNumbers, status: selectedBono.status, raffle: selectedRaffle }} /></div>}
             {selectedBono.buyer_name && <div className="rounded-xl bg-secondary p-3 text-sm"><p><strong>Comprador:</strong> {selectedBono.buyer_name}</p><p><strong>Teléfono:</strong> {selectedBono.buyer_phone || "—"}</p>{selectedBono.buyer_city && <p><strong>Ciudad:</strong> {selectedBono.buyer_city}</p>}</div>}
             <div className="grid gap-2 sm:grid-cols-2">
               {AVAILABLE.has(selectedBono.status) && <Button onClick={() => setReserveOpen(true)}>Reservar este bono</Button>}
               {selectedBono.status === "reservado" && <><Button onClick={registerSale} disabled={busy}>Registrar venta</Button><Button variant="outline" onClick={cancelSelectedReservation} disabled={busy}>Cancelar reserva</Button></>}
               {selectedBono.status === "vendido" && <><Button onClick={() => setPayOpen(true)}>Registrar pago</Button><Button variant="outline" onClick={revertSelectedSale} disabled={busy}><Undo2 className="mr-1 h-4 w-4" /> Revertir venta</Button></>}
-              {selectedBono.buyer_phone && <Button onClick={sendSelectedBonoToWhatsApp}>Enviar bono por WhatsApp</Button>}
-              <Button variant="outline" onClick={shareIndividualBono}><Share2 className="mr-1 h-4 w-4" /> Compartir imagen limpia</Button>
+              {selectedBono.buyer_phone && <Button onClick={sendSelectedBonoToWhatsApp}><Share2 className="mr-1 h-4 w-4" /> Compartir imagen por WhatsApp</Button>}
+              <Button variant="outline" onClick={shareIndividualBono}><Share2 className="mr-1 h-4 w-4" /> Compartir imagen</Button>
             </div>
-            <p className="text-xs text-muted-foreground">La leyenda grande de estado se muestra solo en esta vista de revisión. La imagen que se comparte o descarga sale limpia, sin “Reservado”, “Vendido” ni “Pagado”.</p>
+            <p className="text-xs text-muted-foreground">Cuando el bono está reservado, la imagen muestra únicamente un sello pequeño “Reservado” en la esquina superior izquierda, sin cubrir el diseño.</p>
           </>}
         </DialogContent>
       </Dialog>
