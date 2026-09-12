@@ -9,10 +9,11 @@ import {
   adminCreateResponsible,
   adminDeleteResponsible,
   adminListResponsibles,
-  adminResetResponsiblePassword,
   adminSetResponsibleActive,
   adminUpdateResponsible,
 } from "@/lib/bono.functions";
+import { adminResetResponsiblePasswordWithToken } from "@/lib/admin-responsible-password.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +33,7 @@ function ResponsiblesPage() {
     create = useServerFn(adminCreateResponsible),
     update = useServerFn(adminUpdateResponsible),
     remove = useServerFn(adminDeleteResponsible),
-    resetPassword = useServerFn(adminResetResponsiblePassword),
+    resetPassword = useServerFn(adminResetResponsiblePasswordWithToken),
     setActive = useServerFn(adminSetResponsibleActive),
     qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["bono-responsibles"], queryFn: () => list() });
@@ -70,7 +71,18 @@ function ResponsiblesPage() {
     if (!window.confirm(`¿Resetear la contraseña de ${resetTarget.display_name}?`)) return;
     setResetting(true);
     try {
-      await resetPassword({ data: { responsibleId: resetTarget.id, password: resetValue } });
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (sessionError || !accessToken) {
+        throw new Error("Tu sesión de administrador venció. Vuelve a iniciar sesión.");
+      }
+      await resetPassword({
+        data: {
+          responsibleId: resetTarget.id,
+          password: resetValue,
+          accessToken,
+        },
+      });
       toast.success(`Contraseña de ${resetTarget.display_name} restablecida correctamente.`);
       setResetTarget(null);
       setResetValue("");
@@ -143,10 +155,7 @@ function ResponsiblesPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setEditing({ ...r })}
-                    >
+                    <Button variant="outline" onClick={() => setEditing({ ...r })}>
                       Editar
                     </Button>
                     <Button
@@ -164,15 +173,11 @@ function ResponsiblesPage() {
                       onClick={async () => {
                         try {
                           await setActive({ data: { responsibleId: r.id, active: !r.active } });
-                          toast.success(
-                            r.active ? "Responsable desactivado." : "Responsable activado.",
-                          );
+                          toast.success(r.active ? "Responsable desactivado." : "Responsable activado.");
                           await refresh();
                         } catch (error) {
                           toast.error(
-                            error instanceof Error
-                              ? error.message
-                              : "No fue posible cambiar el estado.",
+                            error instanceof Error ? error.message : "No fue posible cambiar el estado.",
                           );
                         }
                       }}
