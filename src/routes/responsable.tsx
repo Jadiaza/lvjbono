@@ -26,6 +26,11 @@ import { padBonoNumber } from "@/lib/bono-domain";
 export const Route = createFileRoute("/responsable")({ component: ResponsibleDashboard });
 
 const AVAILABLE = new Set(["asignado", "disponible", "devuelto"]);
+const COP = new Intl.NumberFormat("es-CO", {
+  style: "currency",
+  currency: "COP",
+  maximumFractionDigits: 0,
+});
 
 type DashboardSection = "bonos" | "compradores" | "carton";
 type BonoFilter = "disponibles" | "reservados" | "vendidos" | "pagados" | "todos";
@@ -101,6 +106,38 @@ function ResponsibleDashboard() {
     if (!selectedBono) return null;
     return raffleById(selectedBono.raffle_id) ?? selectedBatch?.raffle ?? null;
   }, [offerData?.batches, selectedBono, selectedBatch]);
+
+  const financialSummary = useMemo(() => {
+    const totals = {
+      asignado: 0,
+      reservado: 0,
+      vendido: 0,
+      pagado: 0,
+      pendiente: 0,
+    };
+
+    for (const bono of bonos as any[]) {
+      const raffle = offerData?.batches?.find((batch: any) => batch.raffle.id === bono.raffle_id)?.raffle;
+      const value = Number(raffle?.valor_boleta ?? 0);
+      const paid = Math.max(Number(bono.amount_paid ?? 0), 0);
+
+      totals.asignado += value;
+      if (bono.status === "reservado") totals.reservado += value;
+      if (bono.status === "vendido" || bono.status === "pagado") totals.vendido += value;
+
+      if (bono.status === "pagado") {
+        totals.pagado += paid > 0 ? paid : value;
+      } else if (paid > 0) {
+        totals.pagado += Math.min(paid, value);
+      }
+
+      if (bono.status === "vendido") {
+        totals.pendiente += Math.max(value - paid, 0);
+      }
+    }
+
+    return totals;
+  }, [bonos, offerData?.batches]);
 
   function openBono(bono: any) {
     const raffle = raffleById(bono.raffle_id) ?? selectedBatch?.raffle ?? null;
@@ -360,7 +397,38 @@ function ResponsibleDashboard() {
       </nav>
 
       {activeSection === "bonos" && (
-        <section className="space-y-3 rounded-2xl border bg-card p-3 sm:p-5">
+        <section className="space-y-4 rounded-2xl border bg-card p-3 sm:p-5">
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-bold text-foreground">Resumen financiero</h2>
+                <p className="text-xs text-muted-foreground">Valores de los bonos actualmente asignados a tu gestión.</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <div className="col-span-2 rounded-xl border bg-secondary/35 p-3 sm:col-span-1">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Valor asignado</p>
+                <p className="mt-1 text-lg font-black text-foreground">{COP.format(financialSummary.asignado)}</p>
+              </div>
+              <div className="rounded-xl border bg-background p-3">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Reservado</p>
+                <p className="mt-1 text-base font-bold text-foreground">{COP.format(financialSummary.reservado)}</p>
+              </div>
+              <div className="rounded-xl border bg-background p-3">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Vendido</p>
+                <p className="mt-1 text-base font-bold text-foreground">{COP.format(financialSummary.vendido)}</p>
+              </div>
+              <div className="rounded-xl border bg-background p-3">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Pagado</p>
+                <p className="mt-1 text-base font-bold text-foreground">{COP.format(financialSummary.pagado)}</p>
+              </div>
+              <div className="rounded-xl border bg-background p-3">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Pendiente</p>
+                <p className="mt-1 text-base font-bold text-foreground">{COP.format(financialSummary.pendiente)}</p>
+              </div>
+            </div>
+          </div>
+
           <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" placeholder="Buscar bono o número" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
           <div className="-mx-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Filtrar bonos por estado">
             <div className="flex min-w-max gap-2">
