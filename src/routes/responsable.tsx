@@ -28,6 +28,7 @@ export const Route = createFileRoute("/responsable")({ component: ResponsibleDas
 const AVAILABLE = new Set(["asignado", "disponible", "devuelto"]);
 
 type DashboardSection = "bonos" | "compradores" | "carton";
+type BonoFilter = "disponibles" | "reservados" | "vendidos" | "pagados" | "todos";
 
 function normalizeWhatsAppPhone(value?: string | null) {
   const digits = (value || "").replace(/\D/g, "");
@@ -51,7 +52,7 @@ function ResponsibleDashboard() {
   const { data: offerData } = useQuery({ queryKey: ["responsible-offer-batches"], queryFn: () => getOfferBatches(), retry: false });
 
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"disponibles" | "reservados" | "vendidos" | "pagados" | "todos">("disponibles");
+  const [filter, setFilter] = useState<BonoFilter>("disponibles");
   const [activeSection, setActiveSection] = useState<DashboardSection>("bonos");
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [selectedBono, setSelectedBono] = useState<any | null>(null);
@@ -296,6 +297,14 @@ function ResponsibleDashboard() {
     ? (selectedBono.raffle_bono_numbers ?? []).slice().sort((a: any, b: any) => a.option_number - b.option_number).map((n: any) => n.numero)
     : [];
 
+  const statusTabs: Array<{ value: BonoFilter; label: string; count?: number }> = [
+    { value: "disponibles", label: "Disponibles", count: s.counts.asignado ?? 0 },
+    { value: "reservados", label: "Reservados", count: s.counts.reservado ?? 0 },
+    { value: "vendidos", label: "Vendidos", count: s.counts.vendido ?? 0 },
+    { value: "pagados", label: "Pagados", count: s.counts.pagado ?? 0 },
+    { value: "todos", label: "Todos", count: bonos.length },
+  ];
+
   return (
     <main className="mx-auto min-h-screen max-w-7xl space-y-6 p-3 sm:p-6">
       <header className="flex items-center justify-between gap-3 rounded-2xl border bg-card p-4">
@@ -319,7 +328,7 @@ function ResponsibleDashboard() {
             key={String(k)}
             type="button"
             onClick={() => {
-              setFilter(String(k).toLowerCase() as any);
+              setFilter(String(k).toLowerCase() as BonoFilter);
               setActiveSection("bonos");
             }}
             className="rounded-xl border bg-card p-3 text-left transition hover:border-gold/60"
@@ -352,9 +361,25 @@ function ResponsibleDashboard() {
 
       {activeSection === "bonos" && (
         <section className="space-y-3 rounded-2xl border bg-card p-3 sm:p-5">
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="relative flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" placeholder="Buscar bono o número" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-            <select className="h-10 rounded-md border bg-background px-3" value={filter} onChange={(e) => setFilter(e.target.value as any)}><option value="disponibles">Disponibles</option><option value="reservados">Reservados</option><option value="vendidos">Vendidos</option><option value="pagados">Pagados</option><option value="todos">Todos</option></select>
+          <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" placeholder="Buscar bono o número" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+          <div className="-mx-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Filtrar bonos por estado">
+            <div className="flex min-w-max gap-2">
+              {statusTabs.map((tab) => {
+                const active = filter === tab.value;
+                return (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setFilter(tab.value)}
+                    className={`min-h-10 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold transition ${active ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-background text-foreground hover:bg-secondary"}`}
+                  >
+                    {tab.label} <span className={`ml-1 ${active ? "opacity-90" : "text-muted-foreground"}`}>({tab.count})</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((b: any) => {
