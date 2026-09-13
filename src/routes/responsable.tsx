@@ -62,7 +62,6 @@ function ResponsibleDashboard() {
   const [payment, setPayment] = useState({ amount_paid: "", payment_reference: "" });
 
   const exportRef = useRef<HTMLDivElement>(null);
-  const individualRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (error) {
@@ -260,45 +259,32 @@ function ResponsibleDashboard() {
     toast.info("La imagen se descargó para que puedas compartirla.");
   }
 
-  async function buildIndividualBonoFile() {
-    if (!individualRef.current || !selectedBono) return null;
-    const dataUrl = await toPng(individualRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: "#ffffff" });
-    return {
-      dataUrl,
-      filename: `bono-${padBonoNumber(selectedBono.serial)}.png`,
-    };
-  }
-
-  async function sendSelectedBonoToWhatsApp() {
+  function sendSelectedBonoToWhatsApp() {
     if (!selectedBono?.buyer_phone) return toast.error("Este bono no tiene un WhatsApp registrado.");
+    if (!selectedBono?.verification_code) return toast.error("Este bono no tiene un código de verificación disponible.");
+
     const phone = normalizeWhatsAppPhone(selectedBono.buyer_phone);
     if (!phone) return toast.error("El número de WhatsApp no es válido.");
 
-    try {
-      const generated = await buildIndividualBonoFile();
-      if (!generated) return;
+    const nums = (selectedBono.raffle_bono_numbers ?? [])
+      .slice()
+      .sort((x: any, y: any) => x.option_number - y.option_number)
+      .map((n: any) => padBonoNumber(n.numero))
+      .join(" y ");
+    const bonoUrl = `${window.location.origin}/bono/${encodeURIComponent(selectedBono.verification_code)}`;
+    const buyer = selectedBono.buyer_name?.trim();
+    const text = [
+      `Hola${buyer ? ` ${buyer}` : ""}. 🙏`,
+      `Te compartimos tu Bono ${padBonoNumber(selectedBono.serial)} – Mensajeros de San Miguel Arcángel.`,
+      `Tus números son ${nums}.`,
+      "",
+      "Puedes consultar tu bono aquí:",
+      bonoUrl,
+      "",
+      "¡Gracias por apoyar nuestra misión!",
+    ].join("\n");
 
-      const nums = (selectedBono.raffle_bono_numbers ?? [])
-        .slice()
-        .sort((x: any, y: any) => x.option_number - y.option_number)
-        .map((n: any) => padBonoNumber(n.numero))
-        .join(" y ");
-      const text = `Hola ${selectedBono.buyer_name || ""}. Te envío tu Bono ${padBonoNumber(selectedBono.serial)}, números ${nums}. Gracias por apoyar la misión de Mensajeros de San Miguel Arcángel.`;
-
-      const a = document.createElement("a");
-      a.href = generated.dataUrl;
-      a.download = generated.filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
-      toast.info("Imagen descargada. Abriendo el WhatsApp registrado del comprador…");
-
-      const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-      window.location.href = whatsappUrl;
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No fue posible preparar el bono para WhatsApp.");
-    }
+    window.location.href = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   }
 
   if (!data) return <main className="p-8">Cargando bonos asignados…</main>;
@@ -369,7 +355,7 @@ function ResponsibleDashboard() {
       <Dialog open={Boolean(selectedBono)} onOpenChange={(open) => !open && setSelectedBono(null)}>
         <DialogContent className="max-h-[94vh] max-w-2xl overflow-y-auto p-4 sm:p-6">
           {selectedBono && <><DialogHeader><DialogTitle>Bono {padBonoNumber(selectedBono.serial)}</DialogTitle></DialogHeader>
-            {selectedRaffle && <div ref={individualRef}><BonoDualCard statusDisplay="subtle" bono={{ serial: selectedBono.serial, verification_code: selectedBono.verification_code, numbers: selectedNumbers, status: selectedBono.status, raffle: selectedRaffle }} /></div>}
+            {selectedRaffle && <div><BonoDualCard statusDisplay="subtle" bono={{ serial: selectedBono.serial, verification_code: selectedBono.verification_code, numbers: selectedNumbers, status: selectedBono.status, raffle: selectedRaffle }} /></div>}
             {selectedBono.buyer_name && <div className="rounded-xl bg-secondary p-3 text-sm"><p><strong>Comprador:</strong> {selectedBono.buyer_name}</p><p><strong>Teléfono:</strong> {selectedBono.buyer_phone || "—"}</p>{selectedBono.buyer_city && <p><strong>Ciudad:</strong> {selectedBono.buyer_city}</p>}</div>}
             <div className="grid gap-2 sm:grid-cols-2">
               {AVAILABLE.has(selectedBono.status) && <Button onClick={() => setReserveOpen(true)}>Reservar este bono</Button>}
@@ -377,7 +363,7 @@ function ResponsibleDashboard() {
               {selectedBono.status === "vendido" && <><Button onClick={() => setPayOpen(true)}>Registrar pago</Button><Button variant="outline" onClick={revertSelectedSale} disabled={busy}><Undo2 className="mr-1 h-4 w-4" /> Revertir venta</Button></>}
               {selectedBono.buyer_phone && <Button className="sm:col-span-2" onClick={sendSelectedBonoToWhatsApp}><Share2 className="mr-1 h-4 w-4" /> Enviar bono por WhatsApp</Button>}
             </div>
-            <p className="text-xs text-muted-foreground">El botón descarga la imagen del bono y abre directamente el chat del número de WhatsApp registrado del comprador. Por seguridad del navegador, la imagen debe adjuntarse desde la descarga dentro del chat.</p>
+            <p className="text-xs text-muted-foreground">El botón abre directamente el WhatsApp registrado del comprador con un mensaje personalizado y el enlace verificable de su bono digital.</p>
           </>}
         </DialogContent>
       </Dialog>
