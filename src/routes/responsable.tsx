@@ -27,6 +27,8 @@ export const Route = createFileRoute("/responsable")({ component: ResponsibleDas
 
 const AVAILABLE = new Set(["asignado", "disponible", "devuelto"]);
 
+type DashboardSection = "bonos" | "compradores" | "carton";
+
 function normalizeWhatsAppPhone(value?: string | null) {
   const digits = (value || "").replace(/\D/g, "");
   if (!digits) return "";
@@ -50,6 +52,7 @@ function ResponsibleDashboard() {
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"disponibles" | "reservados" | "vendidos" | "pagados" | "todos">("disponibles");
+  const [activeSection, setActiveSection] = useState<DashboardSection>("bonos");
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [selectedBono, setSelectedBono] = useState<any | null>(null);
   const [reserveOpen, setReserveOpen] = useState(false);
@@ -312,41 +315,76 @@ function ResponsibleDashboard() {
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[["Disponibles", s.counts.asignado ?? 0], ["Reservados", s.counts.reservado ?? 0], ["Vendidos", s.counts.vendido ?? 0], ["Pagados", s.counts.pagado ?? 0]].map(([k, v]) => (
-          <button key={String(k)} type="button" onClick={() => setFilter(String(k).toLowerCase() as any)} className="rounded-xl border bg-card p-3 text-left transition hover:border-gold/60">
+          <button
+            key={String(k)}
+            type="button"
+            onClick={() => {
+              setFilter(String(k).toLowerCase() as any);
+              setActiveSection("bonos");
+            }}
+            className="rounded-xl border bg-card p-3 text-left transition hover:border-gold/60"
+          >
             <p className="text-xs text-muted-foreground">{k}</p><strong className="text-xl">{v}</strong>
           </button>
         ))}
       </div>
 
-      <section className="space-y-4 rounded-2xl border bg-card p-3 sm:p-5">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-          <div><h2 className="font-display text-lg sm:text-xl">Cartón para ofrecer</h2><p className="text-sm text-muted-foreground">Toca un bono disponible para administrarlo.</p></div>
-          {selectedBatch && <div className="flex gap-2"><Button variant="outline" size="sm" onClick={downloadBatchCard}><Download className="mr-1 h-4 w-4" /> Descargar</Button><Button size="sm" onClick={shareBatchCard}><Share2 className="mr-1 h-4 w-4" /> Compartir</Button></div>}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(offerData?.batches ?? []).map((batch: any) => {
-            const available = batch.bonos.filter((b: any) => AVAILABLE.has(b.status)).length;
-            return <Button key={batch.id} size="sm" variant={selectedBatchId === batch.id ? "default" : "outline"} onClick={() => setSelectedBatchId(batch.id)}><Eye className="mr-1 h-4 w-4" /> {batch.name || batch.code} · {available}/{batch.bonos.length}</Button>;
-          })}
-        </div>
-        {selectedBatch ? <BonoBatchCard raffle={selectedBatch.raffle} batch={{ code: selectedBatch.code, name: selectedBatch.name }} responsibleName={offerData?.responsible?.display_name ?? data.responsible.display_name} bonos={selectedBatch.bonos} onSelectBono={(bono: any) => openBono(bonos.find((b: any) => b.id === bono.id) ?? bono)} /> : <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">No tienes lotes asignados todavía.</p>}
-      </section>
+      <nav className="grid grid-cols-3 gap-2 rounded-2xl border bg-card p-2" aria-label="Secciones del panel">
+        {[
+          ["bonos", "Mis bonos"],
+          ["compradores", "Compradores"],
+          ["carton", "Cartón"],
+        ].map(([section, label]) => {
+          const active = activeSection === section;
+          return (
+            <button
+              key={section}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setActiveSection(section as DashboardSection)}
+              className={`min-h-11 rounded-xl px-2 py-2 text-sm font-semibold transition ${active ? "bg-primary text-primary-foreground shadow-sm" : "bg-background text-foreground hover:bg-secondary"}`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </nav>
 
-      <section className="space-y-3 rounded-2xl border bg-card p-3 sm:p-5">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <div className="relative flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" placeholder="Buscar bono o número" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-          <select className="h-10 rounded-md border bg-background px-3" value={filter} onChange={(e) => setFilter(e.target.value as any)}><option value="disponibles">Disponibles</option><option value="reservados">Reservados</option><option value="vendidos">Vendidos</option><option value="pagados">Pagados</option><option value="todos">Todos</option></select>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((b: any) => {
-            const nums = (b.raffle_bono_numbers ?? []).slice().sort((a: any, c: any) => a.option_number - c.option_number).map((n: any) => padBonoNumber(n.numero));
-            return <button type="button" key={b.id} onClick={() => openBono(b)} className="rounded-xl border bg-background p-4 text-left transition hover:border-gold/60 hover:shadow-sm"><div className="flex items-center justify-between"><strong>Bono {padBonoNumber(b.serial)}</strong><span className="rounded-full bg-secondary px-2 py-1 text-[11px] font-bold uppercase">{b.status}</span></div><div className="mt-3 text-2xl font-black text-red-700">{nums.join(" · ")}</div>{b.buyer_name && <p className="mt-2 text-sm"><strong>Comprador:</strong> {b.buyer_name}</p>}</button>;
-          })}
-        </div>
-        {!filtered.length && <p className="p-6 text-center text-sm text-muted-foreground">No hay bonos con este filtro.</p>}
-      </section>
+      {activeSection === "bonos" && (
+        <section className="space-y-3 rounded-2xl border bg-card p-3 sm:p-5">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="relative flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" placeholder="Buscar bono o número" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+            <select className="h-10 rounded-md border bg-background px-3" value={filter} onChange={(e) => setFilter(e.target.value as any)}><option value="disponibles">Disponibles</option><option value="reservados">Reservados</option><option value="vendidos">Vendidos</option><option value="pagados">Pagados</option><option value="todos">Todos</option></select>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((b: any) => {
+              const nums = (b.raffle_bono_numbers ?? []).slice().sort((a: any, c: any) => a.option_number - c.option_number).map((n: any) => padBonoNumber(n.numero));
+              return <button type="button" key={b.id} onClick={() => openBono(b)} className="rounded-xl border bg-background p-4 text-left transition hover:border-gold/60 hover:shadow-sm"><div className="flex items-center justify-between"><strong>Bono {padBonoNumber(b.serial)}</strong><span className="rounded-full bg-secondary px-2 py-1 text-[11px] font-bold uppercase">{b.status}</span></div><div className="mt-3 text-2xl font-black text-red-700">{nums.join(" · ")}</div>{b.buyer_name && <p className="mt-2 text-sm"><strong>Comprador:</strong> {b.buyer_name}</p>}</button>;
+            })}
+          </div>
+          {!filtered.length && <p className="p-6 text-center text-sm text-muted-foreground">No hay bonos con este filtro.</p>}
+        </section>
+      )}
 
-      <ResponsibleBuyersTable bonos={bonos} raffleById={raffleById} onOpenBono={openBono} onRegisterPayment={openPaymentFor} />
+      {activeSection === "compradores" && (
+        <ResponsibleBuyersTable bonos={bonos} raffleById={raffleById} onOpenBono={openBono} onRegisterPayment={openPaymentFor} />
+      )}
+
+      {activeSection === "carton" && (
+        <section className="space-y-4 rounded-2xl border bg-card p-3 sm:p-5">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div><h2 className="font-display text-lg sm:text-xl">Cartón para ofrecer</h2><p className="text-sm text-muted-foreground">Toca un bono disponible para administrarlo.</p></div>
+            {selectedBatch && <div className="flex gap-2"><Button variant="outline" size="sm" onClick={downloadBatchCard}><Download className="mr-1 h-4 w-4" /> Descargar</Button><Button size="sm" onClick={shareBatchCard}><Share2 className="mr-1 h-4 w-4" /> Compartir</Button></div>}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(offerData?.batches ?? []).map((batch: any) => {
+              const available = batch.bonos.filter((b: any) => AVAILABLE.has(b.status)).length;
+              return <Button key={batch.id} size="sm" variant={selectedBatchId === batch.id ? "default" : "outline"} onClick={() => setSelectedBatchId(batch.id)}><Eye className="mr-1 h-4 w-4" /> {batch.name || batch.code} · {available}/{batch.bonos.length}</Button>;
+            })}
+          </div>
+          {selectedBatch ? <BonoBatchCard raffle={selectedBatch.raffle} batch={{ code: selectedBatch.code, name: selectedBatch.name }} responsibleName={offerData?.responsible?.display_name ?? data.responsible.display_name} bonos={selectedBatch.bonos} onSelectBono={(bono: any) => openBono(bonos.find((b: any) => b.id === bono.id) ?? bono)} /> : <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">No tienes lotes asignados todavía.</p>}
+        </section>
+      )}
 
       <div className="pointer-events-none fixed -left-[5000px] top-0 w-[1200px]">
         {selectedBatch && <BonoBatchCard ref={exportRef} exportMode raffle={selectedBatch.raffle} batch={{ code: selectedBatch.code, name: selectedBatch.name }} responsibleName={offerData?.responsible?.display_name ?? data.responsible.display_name} bonos={selectedBatch.bonos} />}
