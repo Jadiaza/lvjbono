@@ -47,9 +47,11 @@ const nullableUrl = z
   .union([z.string().url().startsWith("https://"), z.literal(""), z.null()])
   .optional();
 const campaignSchema = z.object({
+  raffle_mode: z.enum(["dual_bono", "material_2d"]).default("dual_bono"),
   nombre: z.string().trim().min(2).max(120),
   valor_boleta: z.number().int().min(100),
   bono_total: z.number().int().min(1).max(500).default(500),
+  bono_prize_value: z.number().int().min(0).nullable().optional(),
   fecha_sorteo: z.string().nullable().optional(),
   loteria: z.string().trim().max(120).nullable().optional(),
   bono_title: z.string().trim().max(120).default("BONO"),
@@ -75,17 +77,30 @@ const campaignSchema = z.object({
 
 export const adminCreateDualBonoCampaign = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((value: unknown) => campaignSchema.parse(value))
+  .validator((value: unknown) =>
+    campaignSchema
+      .superRefine((campaign, ctx) => {
+        if (campaign.raffle_mode === "material_2d" && campaign.bono_total !== 100) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["bono_total"],
+            message: "La rifa material de dos cifras debe tener exactamente 100 números.",
+          });
+        }
+      })
+      .parse(value),
+  )
   .handler(async ({ data, context }) => {
     await requireAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const payload = {
       ...data,
-      raffle_mode: "dual_bono",
-      digitos: 3,
-      bono_numbers_per_ticket: 2,
+      raffle_mode: data.raffle_mode,
+      digitos: data.raffle_mode === "material_2d" ? 2 : 3,
+      bono_numbers_per_ticket: data.raffle_mode === "material_2d" ? 1 : 2,
       staged_payments: false,
       activa: false,
+      bono_total: data.raffle_mode === "material_2d" ? 100 : data.bono_total,
       bono_prize_image_url: data.bono_prize_image_url || null,
       bono_side_image_url: data.bono_side_image_url || null,
       bono_logo_url: data.bono_logo_url || null,
@@ -96,7 +111,7 @@ export const adminCreateDualBonoCampaign = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    const { data: generated, error: generationError } = await (supabaseAdmin as any).rpc(
+    const { data: generated, error: generationError } = await context.supabase.rpc(
       "generate_dual_bonos",
       { _raffle_id: raffle.id, _total_bonos: data.bono_total },
     );
@@ -118,7 +133,7 @@ export const adminCreateDualBonoCampaign = createServerFn({ method: "POST" })
         .eq("raffle_id", raffle.id),
     ]);
     const expectedBonos = data.bono_total;
-    const expectedNumbers = expectedBonos * 2;
+    const expectedNumbers = expectedBonos * (data.raffle_mode === "material_2d" ? 1 : 2);
     const numbers = generatedNumbers ?? [];
     const uniqueNumbers = new Set(numbers.map((item: any) => item.numero));
     const numbersPerBono = new Map<string, number>();
@@ -132,7 +147,9 @@ export const adminCreateDualBonoCampaign = createServerFn({ method: "POST" })
       numbers.length === expectedNumbers &&
       uniqueNumbers.size === expectedNumbers &&
       numbersPerBono.size === expectedBonos &&
-      [...numbersPerBono.values()].every((count) => count === 2);
+      [...numbersPerBono.values()].every(
+        (count) => count === (data.raffle_mode === "material_2d" ? 1 : 2),
+      );
     if (!generationIsComplete) {
       await (supabaseAdmin as any).from("raffles").delete().eq("id", raffle.id);
       throw new Error(
@@ -150,7 +167,7 @@ export const adminListDualBonoCampaigns = createServerFn({ method: "GET" })
     const { data, error } = await (supabaseAdmin as any)
       .from("raffles")
       .select("*")
-      .eq("raffle_mode", "dual_bono")
+      .in("raffle_mode", ["dual_bono", "material_2d"])
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return { campaigns: data ?? [] };
@@ -173,7 +190,7 @@ export const adminGetDualBonoCampaign = createServerFn({ method: "GET" })
         .from("raffles")
         .select("*")
         .eq("id", data.raffleId)
-        .eq("raffle_mode", "dual_bono")
+        .in("raffle_mode", ["dual_bono", "material_2d"])
         .single(),
       (supabaseAdmin as any)
         .from("raffle_bonos")
@@ -802,7 +819,7 @@ export const getPublicBonoByCode = createServerFn({ method: "GET" })
     const { data: bono } = await (supabaseAdmin as any)
       .from("raffle_bonos")
       .select(
-        "id, serial, status, verification_code, raffle_bono_numbers(option_number, numero), raffles(nombre, fecha_sorteo, loteria, bono_title, bono_subtitle, bono_prize_name, bono_prize_description, bono_prize_dimensions, bono_prize_image_url, bono_side_image_url, bono_logo_url, bono_number_color, bono_accent_color, bono_footer_text, bono_show_qr, bono_show_platform_branding)",
+        "id, serial, status, verification_code, raffle_bono_numbers(option_number, numero), raffles(nombre, digitos, bono_numbers_per_ticket, fecha_sorteo, loteria, bono_title, bono_subtitle, bono_prize_name, bono_prize_description, bono_prize_dimensions, bono_prize_image_url, bono_side_image_url, bono_logo_url, bono_number_color, bono_accent_color, bono_footer_text, bono_show_qr, bono_show_platform_branding)",
       )
       .eq("verification_code", data.code)
       .maybeSingle();
@@ -829,6 +846,76 @@ export const getPublicResponsiblePage = createServerFn({ method: "GET" })
       .neq("status", "anulado")
       .order("serial");
     return { responsible, bonos: bonos ?? [] };
+  });
+
+const adminBonoEditSchema = z.object({
+  bonoId: z.string().uuid(),
+  serial: z.number().int().min(1).max(500),
+  numbers: z.array(z.number().int()).min(1).max(2),
+  buyer_name: z.string().trim().max(120).nullable(),
+  buyer_phone: z.string().trim().max(30).nullable(),
+  buyer_city: z.string().trim().max(100).nullable(),
+  buyer_notes: z.string().trim().max(500).nullable(),
+});
+
+export const adminUpdateBono = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((value: unknown) => adminBonoEditSchema.parse(value))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const { error } = await context.supabase.rpc("admin_update_raffle_bono", {
+      _bono_id: data.bonoId,
+      _actor_user_id: context.userId,
+      _serial: data.serial,
+      _numbers: data.numbers,
+      _buyer_name: data.buyer_name,
+      _buyer_phone: data.buyer_phone,
+      _buyer_city: data.buyer_city,
+      _buyer_notes: data.buyer_notes,
+    });
+
+    if (error) {
+      const messages: Record<string, string> = {
+        forbidden: "Se requiere acceso de administrador.",
+        bono_not_found: "Bono no encontrado.",
+        bono_serial_conflict: "Ese serial ya está asignado a otro bono de la campaña.",
+        bono_number_conflict: "Uno o más números ya están asignados a otro bono de la campaña.",
+        bono_financial_history_locked:
+          "No se puede cambiar el serial o los números de un bono con ventas o pagos registrados.",
+        bono_identity_locked:
+          "No se puede cambiar el serial o los números de un bono reservado o asignado. Cancela primero la reserva o asignación.",
+        invalid_bono_data:
+          "El nombre y teléfono del comprador son obligatorios cuando existe una venta registrada.",
+        invalid_bono_numbers: "Los números no corresponden a la modalidad de esta campaña.",
+        invalid_bono_serial: "El serial está fuera del rango permitido para esta campaña.",
+      };
+      throw new Error(messages[error.message] ?? error.message);
+    }
+    return { ok: true };
+  });
+
+export const adminDeleteBono = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((value: unknown) => z.object({ bonoId: z.string().uuid() }).parse(value))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const { data: result, error } = await context.supabase.rpc("admin_delete_raffle_bono", {
+      _bono_id: data.bonoId,
+      _actor_user_id: context.userId,
+    });
+    if (error) {
+      const messages: Record<string, string> = {
+        forbidden: "Se requiere acceso de administrador.",
+        bono_not_found: "Bono no encontrado.",
+        bono_financial_history_locked:
+          "No se puede eliminar ni anular un bono con una venta o pago registrado. Usa el flujo de corrección administrativa.",
+        bono_already_void: "El bono ya está anulado.",
+        bono_active_reservation_locked:
+          "Cancela formalmente la reserva antes de eliminar o anular este bono.",
+      };
+      throw new Error(messages[error.message] ?? error.message);
+    }
+    return result as { deleted: boolean; status: string | null };
   });
 
 export { BONO_STATUSES };

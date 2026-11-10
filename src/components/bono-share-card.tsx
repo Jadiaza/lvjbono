@@ -7,11 +7,14 @@ type BonoShareRaffle = {
   fecha_sorteo: string | null;
   loteria: string | null;
   bono_total?: number | null;
+  bono_numbers_per_ticket?: number | null;
+  digitos?: number;
   bono_title?: string | null;
   bono_subtitle?: string | null;
   bono_prize_name?: string | null;
   bono_prize_description?: string | null;
   bono_prize_dimensions?: string | null;
+  bono_prize_value?: number | null;
   bono_prize_image_url?: string | null;
   bono_logo_url?: string | null;
   bono_accent_color?: string | null;
@@ -21,6 +24,8 @@ export const BonoShareCard = forwardRef<HTMLDivElement, { raffle: BonoShareRaffl
   ({ raffle }, ref) => {
     const accent = raffle.bono_accent_color || "#f9bd08";
     const total = raffle.bono_total ?? 500;
+    const numbersPerBono = raffle.bono_numbers_per_ticket ?? 2;
+    const digits = raffle.digitos === 2 ? 2 : 3;
     return (
       <div
         ref={ref}
@@ -47,7 +52,7 @@ export const BonoShareCard = forwardRef<HTMLDivElement, { raffle: BonoShareRaffl
                     {raffle.bono_title || "BONO SOLIDARIO"}
                   </p>
                   <p className="mt-2 text-xl text-white/75">
-                    Premio físico · no canjeable por dinero
+                    Premio en especie · no canjeable por dinero
                   </p>
                 </div>
               </div>
@@ -58,7 +63,10 @@ export const BonoShareCard = forwardRef<HTMLDivElement, { raffle: BonoShareRaffl
                 className="mt-10 inline-flex rounded-full px-8 py-4 text-3xl font-black text-[#170326]"
                 style={{ background: accent }}
               >
-                {total} BONOS · {total * 2} NÚMEROS · 2 POR BONO
+                {total} BONOS · {total * numbersPerBono} NÚMEROS
+                {numbersPerBono === 1
+                  ? ` · ${String(0).padStart(digits, "0")}–${"9".repeat(digits)}`
+                  : " · 2 POR BONO"}
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4 text-xl">
@@ -100,13 +108,20 @@ export const BonoShareCard = forwardRef<HTMLDivElement, { raffle: BonoShareRaffl
                 Características: {raffle.bono_prize_dimensions}
               </p>
             )}
+            {raffle.bono_prize_value != null && (
+              <p className="mt-4 text-lg font-bold">
+                Valor estimado: {formatCOP(raffle.bono_prize_value)}
+              </p>
+            )}
           </section>
         </div>
         <div
           className="px-14 py-6 text-center text-xl font-bold text-[#170326]"
           style={{ background: accent }}
         >
-          Cada bono participa con una pareja única de números entre 000 y 999.
+          {numbersPerBono === 1
+            ? `Cada bono participa con un número único entre ${String(0).padStart(digits, "0")} y ${"9".repeat(digits)}.`
+            : "Cada bono participa con una pareja única de números entre 000 y 999."}
         </div>
       </div>
     );

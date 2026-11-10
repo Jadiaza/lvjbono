@@ -14,6 +14,15 @@ export function padBonoNumber(value: number, digits = 3) {
   return Math.trunc(value).toString().padStart(digits, "0");
 }
 
+export function isValidBonoNumberSet(numbers: number[], digits: 2 | 3, expectedCount: number) {
+  const maximum = 10 ** digits;
+  return (
+    numbers.length === expectedCount &&
+    new Set(numbers).size === numbers.length &&
+    numbers.every((number) => Number.isInteger(number) && number >= 0 && number < maximum)
+  );
+}
+
 export function generateDualBonoPairs(totalBonos: number, random = Math.random) {
   if (!Number.isInteger(totalBonos) || totalBonos < 1 || totalBonos > 500) {
     throw new Error("La cantidad de bonos debe estar entre 1 y 500.");

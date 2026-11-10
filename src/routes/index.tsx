@@ -76,6 +76,9 @@ type CatalogRaffle = {
   valor_boleta: number;
   premio_mayor: number;
   public_skin: string | null;
+  raffle_mode: string;
+  bono_prize_name: string | null;
+  bono_prize_value: number | null;
 };
 
 function CatalogHome() {
@@ -128,7 +131,11 @@ function CatalogHome() {
                 >
                   <div className="bg-brand p-6 text-brand-foreground">
                     <p className="text-xs font-bold uppercase tracking-widest opacity-75">
-                      {raffle.serie ?? raffle.slug}
+                      {raffle.raffle_mode === "material_2d"
+                        ? "Premio en especie · 2 cifras"
+                        : raffle.raffle_mode === "dual_bono"
+                          ? "Bono en duplas · 3 cifras"
+                          : (raffle.serie ?? raffle.slug)}
                     </p>
                     <h3 className="mt-2 text-2xl font-extrabold">{raffle.nombre}</h3>
                     {raffle.responsable && (
@@ -143,17 +150,37 @@ function CatalogHome() {
                       <strong>Lotería:</strong> {raffle.loteria ?? "Por definir"}
                     </p>
                     <p>
-                      <strong>Boleta:</strong> {formatCOP(raffle.valor_boleta)}
+                      <strong>
+                        {raffle.raffle_mode === "material_2d" ? "Número:" : "Boleta:"}
+                      </strong>{" "}
+                      {formatCOP(raffle.valor_boleta)}
                     </p>
                     <p>
-                      <strong>Premio mayor:</strong> {formatCOP(raffle.premio_mayor)}
+                      <strong>
+                        {raffle.raffle_mode === "material_2d" || raffle.raffle_mode === "dual_bono"
+                          ? "Premio:"
+                          : "Premio mayor:"}
+                      </strong>{" "}
+                      {raffle.raffle_mode === "material_2d" || raffle.raffle_mode === "dual_bono"
+                        ? raffle.bono_prize_name || "Premio especial"
+                        : formatCOP(raffle.premio_mayor)}
                     </p>
+                    {raffle.bono_prize_value != null && (
+                      <p>
+                        <strong>Valor estimado del premio:</strong>{" "}
+                        {formatCOP(raffle.bono_prize_value)}
+                      </p>
+                    )}
                     <Link
                       to="/$slug"
                       params={{ slug: publicPath }}
                       className="mt-4 block rounded-full bg-brand px-5 py-3 text-center font-bold text-brand-foreground"
                     >
-                      Ver talonario y elegir número
+                      {raffle.raffle_mode === "material_2d"
+                        ? "Consultar números y responsables"
+                        : raffle.raffle_mode === "dual_bono"
+                          ? "Consultar bonos disponibles"
+                          : "Ver talonario y elegir número"}
                     </Link>
                     <p className="text-center text-xs text-muted-foreground">/{publicPath}</p>
                   </div>

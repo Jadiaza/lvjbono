@@ -67,13 +67,15 @@ type Raffle = {
   installment_amount: number | null;
   total: number;
   counts: { disponible: number; reservado: number; vendido: number; ganador: number };
-  raffle_mode?: "standard" | "dual_bono";
+  raffle_mode?: "standard" | "dual_bono" | "material_2d";
   bono_total?: number | null;
+  bono_numbers_per_ticket?: number | null;
   bono_title?: string | null;
   bono_subtitle?: string | null;
   bono_prize_name?: string | null;
   bono_prize_description?: string | null;
   bono_prize_dimensions?: string | null;
+  bono_prize_value?: number | null;
   bono_prize_image_url?: string | null;
   bono_logo_url?: string | null;
   bono_accent_color?: string | null;
@@ -217,29 +219,52 @@ function AdminRaffles() {
             <div className="rounded-xl border bg-secondary/40 p-4">
               <Label className="mb-2 block">Modalidad</Label>
               <div className="grid gap-2 sm:grid-cols-2">
-                <Button type="button" variant="secondary" className="h-auto min-h-14 justify-start whitespace-normal py-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-auto min-h-14 justify-start whitespace-normal py-3"
+                >
                   <span className="text-left">
-                    <strong className="block">Rifa tradicional de artículos</strong>
+                    <strong className="block">Premios en efectivo · 2 o 3 cifras</strong>
                     <span className="block text-xs font-normal text-muted-foreground">
-                      Un solo número por boleta · 00–99
+                      Dos cifras: 00–99 · Tres cifras: 000–999
                     </span>
                   </span>
                 </Button>
-                <Button type="button" variant="outline" className="h-auto min-h-14 justify-start whitespace-normal py-3" asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-auto min-h-14 justify-start whitespace-normal py-3"
+                  asChild
+                >
                   <Link to="/admin/bonos" onClick={() => setShowCreate(false)}>
                     <span className="text-left">
-                      <strong className="block">Bono personalizado en duplas</strong>
+                      <strong className="block">Premio en especie · 2 cifras</strong>
                       <span className="block text-xs font-normal text-muted-foreground">
-                        Dos números de tres cifras por bono
+                        100 bonos individuales numerados del 00 al 99
                       </span>
                     </span>
                   </Link>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-auto min-h-14 justify-start whitespace-normal py-3"
+                    asChild
+                  >
+                    <Link to="/admin/bonos" onClick={() => setShowCreate(false)}>
+                      <span className="text-left">
+                        <strong className="block">Bono en duplas · 3 cifras</strong>
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          Dos números únicos del 000 al 999 por bono
+                        </span>
+                      </span>
+                    </Link>
+                  </Button>
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Para rifar artículos, selecciona la modalidad tradicional y configura 2 dígitos:
-                se generarán las 100 boletas consecutivas del 00 al 99, cada una con un único número.
-                Los bonos en duplas conservan su administración independiente.
+                Los premios en especie se crean desde Bonos, donde puedes elegir 2 cifras o bonos en
+                duplas. Las rifas en efectivo conservan su formulario y sus premios monetarios.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -657,19 +682,23 @@ function RaffleCard({
 
   function whatsappMessage() {
     const raffleUrl = `${window.location.origin}/${getPublicRaffleSlug(r)}`;
-    if (r.raffle_mode === "dual_bono") {
+    if (r.raffle_mode === "dual_bono" || r.raffle_mode === "material_2d") {
+      const isTwoDigitMaterial = r.raffle_mode === "material_2d";
       return [
         `🎟️ *${form.nombre.toUpperCase()}*`,
         "",
         `🎁 *Premio:* ${r.bono_prize_name || "Premio especial"}`,
         r.bono_prize_description || null,
         r.bono_prize_dimensions ? `📐 *Características:* ${r.bono_prize_dimensions}` : null,
+        r.bono_prize_value != null ? `💎 *Valor estimado:* ${formatCOP(r.bono_prize_value)}` : null,
         `📅 *Fecha del sorteo:* ${form.fecha_sorteo || "Por definir"}`,
         `🎰 *Lotería:* ${form.loteria || "Por definir"}`,
-        `💳 *Aporte por bono:* ${formatCOP(Number(form.valor_boleta))}`,
+        `💳 *${isTwoDigitMaterial ? "Valor por número" : "Aporte por bono"}:* ${formatCOP(Number(form.valor_boleta))}`,
         "",
-        `✅ ${r.bono_total ?? 500} bonos con 2 números únicos cada uno.`,
-        "✅ 1.000 números distribuidos en parejas, del 000 al 999.",
+        isTwoDigitMaterial
+          ? "✅ 100 números independientes del 00 al 99, uno por bono."
+          : `✅ ${r.bono_total ?? 500} bonos con 2 números únicos cada uno.`,
+        isTwoDigitMaterial ? null : "✅ 1.000 números distribuidos en parejas, del 000 al 999.",
         "✅ El premio es físico y no se entrega dinero en efectivo.",
         "",
         `🌐 *Consulta los bonos aquí:* ${raffleUrl}`,
@@ -819,14 +848,17 @@ function RaffleCard({
           <Button size="sm" variant="outline" onClick={onToggleExpand}>
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onDelete}
-            className="text-destructive hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {r.raffle_mode === "standard" && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onDelete}
+              className="text-destructive hover:text-destructive"
+              title="Eliminar cartón"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -924,7 +956,7 @@ function RaffleCard({
               ))}
             </div>
           </div>
-          {r.raffle_mode === "dual_bono" ? (
+          {r.raffle_mode === "dual_bono" || r.raffle_mode === "material_2d" ? (
             <div className="rounded-md border border-gold/30 bg-gold/5 p-4 text-sm">
               <p className="font-semibold">Premio físico</p>
               <p className="mt-1 text-muted-foreground">
@@ -932,8 +964,11 @@ function RaffleCard({
                 {r.bono_prize_description ? ` · ${r.bono_prize_description}` : ""}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
-                La imagen y los detalles del premio se editan desde el módulo Bonos. Esta campaña no
-                utiliza premios en efectivo.
+                {r.raffle_mode === "material_2d"
+                  ? "100 números únicos del 00 al 99, uno por bono."
+                  : "Dos números únicos de tres cifras por bono."}{" "}
+                La imagen y los detalles del premio se editan desde el módulo Bonos; esta campaña no
+                entrega premios en efectivo.
               </p>
             </div>
           ) : (
@@ -1000,13 +1035,13 @@ function RaffleCard({
         <DialogContent className="max-w-[96vw] max-h-[94vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle>
-              {r.raffle_mode === "dual_bono"
+              {r.raffle_mode !== "standard"
                 ? "Pieza del bono para WhatsApp"
                 : "Cartón para WhatsApp"}
             </DialogTitle>
             <DialogDescription>
-              {r.raffle_mode === "dual_bono"
-                ? "Presenta el premio físico y la mecánica de parejas, sin premios en efectivo."
+              {r.raffle_mode !== "standard"
+                ? "Presenta el premio físico, los números únicos y el enlace público."
                 : "Se genera con los datos, números y apariencia pública activa de esta rifa."}
             </DialogDescription>
           </DialogHeader>
@@ -1015,7 +1050,7 @@ function RaffleCard({
               <div className="grid min-h-64 place-items-center text-sm text-muted-foreground">
                 Preparando cartón…
               </div>
-            ) : r.raffle_mode === "dual_bono" ? (
+            ) : r.raffle_mode !== "standard" ? (
               <BonoShareCard
                 ref={posterRef}
                 raffle={{
@@ -1046,8 +1081,8 @@ function RaffleCard({
                   Incluir mensaje con las condiciones
                 </span>
                 <span className="block text-xs text-muted-foreground">
-                  {r.raffle_mode === "dual_bono"
-                    ? "Adjunta premio físico, aporte, fecha, mecánica de parejas y enlace de consulta."
+                  {r.raffle_mode !== "standard"
+                    ? "Adjunta premio físico, aporte, fecha, mecánica, números y enlace de consulta."
                     : "Adjunta un texto estructurado con emojis, sorteo, premios, condiciones y enlace para elegir número."}
                 </span>
               </span>

@@ -2,13 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-type AuthContext = { supabase: any; userId: string };
-
-async function requireAdmin(context: AuthContext) {
-  const { data } = await context.supabase
+async function requireAdmin(userId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
     .from("user_roles")
     .select("role")
-    .eq("user_id", context.userId)
+    .eq("user_id", userId)
     .eq("role", "admin")
     .maybeSingle();
   if (!data) throw new Error("Se requiere acceso de administrador.");
@@ -31,10 +30,10 @@ export const adminSetDualBonoPublicSlug = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((value: unknown) => slugSchema.parse(value))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context);
+    await requireAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: existing } = await (supabaseAdmin as any)
+    const { data: existing } = await supabaseAdmin
       .from("raffles")
       .select("id")
       .ilike("slug", data.slug)
@@ -42,11 +41,11 @@ export const adminSetDualBonoPublicSlug = createServerFn({ method: "POST" })
       .maybeSingle();
     if (existing) throw new Error("Ese código público ya está siendo utilizado.");
 
-    const { data: raffle, error } = await (supabaseAdmin as any)
+    const { data: raffle, error } = await supabaseAdmin
       .from("raffles")
       .update({ slug: data.slug, serie: data.slug.toUpperCase() })
       .eq("id", data.raffleId)
-      .eq("raffle_mode", "dual_bono")
+      .in("raffle_mode", ["dual_bono", "material_2d"])
       .select("id, slug, serie")
       .single();
     if (error) throw new Error(error.message);

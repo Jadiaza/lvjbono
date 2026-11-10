@@ -3,6 +3,7 @@ import {
   calculateBonoSummary,
   canResponsibleTransition,
   generateDualBonoPairs,
+  isValidBonoNumberSet,
   padBonoNumber,
 } from "./bono-domain";
 
@@ -26,6 +27,14 @@ describe("dual bono generation", () => {
 
   it("rejects campaigns beyond the three-digit capacity", () => {
     expect(() => generateDualBonoPairs(501)).toThrow();
+  });
+
+  it("preserves two-digit material numbers and rejects invalid assignments", () => {
+    expect([0, 1, 9].map((number) => padBonoNumber(number, 2))).toEqual(["00", "01", "09"]);
+    expect(isValidBonoNumberSet([0], 2, 1)).toBe(true);
+    expect(isValidBonoNumberSet([100], 2, 1)).toBe(false);
+    expect(isValidBonoNumberSet([9, 9], 2, 2)).toBe(false);
+    expect(isValidBonoNumberSet([9], 2, 2)).toBe(false);
   });
 });
 

@@ -18,8 +18,14 @@ function PublicRaffleBySlug() {
   });
 
   if (isLoading) return <main className="p-10 text-center">Cargando campaña…</main>;
-  if (data?.mode === "dual_bono" && data.raffle) {
-    return <DualBonoPublicPage raffle={data.raffle} sellers={data.sellers ?? []} />;
+  if ((data?.mode === "dual_bono" || data?.mode === "material_2d") && data.raffle) {
+    return (
+      <DualBonoPublicPage
+        raffle={data.raffle}
+        sellers={data.sellers ?? []}
+        bonos={data.bonos ?? []}
+      />
+    );
   }
   return <RafflePublicPage slug={slug} />;
 }

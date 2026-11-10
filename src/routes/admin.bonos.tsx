@@ -16,6 +16,7 @@ import { formatCOP } from "@/lib/format";
 export const Route = createFileRoute("/admin/bonos")({ component: AdminBonos });
 
 const initialForm = {
+  raffle_mode: "dual_bono" as "dual_bono" | "material_2d",
   nombre: "",
   public_code: "",
   valor_boleta: 10000,
@@ -27,6 +28,7 @@ const initialForm = {
   bono_prize_name: "",
   bono_prize_description: "",
   bono_prize_dimensions: "",
+  bono_prize_value: "",
   bono_prize_image_url: "",
   bono_side_image_url: "",
   bono_logo_url: "",
@@ -63,13 +65,17 @@ function AdminBonos() {
       const result = await create({
         data: {
           ...campaignForm,
+          bono_total: form.raffle_mode === "material_2d" ? 100 : form.bono_total,
+          bono_prize_value: form.bono_prize_value ? Number(form.bono_prize_value) : null,
           fecha_sorteo: form.fecha_sorteo || null,
           loteria: form.loteria || null,
         },
       });
       await setPublicSlug({ data: { raffleId: result.raffle.id, slug: publicCode } });
       toast.success(
-        `${result.generated} bonos y ${result.generatedNumbers} números generados. Enlace público: /${publicCode}`,
+        form.raffle_mode === "material_2d"
+          ? `Rifa material creada con ${result.generatedNumbers} números del 00 al 99. Enlace público: /${publicCode}`
+          : `${result.generated} bonos y ${result.generatedNumbers} números generados. Enlace público: /${publicCode}`,
       );
       setOpen(false);
       setForm(initialForm);
@@ -88,7 +94,7 @@ function AdminBonos() {
         <div>
           <h1 className="font-display text-2xl text-gold">Bonos personalizados</h1>
           <p className="text-sm text-muted-foreground">
-            Campañas de duplas permanentes con números únicos.
+            Rifas con premios en especie: números 00–99 o bonos de duplas 000–999.
           </p>
         </div>
         <Button onClick={() => setOpen(true)}>
@@ -107,8 +113,10 @@ function AdminBonos() {
             <TicketCheck className="mb-3 h-6 w-6 text-gold" />
             <h2 className="font-semibold">{campaign.nombre}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {campaign.bono_total} bonos · {campaign.bono_total * 2} números ·{" "}
-              {formatCOP(campaign.valor_boleta)}
+              {campaign.raffle_mode === "material_2d"
+                ? "100 números · 00–99"
+                : `${campaign.bono_total} bonos · ${campaign.bono_total * 2} números`}{" "}
+              · {formatCOP(campaign.valor_boleta)}
             </p>
             {campaign.slug && (
               <p className="mt-2 text-xs font-semibold text-gold">Enlace: /{campaign.slug}</p>
@@ -124,12 +132,52 @@ function AdminBonos() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Crear bono personalizado en duplas</DialogTitle>
+            <DialogTitle>Crear campaña con premio en especie</DialogTitle>
           </DialogHeader>
           <form onSubmit={submit} className="space-y-5">
             <div className="rounded-lg border border-gold/30 bg-gold/5 p-3 text-sm">
-              Se crearán bonos con <strong>2 números de 3 cifras</strong>, mezclados sin repetición.
-              No se crearán tickets tradicionales.
+              <Label className="mb-2 block">Modalidad</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  variant={form.raffle_mode === "material_2d" ? "secondary" : "outline"}
+                  className="h-auto justify-start whitespace-normal py-3 text-left"
+                  onClick={() => setForm({ ...form, raffle_mode: "material_2d", bono_total: 100 })}
+                >
+                  <span>
+                    <strong className="block">Premio en especie · 2 cifras</strong>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      100 bonos individuales numerados del 00 al 99
+                    </span>
+                  </span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={form.raffle_mode === "dual_bono" ? "secondary" : "outline"}
+                  className="h-auto justify-start whitespace-normal py-3 text-left"
+                  onClick={() => setForm({ ...form, raffle_mode: "dual_bono" })}
+                >
+                  <span>
+                    <strong className="block">Bono en duplas · 3 cifras</strong>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      Dos números únicos del 000 al 999 por bono
+                    </span>
+                  </span>
+                </Button>
+              </div>
+              <p className="mt-2">
+                {form.raffle_mode === "material_2d" ? (
+                  <>
+                    Se generará exactamente un bono por cada número, incluidos <strong>00</strong>,{" "}
+                    <strong>01</strong> y <strong>09</strong>.
+                  </>
+                ) : (
+                  <>
+                    Se crearán bonos con <strong>2 números de 3 cifras</strong>, mezclados sin
+                    repetición. No se crearán tickets tradicionales.
+                  </>
+                )}
+              </p>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <Field label="Nombre *">
@@ -157,12 +205,17 @@ function AdminBonos() {
               </Field>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
-              <Field label="Cantidad">
+              <Field
+                label={
+                  form.raffle_mode === "material_2d" ? "Números de la rifa" : "Cantidad de bonos"
+                }
+              >
                 <Input
                   type="number"
-                  min={1}
-                  max={500}
-                  value={form.bono_total}
+                  min={form.raffle_mode === "material_2d" ? 100 : 1}
+                  max={form.raffle_mode === "material_2d" ? 100 : 500}
+                  readOnly={form.raffle_mode === "material_2d"}
+                  value={form.raffle_mode === "material_2d" ? 100 : form.bono_total}
                   onChange={(e) => setForm({ ...form, bono_total: Number(e.target.value) })}
                 />
               </Field>
@@ -215,6 +268,14 @@ function AdminBonos() {
                 <Input
                   value={form.bono_prize_dimensions}
                   onChange={(e) => setForm({ ...form, bono_prize_dimensions: e.target.value })}
+                />
+              </Field>
+              <Field label="Valor estimado del premio (COP)">
+                <Input
+                  type="number"
+                  min={0}
+                  value={form.bono_prize_value}
+                  onChange={(e) => setForm({ ...form, bono_prize_value: e.target.value })}
                 />
               </Field>
             </div>
@@ -290,7 +351,11 @@ function AdminBonos() {
               </label>
             </div>
             <Button disabled={busy} className="w-full">
-              {busy ? "Generando…" : `Crear ${form.bono_total} bonos`}
+              {busy
+                ? "Generando…"
+                : form.raffle_mode === "material_2d"
+                  ? "Crear rifa · 100 números"
+                  : `Crear ${form.bono_total} bonos`}
             </Button>
           </form>
         </DialogContent>

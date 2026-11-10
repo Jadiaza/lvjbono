@@ -3,7 +3,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 const sellerSlugSchema = z.object({
-  slug: z.string().trim().toLowerCase().regex(/^[a-z0-9._-]{3,80}$/),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9._-]{3,80}$/),
 });
 
 export const getPublicSellerPage = createServerFn({ method: "GET" })
@@ -24,7 +28,7 @@ export const getPublicSellerPage = createServerFn({ method: "GET" })
     const { data: bonos, error: bonosError } = await (supabaseAdmin as any)
       .from("raffle_bonos")
       .select(
-        "id, serial, verification_code, status, raffle_id, raffle_bono_numbers(option_number, numero), raffles(id, nombre, slug, valor_boleta, fecha_sorteo, loteria, bono_title, bono_subtitle, bono_prize_name, bono_prize_description, bono_prize_dimensions, bono_prize_image_url, bono_side_image_url, bono_logo_url, bono_number_color, bono_accent_color, bono_footer_text)",
+        "id, serial, verification_code, status, raffle_id, raffle_bono_numbers(option_number, numero), raffles(id, raffle_mode, digitos, bono_numbers_per_ticket, nombre, slug, valor_boleta, fecha_sorteo, loteria, bono_title, bono_subtitle, bono_prize_name, bono_prize_description, bono_prize_dimensions, bono_prize_value, bono_prize_image_url, bono_side_image_url, bono_logo_url, bono_number_color, bono_accent_color, bono_footer_text)",
       )
       .eq("current_responsible_id", responsible.id)
       .order("serial");
@@ -35,7 +39,11 @@ export const getPublicSellerPage = createServerFn({ method: "GET" })
   });
 
 const publicReservationSchema = z.object({
-  slug: z.string().trim().toLowerCase().regex(/^[a-z0-9._-]{3,80}$/),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9._-]{3,80}$/),
   bonoId: z.string().uuid(),
   buyer_name: z.string().trim().min(2).max(120),
   buyer_phone: z.string().trim().min(7).max(30),
@@ -59,7 +67,9 @@ export const reservePublicSellerBono = createServerFn({ method: "POST" })
 
     const { data: bono, error: bonoError } = await (supabaseAdmin as any)
       .from("raffle_bonos")
-      .select("id, raffle_id, serial, status, current_responsible_id, raffle_bono_numbers(option_number, numero)")
+      .select(
+        "id, raffle_id, serial, status, current_responsible_id, raffle_bono_numbers(option_number, numero)",
+      )
       .eq("id", data.bonoId)
       .eq("current_responsible_id", responsible.id)
       .maybeSingle();

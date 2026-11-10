@@ -1,11 +1,5 @@
-import {
-  createFileRoute,
-  useNavigate,
-  useRouterState,
-  Link,
-  Outlet,
-} from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, useNavigate, useRouterState, Link, Outlet } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
@@ -77,7 +71,7 @@ function AdminLayout() {
     queryFn: () => listRaffles(),
     enabled: ready,
   });
-  const raffles = rafflesData?.raffles ?? [];
+  const raffles = useMemo(() => rafflesData?.raffles ?? [], [rafflesData?.raffles]);
   const access = rafflesData?.access;
   const isPlatformAdmin = access?.role === "admin";
   const selectedRaffle =
@@ -85,9 +79,9 @@ function AdminLayout() {
     raffles.find((raffle) => raffle.activa) ??
     raffles[0];
   const adminSkin = selectedRaffle?.public_skin ?? "purpura-real";
-  const isDualBono =
+  const isBonoCampaign =
     (selectedRaffle as (typeof selectedRaffle & { raffle_mode?: string }) | undefined)
-      ?.raffle_mode === "dual_bono";
+      ?.raffle_mode !== "standard";
 
   useEffect(() => {
     document.documentElement.dataset.adminSkin = adminSkin;
@@ -112,14 +106,14 @@ function AdminLayout() {
   // so route the Boletas view to the dedicated dual-bono admin screen instead of showing 0.
   useEffect(() => {
     if (!selectedRaffle || pathname !== "/admin") return;
-    if (isDualBono) {
+    if (isBonoCampaign) {
       navigate({
         to: "/admin/bonos/$raffleId",
         params: { raffleId: selectedRaffle.id },
         replace: true,
       });
     }
-  }, [isDualBono, navigate, pathname, selectedRaffle]);
+  }, [isBonoCampaign, navigate, pathname, selectedRaffle]);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -134,7 +128,7 @@ function AdminLayout() {
     );
 
   const boletasLink =
-    isDualBono && selectedRaffle ? (
+    isBonoCampaign && selectedRaffle ? (
       <Link
         to="/admin/bonos/$raffleId"
         params={{ raffleId: selectedRaffle.id }}
@@ -285,7 +279,7 @@ function AdminLayout() {
             Menú de administración
           </summary>
           <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-4 pb-3 text-sm">
-            {isDualBono && selectedRaffle ? (
+            {isBonoCampaign && selectedRaffle ? (
               <Link
                 to="/admin/bonos/$raffleId"
                 params={{ raffleId: selectedRaffle.id }}
@@ -315,25 +309,16 @@ function AdminLayout() {
                 <Link to="/admin/bonos" className="rounded-md px-3 py-2 hover:bg-secondary">
                   Bonos
                 </Link>
-                <Link
-                  to="/admin/responsables"
-                  className="rounded-md px-3 py-2 hover:bg-secondary"
-                >
+                <Link to="/admin/responsables" className="rounded-md px-3 py-2 hover:bg-secondary">
                   Responsables
                 </Link>
-                <Link
-                  to="/admin/distribucion"
-                  className="rounded-md px-3 py-2 hover:bg-secondary"
-                >
+                <Link to="/admin/distribucion" className="rounded-md px-3 py-2 hover:bg-secondary">
                   Distribución
                 </Link>
                 <Link to="/admin/sorteo" className="rounded-md px-3 py-2 hover:bg-secondary">
                   Sorteo
                 </Link>
-                <Link
-                  to="/admin/recordatorios"
-                  className="rounded-md px-3 py-2 hover:bg-secondary"
-                >
+                <Link to="/admin/recordatorios" className="rounded-md px-3 py-2 hover:bg-secondary">
                   Recordatorios
                 </Link>
                 <Link to="/admin/padrinos" className="rounded-md px-3 py-2 hover:bg-secondary">

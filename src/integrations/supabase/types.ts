@@ -55,6 +55,10 @@ export type Database = {
       raffles: {
         Row: {
           activa: boolean;
+          raffle_mode: string;
+          bono_total: number | null;
+          bono_numbers_per_ticket: number | null;
+          bono_prize_value: number | null;
           bre_b: string | null;
           bre_b_qr_url: string | null;
           bre_b_logo_url: string | null;
@@ -99,6 +103,10 @@ export type Database = {
         };
         Insert: {
           activa?: boolean;
+          raffle_mode?: string;
+          bono_total?: number | null;
+          bono_numbers_per_ticket?: number | null;
+          bono_prize_value?: number | null;
           bre_b?: string | null;
           bre_b_qr_url?: string | null;
           bre_b_logo_url?: string | null;
@@ -143,6 +151,10 @@ export type Database = {
         };
         Update: {
           activa?: boolean;
+          raffle_mode?: string;
+          bono_total?: number | null;
+          bono_numbers_per_ticket?: number | null;
+          bono_prize_value?: number | null;
           bre_b?: string | null;
           bre_b_qr_url?: string | null;
           bre_b_logo_url?: string | null;
@@ -629,6 +641,27 @@ export type Database = {
           prize_amount: number;
           result_number: number | null;
         }[];
+      };
+      generate_dual_bonos: {
+        Args: { _raffle_id: string; _total_bonos?: number };
+        Returns: number;
+      };
+      admin_update_raffle_bono: {
+        Args: {
+          _actor_user_id: string;
+          _bono_id: string;
+          _buyer_city: string | null;
+          _buyer_name: string | null;
+          _buyer_notes: string | null;
+          _buyer_phone: string | null;
+          _numbers: Json;
+          _serial: number;
+        };
+        Returns: Json;
+      };
+      admin_delete_raffle_bono: {
+        Args: { _actor_user_id: string; _bono_id: string };
+        Returns: Json;
       };
       has_role: {
         Args: {

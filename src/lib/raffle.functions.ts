@@ -137,7 +137,7 @@ export const getPublicRaffleCatalog = createServerFn({ method: "GET" }).handler(
     (supabaseAdmin as any)
       .from("raffles")
       .select(
-        "id, nombre, serie, slug, responsable, fecha_sorteo, loteria, valor_boleta, premio_mayor, public_skin",
+        "id, nombre, serie, slug, responsable, fecha_sorteo, loteria, valor_boleta, premio_mayor, public_skin, raffle_mode, bono_prize_name, bono_prize_value",
       )
       .eq("activa", true)
       .order("created_at", { ascending: false }),
@@ -443,12 +443,38 @@ export const adminListRaffles = createServerFn({ method: "GET" })
     // Enrich with counts
     const enriched = await Promise.all(
       list.map(async (r) => {
-        const { data: agg } = await supabaseAdmin
+        if (r.raffle_mode !== "standard") {
+          const { data: bonos, error } = await (supabaseAdmin as any)
+            .from("raffle_bonos")
+            .select("status")
+            .eq("raffle_id", r.id);
+          if (error) throw new Error("No fue posible consultar el estado de los bonos.");
+          const counts = { disponible: 0, reservado: 0, vendido: 0, ganador: 0 };
+          for (const bono of bonos ?? []) {
+            if (
+              bono.status === "disponible" ||
+              bono.status === "asignado" ||
+              bono.status === "devuelto"
+            ) {
+              counts.disponible++;
+            } else if (bono.status === "reservado") {
+              counts.reservado++;
+            } else if (bono.status === "vendido") {
+              counts.vendido++;
+            } else if (bono.status === "pagado") {
+              counts.ganador++;
+            }
+          }
+          return { ...r, counts, total: (bonos ?? []).length };
+        }
+
+        const { data: agg, error } = await supabaseAdmin
           .from("tickets")
           .select("estado")
           .eq("raffle_id", r.id);
+        if (error) throw new Error("No fue posible consultar el estado de las boletas.");
         const counts = { disponible: 0, reservado: 0, vendido: 0, ganador: 0 };
-        for (const t of agg ?? []) counts[t.estado as keyof typeof counts]++;
+        for (const ticket of agg ?? []) counts[ticket.estado as keyof typeof counts]++;
         return { ...r, counts, total: (agg ?? []).length };
       }),
     );
@@ -562,6 +588,19 @@ export const adminDeleteRaffle = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: raffle, error: raffleError } = await supabaseAdmin
+      .from("raffles")
+      .select("raffle_mode")
+      .eq("id", data.raffleId)
+      .maybeSingle();
+    if (raffleError) throw new Error("No fue posible validar la rifa.");
+    if (!raffle) throw new Error("Rifa no encontrada.");
+    if ((raffle as { raffle_mode?: string }).raffle_mode !== "standard") {
+      throw new Error(
+        "Las campañas de bonos no se pueden eliminar desde Rifas; deben conservar su historial.",
+      );
+    }
+
     // Refuse if there are sold tickets
     const { count, error: countError } = await supabaseAdmin
       .from("tickets")
