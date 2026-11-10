@@ -217,18 +217,29 @@ function AdminRaffles() {
             <div className="rounded-xl border bg-secondary/40 p-4">
               <Label className="mb-2 block">Modalidad</Label>
               <div className="grid gap-2 sm:grid-cols-2">
-                <Button type="button" variant="secondary" className="justify-start">
-                  Cartón tradicional
+                <Button type="button" variant="secondary" className="h-auto min-h-14 justify-start whitespace-normal py-3">
+                  <span className="text-left">
+                    <strong className="block">Rifa tradicional de artículos</strong>
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      Un solo número por boleta · 00–99
+                    </span>
+                  </span>
                 </Button>
-                <Button type="button" variant="outline" className="justify-start" asChild>
+                <Button type="button" variant="outline" className="h-auto min-h-14 justify-start whitespace-normal py-3" asChild>
                   <Link to="/admin/bonos" onClick={() => setShowCreate(false)}>
-                    Bono personalizado en duplas
+                    <span className="text-left">
+                      <strong className="block">Bono personalizado en duplas</strong>
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        Dos números de tres cifras por bono
+                      </span>
+                    </span>
                   </Link>
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                La modalidad en duplas se configura en su módulo independiente para conservar
-                intacto el flujo de rifas tradicionales.
+                Para rifar artículos, selecciona la modalidad tradicional y configura 2 dígitos:
+                se generarán las 100 boletas consecutivas del 00 al 99, cada una con un único número.
+                Los bonos en duplas conservan su administración independiente.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
