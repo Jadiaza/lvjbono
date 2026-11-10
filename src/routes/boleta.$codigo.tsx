@@ -29,11 +29,14 @@ export const Route = createFileRoute("/boleta/$codigo")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  errorComponent: ({ error }) => (
-    <div className="min-h-screen flex items-center justify-center p-6 text-center">
-      <p className="text-destructive">{error.message}</p>
-    </div>
-  ),
+  errorComponent: ({ error }) => {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 text-center">
+        <p className="text-destructive">{errorMessage}</p>
+      </div>
+    );
+  },
   notFoundComponent: () => (
     <div className="min-h-screen flex items-center justify-center p-6 text-center">
       <div>
