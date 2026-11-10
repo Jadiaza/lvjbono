@@ -13,7 +13,7 @@ export type DualBonoCardData = {
     nombre: string;
     fecha_sorteo?: string | null;
     loteria?: string | null;
-    valor_boleta?: number;
+    valor_boleta?: number | null;
     bono_title?: string | null;
     bono_subtitle?: string | null;
     bono_prize_name?: string | null;
@@ -186,6 +186,25 @@ function MaterialTwoDigitCard({
               {raffle.bono_prize_description}
             </p>
           )}
+          {raffle.valor_boleta != null &&
+            Number.isFinite(raffle.valor_boleta) &&
+            raffle.valor_boleta > 0 && (
+              <div className="rounded-2xl border-2 border-[#b99452] bg-[#641f32] p-1.5 shadow-md">
+                <div className="rounded-xl bg-[#f7e7bd] px-4 py-3 text-center">
+                  <p className="text-xs font-black uppercase tracking-[.16em] text-[#8f6426] sm:text-sm">
+                    Valor de la boleta
+                  </p>
+                  <p className="mt-1 font-serif text-2xl font-bold text-[#641f32] sm:text-3xl">
+                    {new Intl.NumberFormat("es-CO", {
+                      style: "currency",
+                      currency: "COP",
+                      maximumFractionDigits: 0,
+                    }).format(raffle.valor_boleta)}{" "}
+                    COP
+                  </p>
+                </div>
+              </div>
+            )}
           {raffle.bono_prize_dimensions && (
             <div className="border-l-2 pl-3" style={{ borderColor: accent }}>
               <p className="text-xs font-bold uppercase tracking-wider" style={{ color: accent }}>
@@ -195,18 +214,6 @@ function MaterialTwoDigitCard({
                 {raffle.bono_prize_dimensions}
               </p>
             </div>
-          )}
-          {raffle.bono_prize_value != null && (
-            <p className="text-sm font-semibold">
-              Valor estimado:{" "}
-              <span>
-                {new Intl.NumberFormat("es-CO", {
-                  style: "currency",
-                  currency: "COP",
-                  maximumFractionDigits: 0,
-                }).format(raffle.bono_prize_value)}
-              </span>
-            </p>
           )}
           {date && <p className="text-sm text-[#78634a]">{date}</p>}
         </div>
