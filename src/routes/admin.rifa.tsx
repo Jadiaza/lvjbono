@@ -245,21 +245,21 @@ function AdminRaffles() {
                       </span>
                     </span>
                   </Link>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-auto min-h-14 justify-start whitespace-normal py-3"
-                    asChild
-                  >
-                    <Link to="/admin/bonos" onClick={() => setShowCreate(false)}>
-                      <span className="text-left">
-                        <strong className="block">Bono en duplas · 3 cifras</strong>
-                        <span className="block text-xs font-normal text-muted-foreground">
-                          Dos números únicos del 000 al 999 por bono
-                        </span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-auto min-h-14 justify-start whitespace-normal py-3"
+                  asChild
+                >
+                  <Link to="/admin/bonos" onClick={() => setShowCreate(false)}>
+                    <span className="text-left">
+                      <strong className="block">Bono en duplas · 3 cifras</strong>
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        Dos números únicos del 000 al 999 por bono
                       </span>
-                    </Link>
-                  </Button>
+                    </span>
+                  </Link>
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
