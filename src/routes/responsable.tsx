@@ -71,6 +71,7 @@ function ResponsibleDashboard() {
   const [payment, setPayment] = useState({ amount_paid: "", payment_reference: "" });
 
   const exportRef = useRef<HTMLDivElement>(null);
+  const individualBonoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (error) {
@@ -300,12 +301,14 @@ function ResponsibleDashboard() {
     toast.info("La imagen se descargó para que puedas compartirla.");
   }
 
-  function sendSelectedBonoToWhatsApp() {
+  async function sendSelectedBonoToWhatsApp() {
     if (!selectedBono?.buyer_phone) return toast.error("Este bono no tiene un WhatsApp registrado.");
     if (!selectedBono?.verification_code) return toast.error("Este bono no tiene un código de verificación disponible.");
 
     const phone = normalizeWhatsAppPhone(selectedBono.buyer_phone);
     if (!phone) return toast.error("El número de WhatsApp no es válido.");
+    const card = individualBonoRef.current;
+    if (!card) return toast.error("No se encontró la tarjeta del bono para generar la imagen.");
 
     const nums = (selectedBono.raffle_bono_numbers ?? [])
       .slice()
@@ -314,7 +317,7 @@ function ResponsibleDashboard() {
       .join(" y ");
     const bonoUrl = `${window.location.origin}/bono/${encodeURIComponent(selectedBono.verification_code)}`;
     const buyer = selectedBono.buyer_name?.trim();
-    const text = [
+    const message = [
       `Hola${buyer ? ` ${buyer}` : ""}. 🙏`,
       `Te compartimos tu Bono ${padBonoNumber(selectedBono.serial)} – Mensajeros de San Miguel Arcángel.`,
       `Tus números son ${nums}.`,
@@ -325,7 +328,37 @@ function ResponsibleDashboard() {
       "¡Gracias por apoyar nuestra misión!",
     ].join("\n");
 
-    window.location.href = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+    try {
+      await document.fonts?.ready;
+      const images = Array.from(card.querySelectorAll("img"));
+      await Promise.all(images.map((img) => img.decode().catch(() => undefined)));
+      const dataUrl = await toPng(card, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: "#f5e8ce",
+      });
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `bono-${padBonoNumber(selectedBono.serial)}.png`, { type: "image/png" });
+
+      if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
+        await navigator.share({
+          title: `Bono ${padBonoNumber(selectedBono.serial)}`,
+          text: message,
+          files: [file],
+        });
+        return;
+      }
+
+      const download = document.createElement("a");
+      download.href = dataUrl;
+      download.download = file.name;
+      download.click();
+      window.location.href = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+      toast.info("La imagen del bono se descargó. Adjunta ese archivo en el chat de WhatsApp que se abrió.");
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return;
+      toast.error(e instanceof Error ? e.message : "No fue posible generar o compartir la imagen del bono.");
+    }
   }
 
   if (!data) return <main className="p-8">Cargando bonos asignados…</main>;
@@ -486,7 +519,7 @@ function ResponsibleDashboard() {
       <Dialog open={Boolean(selectedBono)} onOpenChange={(open) => !open && setSelectedBono(null)}>
         <DialogContent className="max-h-[94vh] max-w-2xl overflow-y-auto p-4 sm:p-6">
           {selectedBono && <><DialogHeader><DialogTitle>Bono {padBonoNumber(selectedBono.serial)}</DialogTitle></DialogHeader>
-            {selectedRaffle && <div><BonoDualCard statusDisplay="subtle" bono={{ serial: selectedBono.serial, verification_code: selectedBono.verification_code, numbers: selectedNumbers, status: selectedBono.status, raffle: selectedRaffle }} /></div>}
+            {selectedRaffle && <div><BonoDualCard ref={individualBonoRef} statusDisplay="subtle" bono={{ serial: selectedBono.serial, verification_code: selectedBono.verification_code, numbers: selectedNumbers, status: selectedBono.status, raffle: selectedRaffle }} /></div>}
             {selectedBono.buyer_name && <div className="rounded-xl bg-secondary p-3 text-sm"><p><strong>Comprador:</strong> {selectedBono.buyer_name}</p><p><strong>Teléfono:</strong> {selectedBono.buyer_phone || "—"}</p>{selectedBono.buyer_city && <p><strong>Ciudad:</strong> {selectedBono.buyer_city}</p>}</div>}
             <div className="grid gap-2 sm:grid-cols-2">
               {AVAILABLE.has(selectedBono.status) && <Button onClick={() => setReserveOpen(true)}>Reservar este bono</Button>}
