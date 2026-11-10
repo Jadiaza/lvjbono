@@ -16,6 +16,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { BonoBatchCard } from "@/components/bono-batch-card";
 import { BonoDualCard } from "@/components/bono-dual-card";
+import { waitForBonoCardAssets } from "@/lib/bono-card-export";
 import { ResponsibleBuyersTable } from "@/components/responsible-buyers-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -313,7 +314,7 @@ function ResponsibleDashboard() {
     const nums = (selectedBono.raffle_bono_numbers ?? [])
       .slice()
       .sort((x: any, y: any) => x.option_number - y.option_number)
-      .map((n: any) => padBonoNumber(n.numero))
+      .map((n: any) => padBonoNumber(n.numero, selectedRaffle?.digitos === 2 ? 2 : 3))
       .join(" y ");
     const bonoUrl = `${window.location.origin}/bono/${encodeURIComponent(selectedBono.verification_code)}`;
     const buyer = selectedBono.buyer_name?.trim();
@@ -329,9 +330,7 @@ function ResponsibleDashboard() {
     ].join("\n");
 
     try {
-      await document.fonts?.ready;
-      const images = Array.from(card.querySelectorAll("img"));
-      await Promise.all(images.map((img) => img.decode().catch(() => undefined)));
+      await waitForBonoCardAssets(card);
       const dataUrl = await toPng(card, {
         cacheBust: true,
         pixelRatio: 2,

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { adminDeleteBono, adminGetDualBonoCampaign, adminUpdateBono } from "@/lib/bono.functions";
 import { adminRevertPaidBono } from "@/lib/admin-bono-corrections.functions";
 import { BonoDualCard } from "@/components/bono-dual-card";
+import { waitForBonoCardAssets } from "@/lib/bono-card-export";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCOP } from "@/lib/format";
@@ -255,11 +256,18 @@ function CampaignDetail() {
 
   async function downloadPng() {
     if (!printRef.current || !selectedBono) return;
-    const url = await toPng(printRef.current, { pixelRatio: 2, cacheBust: true });
-    const anchor = document.createElement("a");
-    anchor.download = `bono-${padBonoNumber(selectedBono.serial)}.png`;
-    anchor.href = url;
-    anchor.click();
+    try {
+      await waitForBonoCardAssets(printRef.current);
+      const url = await toPng(printRef.current, { pixelRatio: 2, cacheBust: true });
+      const anchor = document.createElement("a");
+      anchor.download = `bono-${padBonoNumber(selectedBono.serial)}.png`;
+      anchor.href = url;
+      anchor.click();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "No fue posible generar la imagen del bono.",
+      );
+    }
   }
 
   async function revertSelectedPayment() {
@@ -414,7 +422,11 @@ function CampaignDetail() {
                     numbers: selectedBono.numbers.map((n: any) => n.numero),
                     raffle,
                   }}
-                  verifyUrl={`${typeof window === "undefined" ? "" : window.location.origin}/bono/${selectedBono.verification_code}`}
+                  verifyUrl={
+                    raffle.raffle_mode === "material_2d"
+                      ? undefined
+                      : `${typeof window === "undefined" ? "" : window.location.origin}/bono/${selectedBono.verification_code}`
+                  }
                 />
               </div>
 

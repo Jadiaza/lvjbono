@@ -819,7 +819,7 @@ export const getPublicBonoByCode = createServerFn({ method: "GET" })
     const { data: bono } = await (supabaseAdmin as any)
       .from("raffle_bonos")
       .select(
-        "id, serial, status, verification_code, raffle_bono_numbers(option_number, numero), raffles(nombre, digitos, bono_numbers_per_ticket, fecha_sorteo, loteria, bono_title, bono_subtitle, bono_prize_name, bono_prize_description, bono_prize_dimensions, bono_prize_image_url, bono_side_image_url, bono_logo_url, bono_number_color, bono_accent_color, bono_footer_text, bono_show_qr, bono_show_platform_branding)",
+        "id, serial, status, verification_code, raffle_bono_numbers(option_number, numero), raffles(raffle_mode, nombre, digitos, bono_numbers_per_ticket, valor_boleta, fecha_sorteo, loteria, bono_title, bono_subtitle, bono_prize_name, bono_prize_description, bono_prize_dimensions, bono_prize_value, bono_prize_image_url, bono_side_image_url, bono_logo_url, bono_number_color, bono_accent_color, bono_footer_text, bono_show_qr, bono_show_platform_branding)",
       )
       .eq("verification_code", data.code)
       .maybeSingle();

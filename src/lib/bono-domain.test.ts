@@ -31,6 +31,7 @@ describe("dual bono generation", () => {
 
   it("preserves two-digit material numbers and rejects invalid assignments", () => {
     expect([0, 1, 9].map((number) => padBonoNumber(number, 2))).toEqual(["00", "01", "09"]);
+    expect([8, 80].map((number) => padBonoNumber(number, 2))).toEqual(["08", "80"]);
     expect(isValidBonoNumberSet([0], 2, 1)).toBe(true);
     expect(isValidBonoNumberSet([100], 2, 1)).toBe(false);
     expect(isValidBonoNumberSet([9, 9], 2, 2)).toBe(false);

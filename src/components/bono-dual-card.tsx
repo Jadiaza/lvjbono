@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, useEffect, useState, type ForwardedRef } from "react";
 import { padBonoNumber } from "@/lib/bono-domain";
 
 export type DualBonoCardData = {
@@ -7,6 +7,7 @@ export type DualBonoCardData = {
   numbers: [number, number] | number[];
   status?: string;
   raffle: {
+    raffle_mode?: string;
     digitos?: number;
     bono_numbers_per_ticket?: number;
     nombre: string;
@@ -18,6 +19,7 @@ export type DualBonoCardData = {
     bono_prize_name?: string | null;
     bono_prize_description?: string | null;
     bono_prize_dimensions?: string | null;
+    bono_prize_value?: number | null;
     bono_prize_image_url?: string | null;
     bono_prize_image_data_url?: string | null;
     bono_side_image_url?: string | null;
@@ -97,6 +99,174 @@ function OrnamentDivider() {
   );
 }
 
+function MaterialTwoDigitCard({
+  bono,
+  verifyUrl,
+  statusDisplay,
+  forwardedRef,
+}: {
+  bono: DualBonoCardData;
+  verifyUrl?: string;
+  statusDisplay: StatusDisplay;
+  forwardedRef: ForwardedRef<HTMLDivElement>;
+}) {
+  const raffle = bono.raffle;
+  const accent = raffle.bono_accent_color || "#B8860B";
+  const numberColor = raffle.bono_number_color || "#C51B1B";
+  const prizeImage = raffle.bono_prize_image_data_url || raffle.bono_prize_image_url;
+  const logoImage = raffle.bono_logo_data_url || raffle.bono_logo_url;
+  const number = padBonoNumber(bono.numbers[0] ?? 0, 2);
+  const date = dateLabel(raffle.fecha_sorteo, raffle.loteria);
+  const qrUrl =
+    verifyUrl && raffle.bono_show_qr !== false
+      ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(verifyUrl)}`
+      : null;
+
+  return (
+    <div
+      ref={forwardedRef}
+      className="relative mx-auto w-full overflow-hidden rounded-3xl border bg-[#fbf7eb] text-[#352319] shadow-xl md:grid md:min-h-[410px] md:grid-cols-[1.05fr_.95fr_.68fr]"
+      style={{ borderColor: accent }}
+    >
+      <section className="flex min-w-0 flex-col border-b border-[#b99452]/50 p-5 sm:p-7 md:border-b-0 md:border-r">
+        <header className="flex items-center justify-center gap-3 text-center">
+          {logoImage && (
+            <img src={logoImage} alt="Logo" className="h-10 max-w-16 object-contain sm:h-12" />
+          )}
+          {raffle.bono_show_platform_branding !== false && (
+            <p
+              className="text-xs font-black uppercase tracking-[.28em] sm:text-sm"
+              style={{ color: accent }}
+            >
+              RIFAYA
+            </p>
+          )}
+        </header>
+        {raffle.bono_prize_name && (
+          <h2 className="mt-4 text-center font-serif text-2xl font-bold leading-tight sm:text-3xl">
+            {raffle.bono_prize_name}
+          </h2>
+        )}
+        <div className="mt-4 flex min-h-56 flex-1 items-center justify-center sm:min-h-72 md:min-h-0">
+          {prizeImage ? (
+            <img
+              src={prizeImage}
+              alt={raffle.bono_prize_name || "Premio"}
+              className="max-h-[420px] min-h-48 w-full object-contain"
+            />
+          ) : (
+            <div className="grid min-h-48 w-full place-items-center rounded-2xl border border-dashed border-[#b99452]/60 text-sm text-[#78634a]">
+              Imagen del premio
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="min-w-0 p-5 sm:p-7">
+        {(raffle.bono_title || raffle.bono_subtitle || raffle.nombre) && (
+          <div className="border-b border-[#b99452]/50 pb-4 text-center">
+            {raffle.bono_title && (
+              <p
+                className="text-xs font-black uppercase tracking-[.18em]"
+                style={{ color: accent }}
+              >
+                {raffle.bono_title}
+              </p>
+            )}
+            {(raffle.bono_subtitle || raffle.nombre) && (
+              <h3 className="mt-1 font-serif text-xl font-bold leading-snug sm:text-2xl">
+                {raffle.bono_subtitle || raffle.nombre}
+              </h3>
+            )}
+          </div>
+        )}
+        <div className="space-y-4 pt-4">
+          {raffle.bono_prize_description && (
+            <p className="whitespace-pre-line break-words text-sm leading-relaxed text-[#59483a] sm:text-base">
+              {raffle.bono_prize_description}
+            </p>
+          )}
+          {raffle.bono_prize_dimensions && (
+            <div className="border-l-2 pl-3" style={{ borderColor: accent }}>
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: accent }}>
+                Características
+              </p>
+              <p className="mt-1 whitespace-pre-line break-words text-sm leading-relaxed">
+                {raffle.bono_prize_dimensions}
+              </p>
+            </div>
+          )}
+          {raffle.bono_prize_value != null && (
+            <p className="text-sm font-semibold">
+              Valor estimado:{" "}
+              <span>
+                {new Intl.NumberFormat("es-CO", {
+                  style: "currency",
+                  currency: "COP",
+                  maximumFractionDigits: 0,
+                }).format(raffle.bono_prize_value)}
+              </span>
+            </p>
+          )}
+          {date && <p className="text-sm text-[#78634a]">{date}</p>}
+        </div>
+      </section>
+
+      <aside className="flex min-w-0 flex-col items-center justify-center bg-[#641f32] px-5 py-7 text-center text-[#fff9ed]">
+        <p className="text-xs font-bold uppercase tracking-[.22em] text-[#e5c986]">BONO N.º</p>
+        <div className="mt-3 flex gap-2" aria-label={`Número ${number}`}>
+          {number.split("").map((digit, index) => (
+            <span
+              key={index}
+              className="flex h-20 w-16 items-center justify-center rounded-xl border-2 bg-[#fff9ed] font-serif text-5xl font-bold shadow-inner sm:h-24 sm:w-20 sm:text-6xl"
+              style={{ borderColor: accent, color: numberColor }}
+            >
+              {digit}
+            </span>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-[#f4e8d2]">Serial {padBonoNumber(bono.serial)}</p>
+        {qrUrl && (
+          <div className="mt-4 rounded-xl bg-white p-2">
+            <img
+              src={qrUrl}
+              crossOrigin="anonymous"
+              alt="Código QR de verificación del bono"
+              width={120}
+              height={120}
+              className="h-24 w-24 sm:h-[120px] sm:w-[120px]"
+            />
+          </div>
+        )}
+        {verifyUrl && raffle.bono_show_qr !== false && (
+          <p className="mt-2 max-w-full break-all text-[10px] text-[#f4e8d2]">
+            Verificación: {verifyUrl}
+          </p>
+        )}
+      </aside>
+
+      {raffle.bono_footer_text && (
+        <footer className="border-t border-[#b99452]/50 px-4 py-3 text-center font-serif text-sm italic text-[#59483a] md:col-span-3">
+          {raffle.bono_footer_text}
+        </footer>
+      )}
+      {statusDisplay !== "hidden" && bono.status?.toLowerCase() === "reservado" && (
+        <div className="pointer-events-none absolute left-0 top-6 -rotate-12 border-y border-[#e0b45b] bg-[#8f1118]/95 px-6 py-1 text-sm font-semibold italic text-white shadow-md">
+          Reservado
+        </div>
+      )}
+    </div>
+  );
+}
+
+function dateLabel(value?: string | null, loteria?: string | null) {
+  const date = drawParts(value);
+  if (!date) return loteria || null;
+  return [`Sorteo: ${date.day} de ${date.month.toLowerCase()} de ${date.year}`, loteria]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 type StatusDisplay = "review" | "subtle" | "hidden";
 
 export const BonoDualCard = forwardRef<
@@ -104,6 +274,24 @@ export const BonoDualCard = forwardRef<
   { bono: DualBonoCardData; verifyUrl?: string; statusDisplay?: StatusDisplay }
 >(({ bono, verifyUrl, statusDisplay = "subtle" }, ref) => {
   const raffle = bono.raffle;
+  const [browserOrigin, setBrowserOrigin] = useState<string>();
+  useEffect(() => {
+    if (raffle.raffle_mode === "material_2d") setBrowserOrigin(window.location.origin);
+  }, [raffle.raffle_mode]);
+  if (raffle.raffle_mode === "material_2d") {
+    return (
+      <MaterialTwoDigitCard
+        bono={bono}
+        verifyUrl={
+          browserOrigin && bono.verification_code
+            ? `${browserOrigin}/bono/${encodeURIComponent(bono.verification_code)}`
+            : undefined
+        }
+        statusDisplay={statusDisplay}
+        forwardedRef={ref}
+      />
+    );
+  }
   const numberColor = raffle.bono_number_color || "#C51B1B";
   const accent = raffle.bono_accent_color || "#B8860B";
   const status = bono.status?.toLowerCase() || "";
