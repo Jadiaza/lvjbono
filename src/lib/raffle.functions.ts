@@ -609,7 +609,7 @@ export const adminDeleteRaffle = createServerFn({ method: "POST" })
       .in("estado", ["vendido", "ganador"]);
     if (countError) throw new Error("No fue posible validar la rifa.");
     if ((count ?? 0) > 0) {
-      throw new Error("No se puede eliminar: hay boletas vendidas.");
+      throw new Error(`No se puede eliminar el cartón: tiene ${count} boleta(s) vendida(s) o ganadora(s). Desactívalo si quieres ocultarlo al público.`);
     }
     const { error: drawError } = await supabaseAdmin
       .from("draws")

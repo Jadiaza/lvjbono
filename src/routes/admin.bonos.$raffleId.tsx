@@ -3,10 +3,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Download, Pencil, Printer, RotateCcw, Trash2 } from "lucide-react";
+import { Download, Pencil, Printer, RotateCcw, Trash2, Settings2, Users } from "lucide-react";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
-import { adminDeleteBono, adminGetDualBonoCampaign, adminUpdateBono } from "@/lib/bono.functions";
+import { adminAssignCampaignNumbers, adminDeleteBono, adminGetDualBonoCampaign, adminListResponsibles, adminUpdateBono, adminUpdateBonoCampaign } from "@/lib/bono.functions";
 import { adminRevertPaidBono } from "@/lib/admin-bono-corrections.functions";
 import { BonoDualCard } from "@/components/bono-dual-card";
 import { waitForBonoCardAssets } from "@/lib/bono-card-export";
@@ -41,6 +41,9 @@ function CampaignDetail() {
   const get = useServerFn(adminGetDualBonoCampaign);
   const revertPaid = useServerFn(adminRevertPaidBono);
   const updateBono = useServerFn(adminUpdateBono);
+  const updateCampaign = useServerFn(adminUpdateBonoCampaign);
+  const assignNumbers = useServerFn(adminAssignCampaignNumbers);
+  const listResponsibles = useServerFn(adminListResponsibles);
   const deleteBono = useServerFn(adminDeleteBono);
   const qc = useQueryClient();
   const { data } = useQuery({
@@ -52,6 +55,15 @@ function CampaignDetail() {
   const [reverting, setReverting] = useState(false);
   const [savingBono, setSavingBono] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [campaignEditOpen, setCampaignEditOpen] = useState(false);
+  const [savingCampaign, setSavingCampaign] = useState(false);
+  const [campaignForm, setCampaignForm] = useState<any>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignResponsibleId, setAssignResponsibleId] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  const [assignNumberSearch, setAssignNumberSearch] = useState("");
+  const [assignSelected, setAssignSelected] = useState<string[]>([]);
+  const { data: responsibleData } = useQuery({ queryKey: ["bono-responsibles"], queryFn: () => listResponsibles() });
   const [editForm, setEditForm] = useState<{
     serial: string;
     numbers: string[];
@@ -86,9 +98,70 @@ function CampaignDetail() {
   );
 
   const selectedBono = selected ? (bonos.find((b: any) => b.id === selected) ?? null) : null;
+  const assignableBonos = bonos.filter((bono: any) => !bono.current_responsible_id && ["disponible", "devuelto"].includes(bono.status));
+  const visibleAssignableBonos = assignableBonos.filter((bono: any) => padBonoNumber(bono.numbers[0]?.numero, raffle?.digitos === 2 ? 2 : 3).includes(assignNumberSearch));
+
+  async function submitNumberAssignment() {
+    if (!assignResponsibleId || !assignSelected.length) return;
+    setAssigning(true);
+    try {
+      const result = await assignNumbers({ data: { raffleId, responsibleId: assignResponsibleId, bonoIds: assignSelected } });
+      toast.success(`${result.assigned} número(s) asignado(s).`);
+      setAssignOpen(false);
+      setAssignSelected([]);
+      await qc.invalidateQueries({ queryKey: ["dual-bono", raffleId] });
+      await qc.invalidateQueries({ queryKey: ["bono-batches"] });
+      await qc.invalidateQueries({ queryKey: ["public-campaign-kind"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No fue posible asignar los números.");
+    } finally { setAssigning(false); }
+  }
 
   function selectBono(bonoId: string) {
     setSelected(bonoId);
+  }
+
+  function openCampaignEditor() {
+    setCampaignForm({
+      nombre: raffle.nombre, valor_boleta: raffle.valor_boleta,
+      fecha_sorteo: raffle.fecha_sorteo ? String(raffle.fecha_sorteo).slice(0, 10) : "",
+      loteria: raffle.loteria ?? "", bono_title: raffle.bono_title ?? "BONO",
+      bono_subtitle: raffle.bono_subtitle ?? "", bono_prize_name: raffle.bono_prize_name ?? "",
+      bono_prize_description: raffle.bono_prize_description ?? "",
+      bono_prize_dimensions: raffle.bono_prize_dimensions ?? "", bono_prize_value: raffle.bono_prize_value ?? "",
+      bono_prize_image_url: raffle.bono_prize_image_url ?? "", bono_side_image_url: raffle.bono_side_image_url ?? "",
+      bono_logo_url: raffle.bono_logo_url ?? "", bono_number_color: raffle.bono_number_color ?? "#C51B1B",
+      bono_accent_color: raffle.bono_accent_color ?? "#C51B1B", bono_footer_text: raffle.bono_footer_text ?? "",
+      bono_show_qr: raffle.bono_show_qr ?? true, bono_show_platform_branding: raffle.bono_show_platform_branding ?? true,
+    });
+    setCampaignEditOpen(true);
+  }
+
+  async function saveCampaignChanges(event: React.FormEvent) {
+    event.preventDefault();
+    if (!campaignForm) return;
+    setSavingCampaign(true);
+    try {
+      await updateCampaign({ data: {
+        raffleId, ...campaignForm,
+        valor_boleta: Number(campaignForm.valor_boleta),
+        bono_prize_value: campaignForm.bono_prize_value === "" ? null : Number(campaignForm.bono_prize_value),
+        fecha_sorteo: campaignForm.fecha_sorteo || null,
+        loteria: campaignForm.loteria.trim() || null,
+        bono_subtitle: campaignForm.bono_subtitle.trim() || null,
+        bono_prize_description: campaignForm.bono_prize_description.trim() || null,
+        bono_prize_dimensions: campaignForm.bono_prize_dimensions.trim() || null,
+        bono_prize_image_url: campaignForm.bono_prize_image_url.trim() || null,
+        bono_side_image_url: campaignForm.bono_side_image_url.trim() || null,
+        bono_logo_url: campaignForm.bono_logo_url.trim() || null,
+      }});
+      toast.success("Campaña actualizada.");
+      setCampaignEditOpen(false);
+      await qc.invalidateQueries({ queryKey: ["dual-bono", raffleId] });
+      await qc.invalidateQueries({ queryKey: ["dual-bono-campaigns"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No fue posible editar la campaña.");
+    } finally { setSavingCampaign(false); }
   }
 
   function openBonoEditor(bono: any) {
@@ -312,7 +385,37 @@ function CampaignDetail() {
           {bonos.length} bonos · {numberEntries.length} números únicos · Potencial{" "}
           {formatCOP(bonos.length * raffle.valor_boleta)}
         </p>
+        <Button className="mt-3" variant="outline" onClick={openCampaignEditor}>
+          <Settings2 className="mr-1 h-4 w-4" /> Editar campaña
+        </Button>
       </div>
+
+      <Dialog open={campaignEditOpen} onOpenChange={setCampaignEditOpen}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Editar campaña de bonos</DialogTitle><DialogDescription>Actualiza la información del sorteo y el diseño público.</DialogDescription></DialogHeader>
+          {campaignForm && <form onSubmit={saveCampaignChanges} className="grid gap-3 sm:grid-cols-2">
+            <Field label="Nombre"><Input required value={campaignForm.nombre} onChange={e => setCampaignForm({...campaignForm,nombre:e.target.value})}/></Field>
+            <Field label="Valor por bono"><Input type="number" min={0} required value={campaignForm.valor_boleta} onChange={e => setCampaignForm({...campaignForm,valor_boleta:e.target.value})}/></Field>
+            <Field label="Fecha del sorteo"><Input type="date" value={campaignForm.fecha_sorteo} onChange={e => setCampaignForm({...campaignForm,fecha_sorteo:e.target.value})}/></Field>
+            <Field label="Lotería"><Input value={campaignForm.loteria} onChange={e => setCampaignForm({...campaignForm,loteria:e.target.value})}/></Field>
+            <Field label="Título del bono"><Input required value={campaignForm.bono_title} onChange={e => setCampaignForm({...campaignForm,bono_title:e.target.value})}/></Field>
+            <Field label="Subtítulo"><Input value={campaignForm.bono_subtitle} onChange={e => setCampaignForm({...campaignForm,bono_subtitle:e.target.value})}/></Field>
+            <Field label="Premio"><Input required value={campaignForm.bono_prize_name} onChange={e => setCampaignForm({...campaignForm,bono_prize_name:e.target.value})}/></Field>
+            <Field label="Valor estimado del premio"><Input type="number" min={0} value={campaignForm.bono_prize_value} onChange={e => setCampaignForm({...campaignForm,bono_prize_value:e.target.value})}/></Field>
+            <Field label="Descripción"><Input value={campaignForm.bono_prize_description} onChange={e => setCampaignForm({...campaignForm,bono_prize_description:e.target.value})}/></Field>
+            <Field label="Características"><Input value={campaignForm.bono_prize_dimensions} onChange={e => setCampaignForm({...campaignForm,bono_prize_dimensions:e.target.value})}/></Field>
+            <Field label="Imagen del premio (URL)"><Input type="url" value={campaignForm.bono_prize_image_url} onChange={e => setCampaignForm({...campaignForm,bono_prize_image_url:e.target.value})}/></Field>
+            <Field label="Imagen secundaria (URL)"><Input type="url" value={campaignForm.bono_side_image_url} onChange={e => setCampaignForm({...campaignForm,bono_side_image_url:e.target.value})}/></Field>
+            <Field label="Logo (URL)"><Input type="url" value={campaignForm.bono_logo_url} onChange={e => setCampaignForm({...campaignForm,bono_logo_url:e.target.value})}/></Field>
+            <Field label="Color de números"><Input type="color" value={campaignForm.bono_number_color} onChange={e => setCampaignForm({...campaignForm,bono_number_color:e.target.value})}/></Field>
+            <Field label="Color de acento"><Input type="color" value={campaignForm.bono_accent_color} onChange={e => setCampaignForm({...campaignForm,bono_accent_color:e.target.value})}/></Field>
+            <Field label="Texto del pie"><Input value={campaignForm.bono_footer_text} onChange={e => setCampaignForm({...campaignForm,bono_footer_text:e.target.value})}/></Field>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={campaignForm.bono_show_qr} onChange={e => setCampaignForm({...campaignForm,bono_show_qr:e.target.checked})}/> Mostrar código QR</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={campaignForm.bono_show_platform_branding} onChange={e => setCampaignForm({...campaignForm,bono_show_platform_branding:e.target.checked})}/> Mostrar marca de plataforma</label>
+            <DialogFooter className="sm:col-span-2"><Button type="button" variant="outline" onClick={()=>setCampaignEditOpen(false)}>Cancelar</Button><Button type="submit" disabled={savingCampaign}>{savingCampaign ? "Guardando…" : "Guardar cambios"}</Button></DialogFooter>
+          </form>}
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-9">
         {stats.map(([label, value]) => (
@@ -324,6 +427,7 @@ function CampaignDetail() {
       </div>
 
       <div className="flex flex-wrap gap-2">
+        <Button variant="outline" onClick={() => setAssignOpen(true)}><Users className="mr-1 h-4 w-4" /> Asignar números</Button>
         <Input
           className="max-w-xs"
           placeholder="Buscar bono o cualquiera de sus números"
@@ -340,6 +444,19 @@ function CampaignDetail() {
           <Printer className="mr-1 h-4 w-4" /> Imprimir
         </Button>
       </div>
+
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Asignar números disponibles</DialogTitle><DialogDescription>Selecciona un responsable y los números que tendrá asignados.</DialogDescription></DialogHeader>
+          <div className="space-y-3">
+            <Field label="Responsable"><select className="h-10 w-full rounded-md border bg-background px-3" value={assignResponsibleId} onChange={event => setAssignResponsibleId(event.target.value)}><option value="">Selecciona un responsable</option>{(responsibleData?.responsibles ?? []).filter((item: any) => item.active).map((item: any) => <option key={item.id} value={item.id}>{item.display_name}</option>)}</select></Field>
+            <Input placeholder="Filtrar por número" value={assignNumberSearch} onChange={event => setAssignNumberSearch(event.target.value)} />
+            <p className="text-sm text-muted-foreground">{assignSelected.length} seleccionados · {assignableBonos.length} disponibles</p>
+            <div className="grid max-h-64 grid-cols-5 gap-2 overflow-auto sm:grid-cols-8">{visibleAssignableBonos.map((bono: any) => <button key={bono.id} type="button" onClick={() => setAssignSelected(current => current.includes(bono.id) ? current.filter(id => id !== bono.id) : [...current, bono.id])} className={`rounded border p-2 text-sm font-semibold ${assignSelected.includes(bono.id) ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}>{padBonoNumber(bono.numbers[0]?.numero, raffle.digitos === 2 ? 2 : 3)}</button>)}</div>
+            <DialogFooter><Button variant="outline" onClick={() => setAssignOpen(false)}>Cancelar</Button><Button disabled={assigning || !assignResponsibleId || !assignSelected.length} onClick={submitNumberAssignment}>{assigning ? "Asignando…" : `Asignar ${assignSelected.length} número(s)`}</Button></DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <section>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">

@@ -268,6 +268,60 @@ export const adminGetDualBonoCampaign = createServerFn({ method: "GET" })
     };
   });
 
+export const adminAssignCampaignNumbers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((value: unknown) => z.object({
+    raffleId: z.string().uuid(),
+    responsibleId: z.string().uuid(),
+    bonoIds: z.array(z.string().uuid()).min(1).max(500),
+  }).parse(value))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: responsible, error: responsibleError } = await (supabaseAdmin as any)
+      .from("raffle_responsibles")
+      .select("id, active")
+      .eq("id", data.responsibleId)
+      .single();
+    if (responsibleError || !responsible?.active) throw new Error("El responsable no está activo.");
+    const { data: raffle, error: raffleError } = await (supabaseAdmin as any)
+      .from("raffles")
+      .select("id, raffle_mode")
+      .eq("id", data.raffleId)
+      .single();
+    if (raffleError || !raffle || !["material_2d", "dual_bono"].includes(raffle.raffle_mode)) {
+      throw new Error("Campaña de bonos no encontrada.");
+    }
+    const { data: bonos, error: bonosError } = await (supabaseAdmin as any)
+      .from("raffle_bonos")
+      .select("id, raffle_id, status, current_responsible_id")
+      .eq("raffle_id", data.raffleId)
+      .in("id", data.bonoIds);
+    if (bonosError || bonos?.length !== data.bonoIds.length) throw new Error("No se encontraron todos los números seleccionados.");
+    if (bonos.some((bono: any) => bono.current_responsible_id || !["disponible", "devuelto"].includes(bono.status))) {
+      throw new Error("Selecciona únicamente números disponibles y sin responsable.");
+    }
+
+    const code = `DIR-${Date.now().toString(36).toUpperCase()}`;
+    const { data: batch, error: batchError } = await (supabaseAdmin as any)
+      .from("raffle_bono_batches")
+      .insert({ raffle_id: data.raffleId, responsible_id: data.responsibleId, code, name: "Números asignados", created_by: context.userId })
+      .select("id")
+      .single();
+    if (batchError) throw new Error(batchError.message);
+    const { data: updated, error: updateError } = await (supabaseAdmin as any)
+      .from("raffle_bonos")
+      .update({ current_responsible_id: data.responsibleId, current_batch_id: batch.id, status: "asignado" })
+      .eq("current_responsible_id", null)
+      .in("id", data.bonoIds)
+      .select("id");
+    if (updateError || updated?.length !== data.bonoIds.length) throw new Error(updateError?.message ?? "Uno de los números ya fue asignado. Actualiza la lista e intenta de nuevo.");
+    await (supabaseAdmin as any).from("raffle_bono_assignments").insert(data.bonoIds.map((bonoId) => ({ raffle_id: data.raffleId, bono_id: bonoId, responsible_id: data.responsibleId, batch_id: batch.id, created_by: context.userId })));
+    await (supabaseAdmin as any).from("raffle_bono_events").insert(data.bonoIds.map((bonoId) => ({ raffle_id: data.raffleId, bono_id: bonoId, actor_user_id: context.userId, responsible_id: data.responsibleId, event_type: "asignado", from_status: "disponible", to_status: "asignado", metadata: { batch_id: batch.id } })));
+    await (supabaseAdmin as any).from("raffle_responsibles").update({ public_page_enabled: true }).eq("id", data.responsibleId);
+    return { assigned: data.bonoIds.length };
+  });
+
 const responsibleSchema = z.object({
   username: z
     .string()
@@ -833,13 +887,14 @@ export const responsibleGetDashboard = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const responsible = await getResponsible(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: bonos } = await (supabaseAdmin as any)
+    const { data: bonos, error } = await (supabaseAdmin as any)
       .from("raffle_bonos")
       .select(
         "*, raffles(nombre, valor_boleta), raffle_bono_numbers(option_number, numero), raffle_bono_batches(code, name)",
       )
       .eq("current_responsible_id", responsible.id)
       .order("serial");
+    if (error) throw new Error(error.message);
     const rows = bonos ?? [];
     return { responsible, bonos: rows, summary: calculateBonoSummary(rows) };
   });
@@ -903,6 +958,59 @@ const adminBonoEditSchema = z.object({
   buyer_city: z.string().trim().max(100).nullable(),
   buyer_notes: z.string().trim().max(500).nullable(),
 });
+
+const adminCampaignEditSchema = z.object({
+  raffleId: z.string().uuid(),
+  nombre: z.string().trim().min(1).max(160),
+  valor_boleta: z.number().int().min(0),
+  fecha_sorteo: z.string().nullable(),
+  loteria: z.string().trim().max(160).nullable(),
+  bono_title: z.string().trim().max(100),
+  bono_subtitle: z.string().trim().max(200).nullable(),
+  bono_prize_name: z.string().trim().max(160),
+  bono_prize_description: z.string().trim().max(2000).nullable(),
+  bono_prize_dimensions: z.string().trim().max(500).nullable(),
+  bono_prize_value: z.number().int().min(0).nullable(),
+  bono_prize_image_url: z.string().url().nullable().or(z.literal("")),
+  bono_side_image_url: z.string().url().nullable().or(z.literal("")),
+  bono_logo_url: z.string().url().nullable().or(z.literal("")),
+  bono_number_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  bono_accent_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  bono_footer_text: z.string().trim().max(300),
+  bono_show_qr: z.boolean(),
+  bono_show_platform_branding: z.boolean(),
+});
+
+export const adminUpdateBonoCampaign = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((value: unknown) => adminCampaignEditSchema.parse(value))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { raffleId, ...patch } = data;
+    const { data: raffle, error: readError } = await supabaseAdmin
+      .from("raffles")
+      .select("raffle_mode")
+      .eq("id", raffleId)
+      .maybeSingle();
+    if (readError || !raffle) throw new Error("No se encontró la campaña.");
+    if (raffle.raffle_mode !== "dual_bono" && raffle.raffle_mode !== "material_2d") {
+      throw new Error("La campaña no corresponde a un bono.");
+    }
+    const campaignPatch = {
+      ...patch,
+      fecha_sorteo: patch.fecha_sorteo || null,
+      bono_subtitle: patch.bono_subtitle || null,
+      bono_prize_description: patch.bono_prize_description || null,
+      bono_prize_dimensions: patch.bono_prize_dimensions || null,
+      bono_prize_image_url: patch.bono_prize_image_url || null,
+      bono_side_image_url: patch.bono_side_image_url || null,
+      bono_logo_url: patch.bono_logo_url || null,
+    };
+    const { error } = await (supabaseAdmin as any).from("raffles").update(campaignPatch).eq("id", raffleId);
+    if (error) throw new Error("No fue posible guardar los cambios de la campaña.");
+    return { ok: true };
+  });
 
 export const adminUpdateBono = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

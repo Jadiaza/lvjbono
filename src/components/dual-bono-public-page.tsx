@@ -23,7 +23,7 @@ type CampaignRaffle = {
   bono_footer_text: string | null;
 };
 
-type PublicBono = { serial: number; status: string; numbers: number[] };
+type PublicBono = { serial: number; status: string; numbers: number[]; responsible_id?: string | null };
 
 type DualBonoPublicPageProps = {
   raffle: CampaignRaffle;
@@ -46,7 +46,7 @@ export function DualBonoPublicPage({ raffle, sellers, bonos }: DualBonoPublicPag
   const isTwoDigitMaterial = raffle.raffle_mode === "material_2d";
   const digits = isTwoDigitMaterial ? 2 : 3;
   const publicNumbers = bonos.flatMap((bono) =>
-    bono.numbers.map((numero) => ({ numero, status: bono.status })),
+    bono.numbers.map((numero) => ({ numero, status: bono.status, responsible_id: bono.responsible_id ?? null })),
   );
   const availableCount = publicNumbers.filter((number) => number.status === "disponible").length;
   return (
@@ -174,8 +174,11 @@ export function DualBonoPublicPage({ raffle, sellers, bonos }: DualBonoPublicPag
 
           {sellers.length ? (
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {sellers.map((seller) => (
-                <Link
+              {sellers.map((seller) => {
+                const sellerNumbers = isTwoDigitMaterial
+                  ? publicNumbers.filter((number) => number.responsible_id === seller.id)
+                  : [];
+                return <Link
                   key={seller.id}
                   to="/vendedor/$slug"
                   params={{ slug: seller.slug }}
@@ -186,8 +189,9 @@ export function DualBonoPublicPage({ raffle, sellers, bonos }: DualBonoPublicPag
                   <p className="mt-2 text-sm text-slate-500">
                     Ver {isTwoDigitMaterial ? "números" : "bonos y números"} disponibles
                   </p>
-                </Link>
-              ))}
+                  {sellerNumbers.length > 0 && <p className="mt-2 text-xs text-slate-600">Números asignados: {sellerNumbers.map((number) => padBonoNumber(number.numero, 2)).join(", ")}</p>}
+                </Link>;
+              })}
             </div>
           ) : (
             <p className="mt-6 rounded-2xl border border-dashed p-8 text-center text-slate-500">

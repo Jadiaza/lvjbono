@@ -34,22 +34,33 @@ export const getPublicCampaignKind = createServerFn({ method: "GET" })
           .not("responsible_id", "is", null),
         (supabaseAdmin as any)
           .from("raffle_bonos")
-          .select("serial, status, raffle_bono_numbers(numero)")
+          .select("serial, status, current_responsible_id, raffle_bono_numbers(numero)")
           .eq("raffle_id", raffle.id)
           .order("serial"),
       ]);
     if (batchesError || bonosError) throw new Error("No fue posible consultar los bonos públicos.");
 
     const sellers = new Map<string, any>();
-    for (const batch of batches ?? []) {
-      const responsible = batch.raffle_responsibles;
-      if (!responsible?.active || !responsible?.public_page_enabled) continue;
+    const addSeller = (responsible: any) => {
+      if (!responsible?.active || !responsible?.public_page_enabled) return;
       sellers.set(responsible.id, {
         id: responsible.id,
         display_name: responsible.display_name,
         slug: responsible.slug,
         phone: responsible.phone,
       });
+    };
+    for (const batch of batches ?? []) addSeller(batch.raffle_responsibles);
+    const assignedResponsibleIds = new Set(
+      (bonos ?? []).map((bono: any) => bono.current_responsible_id).filter(Boolean),
+    );
+    if (assignedResponsibleIds.size) {
+      const { data: assignedResponsibles, error: responsiblesError } = await (supabaseAdmin as any)
+        .from("raffle_responsibles")
+        .select("id, display_name, slug, phone, active, public_page_enabled")
+        .in("id", [...assignedResponsibleIds]);
+      if (responsiblesError) throw new Error("No fue posible consultar los responsables públicos.");
+      for (const responsible of assignedResponsibles ?? []) addSeller(responsible);
     }
 
     return {
@@ -59,6 +70,7 @@ export const getPublicCampaignKind = createServerFn({ method: "GET" })
       bonos: (bonos ?? []).map((bono: any) => ({
         serial: bono.serial,
         status: bono.status,
+        responsible_id: bono.current_responsible_id,
         numbers: (bono.raffle_bono_numbers ?? []).map((item: any) => item.numero),
       })),
     };

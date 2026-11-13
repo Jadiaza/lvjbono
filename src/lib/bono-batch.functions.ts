@@ -48,7 +48,6 @@ export const responsibleGetOfferBatches = createServerFn({ method: "GET" })
         "id, serial, status, verification_code, current_batch_id, raffle_id, buyer_name, buyer_phone, buyer_city, buyer_notes, amount_paid, sale_value, raffle_bono_numbers(option_number, numero), raffle_bono_batches(id, code, name), raffles(id, raffle_mode, nombre, digitos, bono_numbers_per_ticket, bono_prize_value, valor_boleta, fecha_sorteo, loteria, bono_title, bono_subtitle, bono_prize_name, bono_prize_description, bono_prize_dimensions, bono_prize_image_url, bono_side_image_url, bono_logo_url, bono_number_color, bono_accent_color, bono_footer_text, bono_show_qr, bono_show_platform_branding)",
       )
       .eq("current_responsible_id", responsible.id)
-      .not("current_batch_id", "is", null)
       .order("serial");
     if (error) throw new Error(error.message);
 
@@ -80,17 +79,23 @@ export const responsibleGetOfferBatches = createServerFn({ method: "GET" })
     for (const bono of bonos ?? []) {
       const batch = bono.raffle_bono_batches;
       const raffle = bono.raffles;
-      if (!batch || !raffle) continue;
+      if (!raffle) continue;
+      // Two-digit material campaigns can assign each number directly without a batch.
+      const effectiveBatch = batch ?? {
+        id: `direct-${raffle.id}`,
+        code: `RIFA-${raffle.id.slice(0, 8).toUpperCase()}`,
+        name: raffle.nombre,
+      };
       const enrichedRaffle = raffleCache.get(raffle.id) ?? raffle;
-      const current = grouped.get(batch.id) ?? {
-        id: batch.id,
-        code: batch.code,
-        name: batch.name,
+      const current = grouped.get(effectiveBatch.id) ?? {
+        id: effectiveBatch.id,
+        code: effectiveBatch.code,
+        name: effectiveBatch.name,
         raffle: enrichedRaffle,
         bonos: [],
       };
       current.bonos.push(bono);
-      grouped.set(batch.id, current);
+      grouped.set(effectiveBatch.id, current);
     }
 
     return {
