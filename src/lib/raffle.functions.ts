@@ -611,11 +611,28 @@ export const adminDeleteRaffle = createServerFn({ method: "POST" })
     if ((count ?? 0) > 0) {
       throw new Error(`No se puede eliminar el cartón: tiene ${count} boleta(s) vendida(s) o ganadora(s). Desactívalo si quieres ocultarlo al público.`);
     }
-    const { error: drawError } = await supabaseAdmin
+    const { count: reservedCount, error: reservedError } = await supabaseAdmin
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("raffle_id", data.raffleId)
+      .eq("estado", "reservado");
+    if (reservedError) throw new Error("No fue posible validar las reservas del cartón.");
+    if ((reservedCount ?? 0) > 0) throw new Error(`No se puede eliminar: tiene ${reservedCount} boleta(s) reservada(s). Cancela primero las reservas.`);
+
+    const { count: paidCount, error: paidError } = await supabaseAdmin
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("raffle_id", data.raffleId)
+      .gt("valor_pagado", 0);
+    if (paidError) throw new Error("No fue posible validar los pagos del cartón.");
+    if ((paidCount ?? 0) > 0) throw new Error(`No se puede eliminar: ${paidCount} boleta(s) tienen pagos registrados.`);
+
+    const { count: drawCount, error: drawError } = await supabaseAdmin
       .from("draws")
-      .delete()
+      .select("id", { count: "exact", head: true })
       .eq("raffle_id", data.raffleId);
-    if (drawError) throw new Error("No fue posible eliminar el sorteo.");
+    if (drawError) throw new Error("No fue posible validar el historial del sorteo.");
+    if ((drawCount ?? 0) > 0) throw new Error("No se puede eliminar: el cartón ya tiene un sorteo registrado.");
     const { error: ticketsError } = await supabaseAdmin
       .from("tickets")
       .delete()

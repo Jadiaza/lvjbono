@@ -194,6 +194,45 @@ export const adminListDualBonoCampaigns = createServerFn({ method: "GET" })
     return { campaigns: data ?? [] };
   });
 
+export const adminDeleteBonoCampaign = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((value: unknown) => z.object({ raffleId: z.string().uuid() }).parse(value))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: raffle, error: raffleError } = await (supabaseAdmin as any)
+      .from("raffles").select("id, raffle_mode, nombre").eq("id", data.raffleId).single();
+    if (raffleError || !raffle || !["dual_bono", "material_2d"].includes(raffle.raffle_mode)) {
+      throw new Error("Campaña de bonos no encontrada.");
+    }
+    const [bonosResult, salesResult, eventsResult, assignmentsResult, batchesResult] = await Promise.all([
+      (supabaseAdmin as any).from("raffle_bonos").select("id, serial, status, sale_id, amount_paid, reservation_expires_at").eq("raffle_id", data.raffleId),
+      (supabaseAdmin as any).from("raffle_bono_sales").select("id", { count: "exact", head: true }).eq("raffle_id", data.raffleId),
+      (supabaseAdmin as any).from("raffle_bono_events").select("id", { count: "exact", head: true }).eq("raffle_id", data.raffleId).neq("event_type", "generado"),
+      (supabaseAdmin as any).from("raffle_bono_assignments").select("id", { count: "exact", head: true }).eq("raffle_id", data.raffleId),
+      (supabaseAdmin as any).from("raffle_bono_batches").select("id, responsible_id").eq("raffle_id", data.raffleId),
+    ]);
+    for (const result of [bonosResult, salesResult, eventsResult, assignmentsResult, batchesResult]) {
+      if (result.error) throw new Error("No fue posible validar el historial de la campaña.");
+    }
+    const bonos = bonosResult.data ?? [];
+    const sold = bonos.filter((bono: any) => ["vendido", "pagado"].includes(bono.status) || bono.sale_id || Number(bono.amount_paid ?? 0) > 0).length;
+    if (sold || salesResult.count) throw new Error(`No se puede eliminar: hay ${sold || salesResult.count} bono(s) con ventas o pagos registrados.`);
+    const activeReservations = bonos.filter((bono: any) => bono.status === "reservado" && (!bono.reservation_expires_at || new Date(bono.reservation_expires_at) > new Date())).length;
+    if (activeReservations) throw new Error(`No se puede eliminar: hay ${activeReservations} reserva(s) activas. Cancélalas primero.`);
+    if (eventsResult.count || assignmentsResult.count || batchesResult.data?.some((batch: any) => batch.responsible_id)) {
+      throw new Error("No se puede eliminar: la campaña tiene historial de asignaciones o actividad. Devuelve los bonos y conserva el historial.");
+    }
+    if (bonos.some((bono: any) => bono.status === "anulado" || bono.status === "devuelto")) {
+      throw new Error("No se puede eliminar: hay bonos anulados o devueltos con historial que debe conservarse.");
+    }
+    const { error: batchesDeleteError } = await (supabaseAdmin as any).from("raffle_bono_batches").delete().eq("raffle_id", data.raffleId);
+    if (batchesDeleteError) throw new Error("No fue posible eliminar los lotes vacíos.");
+    const { error: deleteError } = await (supabaseAdmin as any).from("raffles").delete().eq("id", data.raffleId);
+    if (deleteError) throw new Error("No fue posible eliminar la campaña.");
+    return { deleted: true, name: raffle.nombre };
+  });
+
 export const adminGetDualBonoCampaign = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .validator((value: unknown) => z.object({ raffleId: z.string().uuid() }).parse(value))

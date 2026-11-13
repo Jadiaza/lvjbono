@@ -3,9 +3,9 @@ import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tan
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, TicketCheck } from "lucide-react";
+import { Plus, TicketCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { adminCreateDualBonoCampaign, adminListDualBonoCampaigns } from "@/lib/bono.functions";
+import { adminCreateDualBonoCampaign, adminDeleteBonoCampaign, adminListDualBonoCampaigns } from "@/lib/bono.functions";
 import { adminSetDualBonoPublicSlug } from "@/lib/bono-slug.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,12 +43,14 @@ function AdminBonos() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const list = useServerFn(adminListDualBonoCampaigns);
   const create = useServerFn(adminCreateDualBonoCampaign);
+  const deleteCampaign = useServerFn(adminDeleteBonoCampaign);
   const setPublicSlug = useServerFn(adminSetDualBonoPublicSlug);
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { data } = useQuery({ queryKey: ["dual-bono-campaigns"], queryFn: () => list() });
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [form, setForm] = useState(initialForm);
   if (pathname.replace(/\/$/, "") !== "/admin/bonos") return <Outlet />;
 
@@ -88,6 +90,18 @@ function AdminBonos() {
     }
   }
 
+  async function removeCampaign(campaign: any) {
+    if (!window.confirm(`¿Eliminar la campaña «${campaign.nombre}»? Solo se permite si no tiene ventas, pagos, reservas activas ni historial de asignaciones.`)) return;
+    setDeletingId(campaign.id);
+    try {
+      await deleteCampaign({ data: { raffleId: campaign.id } });
+      toast.success("Campaña eliminada.");
+      await qc.invalidateQueries();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No fue posible eliminar la campaña.");
+    } finally { setDeletingId(null); }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -104,11 +118,11 @@ function AdminBonos() {
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {(data?.campaigns ?? []).map((campaign: any) => (
+          <div key={campaign.id} className="flex items-start gap-3 rounded-xl border bg-card p-5 transition hover:border-gold/60">
           <Link
-            key={campaign.id}
             to="/admin/bonos/$raffleId"
             params={{ raffleId: campaign.id }}
-            className="rounded-xl border bg-card p-5 transition hover:border-gold/60"
+            className="min-w-0 flex-1"
           >
             <TicketCheck className="mb-3 h-6 w-6 text-gold" />
             <h2 className="font-semibold">{campaign.nombre}</h2>
@@ -122,6 +136,10 @@ function AdminBonos() {
               <p className="mt-2 text-xs font-semibold text-gold">Enlace: /{campaign.slug}</p>
             )}
           </Link>
+          <Button type="button" variant="outline" size="icon" title="Eliminar campaña" aria-label={`Eliminar campaña ${campaign.nombre}`} disabled={deletingId === campaign.id} onClick={() => removeCampaign(campaign)} className="shrink-0 text-destructive hover:text-destructive">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          </div>
         ))}
         {!data?.campaigns?.length && (
           <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
