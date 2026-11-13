@@ -423,9 +423,9 @@ function CampaignDetail() {
                     raffle,
                   }}
                   verifyUrl={
-                    raffle.raffle_mode === "material_2d"
-                      ? undefined
-                      : `${typeof window === "undefined" ? "" : window.location.origin}/bono/${selectedBono.verification_code}`
+                    selectedBono.verification_code
+                      ? `${typeof window === "undefined" ? "" : window.location.origin}/bono/${selectedBono.verification_code}`
+                      : undefined
                   }
                 />
               </div>

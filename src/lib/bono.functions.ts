@@ -22,6 +22,27 @@ function shuffleBonos<T>(items: T[]) {
   return shuffled;
 }
 
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+async function imageToDataUrl(url: string | null | undefined) {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
+    const response = await fetch(parsed.toString(), { redirect: "follow" });
+    if (!response.ok) return null;
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.startsWith("image/")) return null;
+    const declaredLength = Number(response.headers.get("content-length") || 0);
+    if (declaredLength > MAX_IMAGE_BYTES) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength > MAX_IMAGE_BYTES) return null;
+    return `data:${contentType};base64,${Buffer.from(bytes).toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 async function requireAdmin(context: AuthContext) {
   const { data } = await context.supabase
     .from("user_roles")
@@ -211,6 +232,17 @@ export const adminGetDualBonoCampaign = createServerFn({ method: "GET" })
         .eq("raffle_id", data.raffleId),
     ]);
     if (!raffle) throw new Error("Campaña no encontrada.");
+    const [prizeDataUrl, logoDataUrl, sideDataUrl] = await Promise.all([
+      imageToDataUrl(raffle.bono_prize_image_url),
+      imageToDataUrl(raffle.bono_logo_url),
+      imageToDataUrl(raffle.bono_side_image_url),
+    ]);
+    const enrichedRaffle = {
+      ...raffle,
+      bono_prize_image_data_url: prizeDataUrl,
+      bono_logo_data_url: logoDataUrl,
+      bono_side_image_data_url: sideDataUrl,
+    };
     const numberMap = new Map<string, any[]>();
     for (const number of numbers ?? [])
       numberMap.set(number.bono_id, [...(numberMap.get(number.bono_id) ?? []), number]);
@@ -229,7 +261,7 @@ export const adminGetDualBonoCampaign = createServerFn({ method: "GET" })
       return { ...responsible, ...calculateBonoSummary(assigned), total: assigned.length };
     });
     return {
-      raffle,
+      raffle: enrichedRaffle,
       bonos: rows,
       responsibles: responsibleSummaries,
       summary: calculateBonoSummary(rows),
@@ -824,7 +856,21 @@ export const getPublicBonoByCode = createServerFn({ method: "GET" })
       .eq("verification_code", data.code)
       .maybeSingle();
     if (!bono) throw new Error("Bono no encontrado.");
-    return { bono };
+    let enrichedRaffle = bono.raffles;
+    if (enrichedRaffle) {
+      const [prizeDataUrl, logoDataUrl, sideDataUrl] = await Promise.all([
+        imageToDataUrl(enrichedRaffle.bono_prize_image_url),
+        imageToDataUrl(enrichedRaffle.bono_logo_url),
+        imageToDataUrl(enrichedRaffle.bono_side_image_url),
+      ]);
+      enrichedRaffle = {
+        ...enrichedRaffle,
+        bono_prize_image_data_url: prizeDataUrl,
+        bono_logo_data_url: logoDataUrl,
+        bono_side_image_data_url: sideDataUrl,
+      };
+    }
+    return { bono: { ...bono, raffles: enrichedRaffle } };
   });
 
 export const getPublicResponsiblePage = createServerFn({ method: "GET" })

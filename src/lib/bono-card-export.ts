@@ -1,4 +1,12 @@
 export async function waitForBonoCardAssets(node: HTMLElement) {
-  await document.fonts.ready;
-  await Promise.all(Array.from(node.querySelectorAll("img")).map((image) => image.decode()));
+  if (document.fonts?.ready) {
+    await document.fonts.ready;
+  }
+  const images = Array.from(node.querySelectorAll("img"));
+  await Promise.all(
+    images.map((image) => {
+      if (image.complete && image.naturalWidth > 0) return Promise.resolve();
+      return image.decode().catch(() => undefined);
+    }),
+  );
 }

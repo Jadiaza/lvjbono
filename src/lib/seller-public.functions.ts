@@ -10,6 +10,27 @@ const sellerSlugSchema = z.object({
     .regex(/^[a-z0-9._-]{3,80}$/),
 });
 
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+async function imageToDataUrl(url: string | null | undefined) {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
+    const response = await fetch(parsed.toString(), { redirect: "follow" });
+    if (!response.ok) return null;
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.startsWith("image/")) return null;
+    const declaredLength = Number(response.headers.get("content-length") || 0);
+    if (declaredLength > MAX_IMAGE_BYTES) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength > MAX_IMAGE_BYTES) return null;
+    return `data:${contentType};base64,${Buffer.from(bytes).toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 export const getPublicSellerPage = createServerFn({ method: "GET" })
   .validator((value: unknown) => sellerSlugSchema.parse(value))
   .handler(async ({ data }) => {
@@ -35,7 +56,36 @@ export const getPublicSellerPage = createServerFn({ method: "GET" })
 
     if (bonosError) throw new Error(bonosError.message);
 
-    return { responsible, bonos: bonos ?? [] };
+    const assetCache = new Map<string, Promise<string | null>>();
+    const inlineAsset = (url: string | null | undefined) => {
+      if (!url) return Promise.resolve(null);
+      if (!assetCache.has(url)) assetCache.set(url, imageToDataUrl(url));
+      return assetCache.get(url)!;
+    };
+
+    const raffleCache = new Map<string, any>();
+    for (const bono of bonos ?? []) {
+      const raffle = bono.raffles;
+      if (!raffle?.id || raffleCache.has(raffle.id)) continue;
+      const [prizeDataUrl, sideDataUrl, logoDataUrl] = await Promise.all([
+        inlineAsset(raffle.bono_prize_image_url),
+        inlineAsset(raffle.bono_side_image_url),
+        inlineAsset(raffle.bono_logo_url),
+      ]);
+      raffleCache.set(raffle.id, {
+        ...raffle,
+        bono_prize_image_data_url: prizeDataUrl,
+        bono_side_image_data_url: sideDataUrl,
+        bono_logo_data_url: logoDataUrl,
+      });
+    }
+
+    const enrichedBonos = (bonos ?? []).map((bono: any) => ({
+      ...bono,
+      raffles: bono.raffles?.id ? (raffleCache.get(bono.raffles.id) ?? bono.raffles) : bono.raffles,
+    }));
+
+    return { responsible, bonos: enrichedBonos };
   });
 
 const publicReservationSchema = z.object({
