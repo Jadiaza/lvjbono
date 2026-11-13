@@ -49,7 +49,7 @@ export const getPublicSellerPage = createServerFn({ method: "GET" })
     const { data: bonos, error: bonosError } = await (supabaseAdmin as any)
       .from("raffle_bonos")
       .select(
-        "id, serial, verification_code, status, raffle_id, raffle_bono_numbers(option_number, numero), raffles(id, raffle_mode, digitos, bono_numbers_per_ticket, nombre, slug, valor_boleta, fecha_sorteo, loteria, bono_title, bono_subtitle, bono_prize_name, bono_prize_description, bono_prize_dimensions, bono_prize_value, bono_prize_image_url, bono_side_image_url, bono_logo_url, bono_number_color, bono_accent_color, bono_footer_text, bono_show_qr, bono_show_platform_branding)",
+        "id, serial, verification_code, status, raffle_id, raffle_bono_numbers!raffle_bono_numbers_bono_campaign_fkey(option_number, numero), raffles(id, raffle_mode, digitos, bono_numbers_per_ticket, nombre, slug, valor_boleta, fecha_sorteo, loteria, bono_title, bono_subtitle, bono_prize_name, bono_prize_description, bono_prize_dimensions, bono_prize_value, bono_prize_image_url, bono_side_image_url, bono_logo_url, bono_number_color, bono_accent_color, bono_footer_text, bono_show_qr, bono_show_platform_branding)",
       )
       .eq("current_responsible_id", responsible.id)
       .order("serial");
@@ -118,7 +118,7 @@ export const reservePublicSellerBono = createServerFn({ method: "POST" })
     const { data: bono, error: bonoError } = await (supabaseAdmin as any)
       .from("raffle_bonos")
       .select(
-        "id, raffle_id, serial, status, current_responsible_id, raffle_bono_numbers(option_number, numero)",
+        "id, raffle_id, serial, status, current_responsible_id, raffle_bono_numbers!raffle_bono_numbers_bono_campaign_fkey(option_number, numero)",
       )
       .eq("id", data.bonoId)
       .eq("current_responsible_id", responsible.id)

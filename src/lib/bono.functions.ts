@@ -929,7 +929,7 @@ export const responsibleGetDashboard = createServerFn({ method: "GET" })
     const { data: bonos, error } = await (supabaseAdmin as any)
       .from("raffle_bonos")
       .select(
-        "*, raffles(nombre, valor_boleta), raffle_bono_numbers(option_number, numero), raffle_bono_batches(code, name)",
+        "*, raffles(nombre, valor_boleta), raffle_bono_numbers!raffle_bono_numbers_bono_campaign_fkey(option_number, numero), raffle_bono_batches(code, name)",
       )
       .eq("current_responsible_id", responsible.id)
       .order("serial");
@@ -945,7 +945,7 @@ export const getPublicBonoByCode = createServerFn({ method: "GET" })
     const { data: bono } = await (supabaseAdmin as any)
       .from("raffle_bonos")
       .select(
-        "id, serial, status, verification_code, raffle_bono_numbers(option_number, numero), raffles(raffle_mode, nombre, digitos, bono_numbers_per_ticket, valor_boleta, fecha_sorteo, loteria, bono_title, bono_subtitle, bono_prize_name, bono_prize_description, bono_prize_dimensions, bono_prize_value, bono_prize_image_url, bono_side_image_url, bono_logo_url, bono_number_color, bono_accent_color, bono_footer_text, bono_show_qr, bono_show_platform_branding)",
+        "id, serial, status, verification_code, raffle_bono_numbers!raffle_bono_numbers_bono_campaign_fkey(option_number, numero), raffles(raffle_mode, nombre, digitos, bono_numbers_per_ticket, valor_boleta, fecha_sorteo, loteria, bono_title, bono_subtitle, bono_prize_name, bono_prize_description, bono_prize_dimensions, bono_prize_value, bono_prize_image_url, bono_side_image_url, bono_logo_url, bono_number_color, bono_accent_color, bono_footer_text, bono_show_qr, bono_show_platform_branding)",
       )
       .eq("verification_code", data.code)
       .maybeSingle();
@@ -981,7 +981,7 @@ export const getPublicResponsiblePage = createServerFn({ method: "GET" })
     if (!responsible) throw new Error("Página no disponible.");
     const { data: bonos } = await (supabaseAdmin as any)
       .from("raffle_bonos")
-      .select("id, serial, status, raffle_bono_numbers(option_number, numero), raffles(nombre)")
+      .select("id, serial, status, raffle_bono_numbers!raffle_bono_numbers_bono_campaign_fkey(option_number, numero), raffles(nombre)")
       .eq("current_responsible_id", responsible.id)
       .neq("status", "anulado")
       .order("serial");

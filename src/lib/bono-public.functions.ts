@@ -34,7 +34,7 @@ export const getPublicCampaignKind = createServerFn({ method: "GET" })
           .not("responsible_id", "is", null),
         (supabaseAdmin as any)
           .from("raffle_bonos")
-          .select("serial, status, current_responsible_id, raffle_bono_numbers(numero)")
+          .select("serial, status, current_responsible_id, raffle_bono_numbers!raffle_bono_numbers_bono_campaign_fkey(numero)")
           .eq("raffle_id", raffle.id)
           .order("serial"),
       ]);
