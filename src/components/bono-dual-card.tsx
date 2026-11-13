@@ -125,20 +125,20 @@ function MaterialTwoDigitCard({
   return (
     <div
       ref={forwardedRef}
-      className="relative mx-auto w-full select-none overflow-hidden rounded-3xl border-2 bg-gradient-to-b from-[#fdfbf6] via-[#fbf7eb] to-[#f4eedb] text-[#352319] shadow-2xl md:grid md:min-h-[420px] md:grid-cols-[1.05fr_1fr_.72fr]"
+      className="relative mx-auto w-full select-none overflow-hidden rounded-[26px] border-[2.5px] bg-[#fbf8f1] text-[#332219] shadow-xl md:grid md:min-h-[440px] md:grid-cols-[1.08fr_1fr_.76fr]"
       style={{ borderColor: accent }}
     >
-      {/* SECCIÓN 1: IDENTIFICACIÓN Y FOTO DEL PREMIO */}
-      <section className="flex min-w-0 flex-col justify-between border-b border-[#b99452]/40 p-5 sm:p-7 md:border-b-0 md:border-r">
-        <header className="flex items-center justify-between gap-3">
+      {/* SECCIÓN 1: FOTO DEL PREMIO Y HEADER */}
+      <section className="flex min-w-0 flex-col justify-between border-b border-[#b99452]/40 p-5 sm:p-6 md:border-b-0 md:border-r">
+        <header className="flex items-center justify-between gap-2">
           {logoImage ? (
-            <div className="flex h-12 max-w-[120px] items-center justify-center rounded-xl border border-[#b99452]/30 bg-white/90 p-1.5 shadow-sm">
+            <div className="flex h-10 max-w-[120px] items-center justify-center rounded-lg border border-[#b99452]/30 bg-white/90 p-1 shadow-xs">
               <img src={logoImage} alt="Logo" className="h-full w-full object-contain" crossOrigin="anonymous" />
             </div>
           ) : <div />}
           {raffle.bono_show_platform_branding !== false && (
             <span
-              className="rounded-full border border-[#b99452]/40 bg-[#f7ebd0]/60 px-3 py-1 text-xs font-black uppercase tracking-[.25em] shadow-xs"
+              className="rounded-full border border-[#b99452]/40 bg-[#f6ebd0]/60 px-2.5 py-0.5 text-[11px] font-black uppercase tracking-[.25em]"
               style={{ color: accent }}
             >
               RIFAYA
@@ -147,63 +147,68 @@ function MaterialTwoDigitCard({
         </header>
 
         {raffle.bono_prize_name && (
-          <h2 className="my-3 text-center font-serif text-2xl font-black leading-tight tracking-tight text-[#2d1b11] sm:text-3xl">
+          <h2 className="my-2.5 text-center font-serif text-2xl font-black leading-tight tracking-tight text-[#2c1a11] sm:text-3xl">
             {raffle.bono_prize_name}
           </h2>
         )}
 
-        <div className="relative mt-2 flex min-h-56 flex-1 items-center justify-center overflow-hidden rounded-2xl border border-[#b99452]/35 bg-white/80 p-2 shadow-inner sm:min-h-72 md:min-h-0">
+        <div className="relative mt-2 flex min-h-[220px] flex-1 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-[#b99452]/40 bg-white/80 p-3 shadow-inner">
           {prizeImage ? (
             <img
               src={prizeImage}
               alt={raffle.bono_prize_name || "Premio"}
-              className="max-h-[380px] min-h-48 w-full object-contain transition-transform duration-300 hover:scale-105"
+              className="max-h-[360px] min-h-[200px] w-full object-contain transition-transform duration-300 hover:scale-105"
               crossOrigin="anonymous"
             />
           ) : (
-            <div className="grid min-h-48 w-full place-items-center rounded-xl border border-dashed border-[#b99452]/50 text-sm font-medium text-[#78634a]">
-              Imagen del premio
+            <div className="flex flex-col items-center justify-center gap-2 text-center text-[#7a644e]">
+              <span className="text-3xl">🎁</span>
+              <p className="text-xs font-semibold uppercase tracking-wider">
+                {raffle.bono_prize_name || "Imagen del premio"}
+              </p>
             </div>
           )}
         </div>
       </section>
 
       {/* SECCIÓN 2: INFORMACIÓN DETALLADA, VALOR Y SORTEO */}
-      <section className="flex min-w-0 flex-col justify-between p-5 sm:p-7">
-        {(raffle.bono_title || raffle.bono_subtitle || raffle.nombre) && (
-          <div className="border-b border-[#b99452]/40 pb-4 text-center">
-            {raffle.bono_title && (
-              <span
-                className="inline-block rounded-md px-3 py-0.5 text-xs font-black uppercase tracking-[.2em] text-white shadow-xs"
-                style={{ background: accent }}
-              >
-                {raffle.bono_title}
-              </span>
-            )}
-            {(raffle.bono_subtitle || raffle.nombre) && (
-              <h3 className="mt-2 font-serif text-xl font-bold leading-snug text-[#301b10] sm:text-2xl">
-                {raffle.bono_subtitle || raffle.nombre}
-              </h3>
-            )}
-          </div>
-        )}
+      <section className="flex min-w-0 flex-col justify-between border-b border-[#b99452]/40 p-5 sm:p-6 md:border-b-0 md:border-r">
+        <div>
+          {(raffle.bono_title || raffle.bono_subtitle || raffle.nombre) && (
+            <div className="border-b border-[#b99452]/35 pb-3.5 text-center">
+              {raffle.bono_title && (
+                <span
+                  className="inline-block rounded-md px-3 py-0.5 text-xs font-black uppercase tracking-[.2em] text-white shadow-xs"
+                  style={{ background: accent }}
+                >
+                  {raffle.bono_title}
+                </span>
+              )}
+              {(raffle.bono_subtitle || raffle.nombre) && (
+                <h3 className="mt-2 font-serif text-xl font-bold uppercase leading-snug text-[#301b10] sm:text-2xl">
+                  {raffle.bono_subtitle || raffle.nombre}
+                </h3>
+              )}
+            </div>
+          )}
 
-        <div className="my-auto space-y-4 pt-4">
           {raffle.bono_prize_description && (
-            <p className="whitespace-pre-line break-words text-sm leading-relaxed text-[#59483a] sm:text-base">
+            <p className="mt-3.5 whitespace-pre-line break-words text-center text-sm leading-relaxed text-[#59483a] sm:text-base">
               {raffle.bono_prize_description}
             </p>
           )}
+        </div>
 
+        <div className="space-y-3 pt-3">
           {raffle.valor_boleta != null &&
             Number.isFinite(raffle.valor_boleta) &&
             raffle.valor_boleta > 0 && (
-              <div className="rounded-2xl border-2 border-[#b99452] bg-gradient-to-r from-[#641f32] to-[#7d223c] p-1.5 shadow-lg">
-                <div className="rounded-xl border border-amber-300/40 bg-gradient-to-b from-[#fef5dc] to-[#f7e7bd] px-4 py-3 text-center shadow-xs">
-                  <p className="text-xs font-black uppercase tracking-[.18em] text-[#8f6426] sm:text-sm">
-                    Valor de la boleta
+              <div className="rounded-2xl border-2 border-[#b99452] bg-gradient-to-r from-[#641f32] to-[#7d223c] p-1 shadow-md">
+                <div className="rounded-xl border border-amber-300/40 bg-gradient-to-b from-[#fef7e2] to-[#f7e7bd] px-4 py-2.5 text-center shadow-xs">
+                  <p className="text-xs font-black uppercase tracking-[.18em] text-[#8f6426]">
+                    VALOR DE LA BOLETA
                   </p>
-                  <p className="mt-1 font-serif text-2xl font-black text-[#641f32] sm:text-3xl">
+                  <p className="mt-0.5 font-serif text-2xl font-black text-[#641f32] sm:text-3xl">
                     {new Intl.NumberFormat("es-CO", {
                       style: "currency",
                       currency: "COP",
@@ -216,18 +221,16 @@ function MaterialTwoDigitCard({
             )}
 
           {raffle.bono_prize_dimensions && (
-            <div className="rounded-xl border-l-4 bg-[#f8f1e0]/80 p-3 shadow-xs" style={{ borderColor: accent }}>
-              <p className="text-xs font-extrabold uppercase tracking-wider" style={{ color: accent }}>
-                Características / Medidas
-              </p>
-              <p className="mt-1 whitespace-pre-line break-words text-sm font-medium leading-relaxed text-[#402d20]">
-                {raffle.bono_prize_dimensions}
-              </p>
+            <div className="rounded-xl border border-[#b99452]/40 bg-[#f8f2e2] px-3 py-2 text-center text-xs text-[#523d2b] shadow-xs">
+              <span className="font-extrabold uppercase tracking-wider text-[#735021]">
+                Características / Medidas:{" "}
+              </span>
+              <span className="font-medium">{raffle.bono_prize_dimensions}</span>
             </div>
           )}
 
           {date && (
-            <div className="rounded-xl border border-[#b99452]/40 bg-[#fcf9f1] px-3 py-2 text-center text-sm font-semibold text-[#5a4430] shadow-xs">
+            <div className="rounded-xl border border-[#b99452]/40 bg-[#fffdfa] px-3 py-2 text-center text-xs font-semibold text-[#5a4430] shadow-xs sm:text-sm">
               {date}
             </div>
           )}
@@ -235,21 +238,21 @@ function MaterialTwoDigitCard({
       </section>
 
       {/* SECCIÓN 3: TALONARIO / DÍGITOS DE 2 CIFRAS Y VALIDACIÓN */}
-      <aside className="relative flex min-w-0 flex-col items-center justify-between border-t border-dashed border-[#b99452]/50 bg-gradient-to-b from-[#641f32] via-[#5c1a2c] to-[#481220] px-5 py-7 text-center text-[#fff9ed] shadow-inner md:border-t-0 md:border-l">
-        {/* Muescas decorativas en corte lateral */}
-        <div className="hidden md:block absolute -top-3 -left-3 h-6 w-6 rounded-full border border-amber-500/50 bg-[#fbf7eb]" />
-        <div className="hidden md:block absolute -bottom-3 -left-3 h-6 w-6 rounded-full border border-amber-500/50 bg-[#fbf7eb]" />
+      <aside className="relative flex min-w-0 flex-col items-center justify-between border-t border-dashed border-[#b99452]/50 bg-gradient-to-b from-[#641f32] via-[#5c1a2c] to-[#451220] px-5 py-6 text-center text-[#fff9ed] shadow-inner md:border-t-0">
+        {/* Muescas de ticket decorativas */}
+        <div className="hidden md:block absolute -top-3 -left-3 h-6 w-6 rounded-full border border-amber-500/50 bg-[#fbf8f1]" />
+        <div className="hidden md:block absolute -bottom-3 -left-3 h-6 w-6 rounded-full border border-amber-500/50 bg-[#fbf8f1]" />
 
         <div className="w-full">
-          <div className="inline-block rounded-full border border-amber-300/40 bg-black/20 px-3 py-0.5 text-xs font-extrabold uppercase tracking-[.25em] text-[#e5c986]">
+          <div className="inline-block rounded-full border border-amber-300/40 bg-black/25 px-3 py-1 text-[11px] font-black uppercase tracking-[.25em] text-[#e5c986]">
             NÚMERO ASIGNADO
           </div>
 
-          <div className="mt-4 flex justify-center gap-2.5" aria-label={`Número ${number}`}>
+          <div className="mt-3.5 flex justify-center gap-2.5" aria-label={`Número ${number}`}>
             {number.split("").map((digit, index) => (
               <span
                 key={index}
-                className="flex h-20 w-16 items-center justify-center rounded-2xl border-2 bg-gradient-to-b from-[#ffffff] to-[#fff5e3] font-serif text-5xl font-black shadow-xl sm:h-24 sm:w-20 sm:text-6xl"
+                className="flex h-20 w-16 items-center justify-center rounded-2xl border-2 bg-gradient-to-b from-[#ffffff] to-[#fff6e6] font-serif text-5xl font-black shadow-2xl sm:h-24 sm:w-20 sm:text-6xl"
                 style={{ borderColor: accent, color: numberColor }}
               >
                 {digit}
@@ -257,38 +260,38 @@ function MaterialTwoDigitCard({
             ))}
           </div>
 
-          <div className="mt-3 inline-block rounded-md bg-black/25 px-2.5 py-1 text-xs font-bold tracking-wider text-[#f4e8d2]">
+          <div className="mt-2.5 inline-block rounded-md bg-black/25 px-3 py-0.5 text-xs font-bold tracking-wider text-[#f4e8d2]">
             Bono Serial {padBonoNumber(bono.serial)}
           </div>
         </div>
 
-        <div className="w-full pt-4">
+        <div className="w-full pt-3">
           {qrUrl && (
-            <div className="mx-auto flex w-fit flex-col items-center rounded-2xl border border-amber-200/50 bg-white p-2.5 shadow-xl">
+            <div className="mx-auto flex w-fit flex-col items-center rounded-2xl border border-amber-200/50 bg-white p-2 shadow-2xl">
               <img
                 src={qrUrl}
                 crossOrigin="anonymous"
                 alt="Código QR de verificación del bono"
                 width={120}
                 height={120}
-                className="h-24 w-24 rounded-lg object-contain sm:h-[110px] sm:w-[110px]"
+                className="h-20 w-20 rounded-lg object-contain sm:h-24 sm:w-24"
               />
-              <span className="mt-1 text-[10px] font-bold tracking-tight text-slate-800">
+              <span className="mt-1 text-[9px] font-bold tracking-tight text-slate-800">
                 Escanear para verificar
               </span>
             </div>
           )}
 
           {verifyUrl && raffle.bono_show_qr !== false && (
-            <p className="mt-2 max-w-full break-all text-[10px] text-[#f4e8d2]/80">
-              Cód: {bono.verification_code || "OFICIAL"}
+            <p className="mt-1.5 max-w-full break-all text-[9px] text-[#f4e8d2]/70 font-mono">
+              Cód: {bono.verification_code ? bono.verification_code.slice(0, 8) : "OFICIAL"}
             </p>
           )}
         </div>
       </aside>
 
       {raffle.bono_footer_text && (
-        <footer className="border-t border-[#b99452]/50 bg-[#f4ead5] px-4 py-3 text-center font-serif text-sm italic text-[#59483a] shadow-inner md:col-span-3">
+        <footer className="border-t border-[#b99452]/40 bg-[#f5ecda] px-4 py-2.5 text-center font-serif text-xs italic text-[#59483a] shadow-inner md:col-span-3 sm:text-sm">
           {raffle.bono_footer_text}
         </footer>
       )}
