@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { padBonoNumber } from "@/lib/bono-domain";
+import { calculateBonoSummary, padBonoNumber } from "@/lib/bono-domain";
 
 export const Route = createFileRoute("/responsable")({ component: ResponsibleDashboard });
 
@@ -61,6 +61,7 @@ function ResponsibleDashboard() {
   const [filter, setFilter] = useState<BonoFilter>("disponibles");
   const [activeSection, setActiveSection] = useState<DashboardSection>("bonos");
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [selectedRaffleId, setSelectedRaffleId] = useState<string | null>(null);
   const [selectedBono, setSelectedBono] = useState<any | null>(null);
   const [reserveOpen, setReserveOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
@@ -81,12 +82,36 @@ function ResponsibleDashboard() {
     }
   }, [error, navigate]);
 
-  useEffect(() => {
-    if (!selectedBatchId && offerData?.batches?.length) setSelectedBatchId(offerData.batches[0].id);
-  }, [offerData?.batches, selectedBatchId]);
-
   const bonos = data?.bonos ?? [];
-  const filtered = useMemo(() => bonos.filter((b: any) => {
+  const campaigns = useMemo(() => {
+    const grouped = new Map<string, any>();
+    for (const batch of offerData?.batches ?? []) {
+      const raffleId = batch.raffle?.id;
+      if (!raffleId) continue;
+      const current = grouped.get(raffleId);
+      if (!current || String(batch.assigned_at ?? "") > String(current.latestAssignedAt ?? "")) {
+        grouped.set(raffleId, { id: raffleId, name: batch.raffle.nombre, mode: batch.raffle.raffle_mode, latestAssignedAt: batch.assigned_at ?? "" });
+      }
+    }
+    return [...grouped.values()].sort((a, b) => String(b.latestAssignedAt).localeCompare(String(a.latestAssignedAt)));
+  }, [offerData?.batches]);
+  const activeRaffleId = selectedRaffleId ?? campaigns[0]?.id ?? null;
+  const activeCampaign = campaigns.find((campaign: any) => campaign.id === activeRaffleId) ?? null;
+  useEffect(() => {
+    if (!selectedRaffleId && campaigns.length) setSelectedRaffleId(campaigns[0].id);
+  }, [campaigns, selectedRaffleId]);
+  const campaignBonos = useMemo(() => bonos.filter((bono: any) => bono.raffle_id === activeRaffleId), [bonos, activeRaffleId]);
+  const campaignBatches = useMemo(() => (offerData?.batches ?? []).filter((batch: any) => batch.raffle.id === activeRaffleId), [offerData?.batches, activeRaffleId]);
+  useEffect(() => {
+    if (!campaignBatches.length) {
+      setSelectedBatchId(null);
+      return;
+    }
+    if (!campaignBatches.some((batch: any) => batch.id === selectedBatchId)) setSelectedBatchId(campaignBatches[0].id);
+  }, [campaignBatches, selectedBatchId]);
+
+  const campaignSummary = useMemo(() => calculateBonoSummary(campaignBonos), [campaignBonos]);
+  const filtered = useMemo(() => campaignBonos.filter((b: any) => {
     const matchesFilter = filter === "todos" ||
       (filter === "disponibles" && AVAILABLE.has(b.status)) ||
       (filter === "reservados" && b.status === "reservado") ||
@@ -95,11 +120,11 @@ function ResponsibleDashboard() {
     const q = search.trim();
     const matchesSearch = !q || padBonoNumber(b.serial).includes(q) || b.raffle_bono_numbers?.some((n: any) => padBonoNumber(n.numero).includes(q));
     return matchesFilter && matchesSearch;
-  }), [bonos, filter, search]);
+  }), [campaignBonos, filter, search]);
 
   const selectedBatch = useMemo(
-    () => offerData?.batches?.find((batch: any) => batch.id === selectedBatchId) ?? null,
-    [offerData?.batches, selectedBatchId],
+    () => campaignBatches.find((batch: any) => batch.id === selectedBatchId) ?? null,
+    [campaignBatches, selectedBatchId],
   );
 
   const raffleById = (raffleId: string) => offerData?.batches?.find((batch: any) => batch.raffle.id === raffleId)?.raffle ?? null;
@@ -118,7 +143,7 @@ function ResponsibleDashboard() {
       pendiente: 0,
     };
 
-    for (const bono of bonos as any[]) {
+    for (const bono of campaignBonos as any[]) {
       const raffle = offerData?.batches?.find((batch: any) => batch.raffle.id === bono.raffle_id)?.raffle;
       const value = Number(raffle?.valor_boleta ?? 0);
       const paid = Math.max(Number(bono.amount_paid ?? 0), 0);
@@ -139,7 +164,7 @@ function ResponsibleDashboard() {
     }
 
     return totals;
-  }, [bonos, offerData?.batches]);
+  }, [campaignBonos, offerData?.batches]);
 
   function openBono(bono: any) {
     const raffle = raffleById(bono.raffle_id) ?? selectedBatch?.raffle ?? null;
@@ -361,7 +386,7 @@ function ResponsibleDashboard() {
   }
 
   if (!data) return <main className="p-8">Cargando bonos asignados…</main>;
-  const s = data.summary;
+  const s = campaignSummary;
   const selectedNumbers = selectedBono
     ? (selectedBono.raffle_bono_numbers ?? []).slice().sort((a: any, b: any) => a.option_number - b.option_number).map((n: any) => n.numero)
     : [];
@@ -371,7 +396,7 @@ function ResponsibleDashboard() {
     { value: "reservados", label: "Reservados", count: s.counts.reservado ?? 0 },
     { value: "vendidos", label: "Vendidos", count: s.counts.vendido ?? 0 },
     { value: "pagados", label: "Pagados", count: s.counts.pagado ?? 0 },
-    { value: "todos", label: "Todos", count: bonos.length },
+    { value: "todos", label: "Todos", count: campaignBonos.length },
   ];
 
   return (
@@ -379,7 +404,7 @@ function ResponsibleDashboard() {
       <header className="flex items-center justify-between gap-3 rounded-2xl border bg-card p-4">
         <div className="min-w-0">
           <h1 className="truncate font-display text-xl text-gold sm:text-2xl">{data.responsible.display_name}</h1>
-          <p className="text-sm text-muted-foreground">Mis bonos · ventas y pagos</p>
+          <p className="text-sm text-muted-foreground">Mis bonos{activeCampaign ? ` · ${activeCampaign.name}` : ""} · ventas y pagos</p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="outline" size="sm" onClick={() => setPasswordOpen(true)}>
@@ -390,6 +415,25 @@ function ResponsibleDashboard() {
           </Button>
         </div>
       </header>
+
+      {campaigns.length > 1 && (
+        <div className="rounded-2xl border bg-card p-4">
+          <Field label="Rifa asignada">
+            <select
+              className="h-11 w-full rounded-md border bg-background px-3"
+              value={activeRaffleId ?? ""}
+              onChange={(event) => {
+                const raffleId = event.target.value;
+                setSelectedRaffleId(raffleId);
+                setSelectedBatchId(null);
+                setSelectedBono(null);
+              }}
+            >
+              {campaigns.map((campaign: any) => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}
+            </select>
+          </Field>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[["Disponibles", s.counts.asignado ?? 0], ["Reservados", s.counts.reservado ?? 0], ["Vendidos", s.counts.vendido ?? 0], ["Pagados", s.counts.pagado ?? 0]].map(([k, v]) => (
@@ -492,7 +536,7 @@ function ResponsibleDashboard() {
       )}
 
       {activeSection === "compradores" && (
-        <ResponsibleBuyersTable bonos={bonos} raffleById={raffleById} onOpenBono={openBono} onRegisterPayment={openPaymentFor} />
+        <ResponsibleBuyersTable bonos={campaignBonos} raffleById={raffleById} onOpenBono={openBono} onRegisterPayment={openPaymentFor} />
       )}
 
       {activeSection === "carton" && (
@@ -502,7 +546,7 @@ function ResponsibleDashboard() {
             {selectedBatch && <div className="flex gap-2"><Button variant="outline" size="sm" onClick={downloadBatchCard}><Download className="mr-1 h-4 w-4" /> Descargar</Button><Button size="sm" onClick={shareBatchCard}><Share2 className="mr-1 h-4 w-4" /> Compartir</Button></div>}
           </div>
           <div className="flex flex-wrap gap-2">
-            {(offerData?.batches ?? []).map((batch: any) => {
+            {campaignBatches.map((batch: any) => {
               const available = batch.bonos.filter((b: any) => AVAILABLE.has(b.status)).length;
               return <Button key={batch.id} size="sm" variant={selectedBatchId === batch.id ? "default" : "outline"} onClick={() => setSelectedBatchId(batch.id)}><Eye className="mr-1 h-4 w-4" /> {batch.name || batch.code} · {available}/{batch.bonos.length}</Button>;
             })}

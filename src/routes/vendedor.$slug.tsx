@@ -32,6 +32,7 @@ function SellerPage() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<"available" | "all">("available");
   const [search, setSearch] = useState("");
+  const [selectedRaffleId, setSelectedRaffleId] = useState<string | null>(null);
   const [selected, setSelected] = useState<any | null>(null);
   const [reserveOpen, setReserveOpen] = useState(false);
   const [accessOpen, setAccessOpen] = useState(false);
@@ -50,8 +51,21 @@ function SellerPage() {
     retry: false,
   });
 
-  const bonos = useMemo(() => data?.bonos ?? [], [data?.bonos]);
-  const campaign = bonos[0]?.raffles ?? null;
+  const allBonos = useMemo(() => data?.bonos ?? [], [data?.bonos]);
+  const campaigns = useMemo(() => {
+    const byId = new Map<string, any>();
+    for (const bono of allBonos) {
+      const raffle = bono.raffles;
+      if (!raffle?.id) continue;
+      const assignedAt = bono.raffle_bono_batches?.assigned_at ?? bono.created_at ?? "";
+      const current = byId.get(raffle.id);
+      if (!current || String(assignedAt) > String(current.assignedAt)) byId.set(raffle.id, { id: raffle.id, raffle, assignedAt });
+    }
+    return [...byId.values()].sort((left, right) => String(right.assignedAt).localeCompare(String(left.assignedAt)));
+  }, [allBonos]);
+  const activeRaffleId = selectedRaffleId ?? campaigns[0]?.id ?? null;
+  const campaign = campaigns.find((item: any) => item.id === activeRaffleId)?.raffle ?? null;
+  const bonos = useMemo(() => allBonos.filter((bono: any) => bono.raffle_id === activeRaffleId), [allBonos, activeRaffleId]);
   const responsible = data?.responsible;
   const visibleBonos = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -226,7 +240,22 @@ function SellerPage() {
                 {availableCount} disponibles de {bonos.length} asignados
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {campaigns.length > 1 && (
+                <select
+                  aria-label="Seleccionar rifa"
+                  className="h-9 max-w-full rounded-md border bg-background px-3 text-sm"
+                  value={activeRaffleId ?? ""}
+                  onChange={(event) => {
+                    setSelectedRaffleId(event.target.value);
+                    setSelected(null);
+                    setReserveOpen(false);
+                    setConfirmation(null);
+                  }}
+                >
+                  {campaigns.map((item: any) => <option key={item.id} value={item.id}>{item.raffle.nombre}</option>)}
+                </select>
+              )}
               <Button
                 size="sm"
                 variant={filter === "available" ? "default" : "outline"}
