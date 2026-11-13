@@ -119,82 +119,91 @@ function MaterialTwoDigitCard({
   const date = dateLabel(raffle.fecha_sorteo, raffle.loteria);
   const qrUrl =
     verifyUrl && raffle.bono_show_qr !== false
-      ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(verifyUrl)}`
+      ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(verifyUrl)}&margin=4`
       : null;
 
   return (
     <div
       ref={forwardedRef}
-      className="relative mx-auto w-full overflow-hidden rounded-3xl border bg-[#fbf7eb] text-[#352319] shadow-xl md:grid md:min-h-[410px] md:grid-cols-[1.05fr_.95fr_.68fr]"
+      className="relative mx-auto w-full select-none overflow-hidden rounded-3xl border-2 bg-gradient-to-b from-[#fdfbf6] via-[#fbf7eb] to-[#f4eedb] text-[#352319] shadow-2xl md:grid md:min-h-[420px] md:grid-cols-[1.05fr_1fr_.72fr]"
       style={{ borderColor: accent }}
     >
-      <section className="flex min-w-0 flex-col border-b border-[#b99452]/50 p-5 sm:p-7 md:border-b-0 md:border-r">
-        <header className="flex items-center justify-center gap-3 text-center">
-          {logoImage && (
-            <img src={logoImage} alt="Logo" className="h-10 max-w-16 object-contain sm:h-12" />
-          )}
+      {/* SECCIÓN 1: IDENTIFICACIÓN Y FOTO DEL PREMIO */}
+      <section className="flex min-w-0 flex-col justify-between border-b border-[#b99452]/40 p-5 sm:p-7 md:border-b-0 md:border-r">
+        <header className="flex items-center justify-between gap-3">
+          {logoImage ? (
+            <div className="flex h-12 max-w-[120px] items-center justify-center rounded-xl border border-[#b99452]/30 bg-white/90 p-1.5 shadow-sm">
+              <img src={logoImage} alt="Logo" className="h-full w-full object-contain" crossOrigin="anonymous" />
+            </div>
+          ) : <div />}
           {raffle.bono_show_platform_branding !== false && (
-            <p
-              className="text-xs font-black uppercase tracking-[.28em] sm:text-sm"
+            <span
+              className="rounded-full border border-[#b99452]/40 bg-[#f7ebd0]/60 px-3 py-1 text-xs font-black uppercase tracking-[.25em] shadow-xs"
               style={{ color: accent }}
             >
               RIFAYA
-            </p>
+            </span>
           )}
         </header>
+
         {raffle.bono_prize_name && (
-          <h2 className="mt-4 text-center font-serif text-2xl font-bold leading-tight sm:text-3xl">
+          <h2 className="my-3 text-center font-serif text-2xl font-black leading-tight tracking-tight text-[#2d1b11] sm:text-3xl">
             {raffle.bono_prize_name}
           </h2>
         )}
-        <div className="mt-4 flex min-h-56 flex-1 items-center justify-center sm:min-h-72 md:min-h-0">
+
+        <div className="relative mt-2 flex min-h-56 flex-1 items-center justify-center overflow-hidden rounded-2xl border border-[#b99452]/35 bg-white/80 p-2 shadow-inner sm:min-h-72 md:min-h-0">
           {prizeImage ? (
             <img
               src={prizeImage}
               alt={raffle.bono_prize_name || "Premio"}
-              className="max-h-[420px] min-h-48 w-full object-contain"
+              className="max-h-[380px] min-h-48 w-full object-contain transition-transform duration-300 hover:scale-105"
+              crossOrigin="anonymous"
             />
           ) : (
-            <div className="grid min-h-48 w-full place-items-center rounded-2xl border border-dashed border-[#b99452]/60 text-sm text-[#78634a]">
+            <div className="grid min-h-48 w-full place-items-center rounded-xl border border-dashed border-[#b99452]/50 text-sm font-medium text-[#78634a]">
               Imagen del premio
             </div>
           )}
         </div>
       </section>
 
-      <section className="min-w-0 p-5 sm:p-7">
+      {/* SECCIÓN 2: INFORMACIÓN DETALLADA, VALOR Y SORTEO */}
+      <section className="flex min-w-0 flex-col justify-between p-5 sm:p-7">
         {(raffle.bono_title || raffle.bono_subtitle || raffle.nombre) && (
-          <div className="border-b border-[#b99452]/50 pb-4 text-center">
+          <div className="border-b border-[#b99452]/40 pb-4 text-center">
             {raffle.bono_title && (
-              <p
-                className="text-xs font-black uppercase tracking-[.18em]"
-                style={{ color: accent }}
+              <span
+                className="inline-block rounded-md px-3 py-0.5 text-xs font-black uppercase tracking-[.2em] text-white shadow-xs"
+                style={{ background: accent }}
               >
                 {raffle.bono_title}
-              </p>
+              </span>
             )}
             {(raffle.bono_subtitle || raffle.nombre) && (
-              <h3 className="mt-1 font-serif text-xl font-bold leading-snug sm:text-2xl">
+              <h3 className="mt-2 font-serif text-xl font-bold leading-snug text-[#301b10] sm:text-2xl">
                 {raffle.bono_subtitle || raffle.nombre}
               </h3>
             )}
           </div>
         )}
-        <div className="space-y-4 pt-4">
+
+        <div className="my-auto space-y-4 pt-4">
           {raffle.bono_prize_description && (
             <p className="whitespace-pre-line break-words text-sm leading-relaxed text-[#59483a] sm:text-base">
               {raffle.bono_prize_description}
             </p>
           )}
+
           {raffle.valor_boleta != null &&
             Number.isFinite(raffle.valor_boleta) &&
             raffle.valor_boleta > 0 && (
-              <div className="rounded-2xl border-2 border-[#b99452] bg-[#641f32] p-1.5 shadow-md">
-                <div className="rounded-xl bg-[#f7e7bd] px-4 py-3 text-center">
-                  <p className="text-xs font-black uppercase tracking-[.16em] text-[#8f6426] sm:text-sm">
+              <div className="rounded-2xl border-2 border-[#b99452] bg-gradient-to-r from-[#641f32] to-[#7d223c] p-1.5 shadow-lg">
+                <div className="rounded-xl border border-amber-300/40 bg-gradient-to-b from-[#fef5dc] to-[#f7e7bd] px-4 py-3 text-center shadow-xs">
+                  <p className="text-xs font-black uppercase tracking-[.18em] text-[#8f6426] sm:text-sm">
                     Valor de la boleta
                   </p>
-                  <p className="mt-1 font-serif text-2xl font-bold text-[#641f32] sm:text-3xl">
+                  <p className="mt-1 font-serif text-2xl font-black text-[#641f32] sm:text-3xl">
                     {new Intl.NumberFormat("es-CO", {
                       style: "currency",
                       currency: "COP",
@@ -205,58 +214,85 @@ function MaterialTwoDigitCard({
                 </div>
               </div>
             )}
+
           {raffle.bono_prize_dimensions && (
-            <div className="border-l-2 pl-3" style={{ borderColor: accent }}>
-              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: accent }}>
-                Características
+            <div className="rounded-xl border-l-4 bg-[#f8f1e0]/80 p-3 shadow-xs" style={{ borderColor: accent }}>
+              <p className="text-xs font-extrabold uppercase tracking-wider" style={{ color: accent }}>
+                Características / Medidas
               </p>
-              <p className="mt-1 whitespace-pre-line break-words text-sm leading-relaxed">
+              <p className="mt-1 whitespace-pre-line break-words text-sm font-medium leading-relaxed text-[#402d20]">
                 {raffle.bono_prize_dimensions}
               </p>
             </div>
           )}
-          {date && <p className="text-sm text-[#78634a]">{date}</p>}
+
+          {date && (
+            <div className="rounded-xl border border-[#b99452]/40 bg-[#fcf9f1] px-3 py-2 text-center text-sm font-semibold text-[#5a4430] shadow-xs">
+              {date}
+            </div>
+          )}
         </div>
       </section>
 
-      <aside className="flex min-w-0 flex-col items-center justify-center bg-[#641f32] px-5 py-7 text-center text-[#fff9ed]">
-        <p className="text-xs font-bold uppercase tracking-[.22em] text-[#e5c986]">BONO N.º</p>
-        <div className="mt-3 flex gap-2" aria-label={`Número ${number}`}>
-          {number.split("").map((digit, index) => (
-            <span
-              key={index}
-              className="flex h-20 w-16 items-center justify-center rounded-xl border-2 bg-[#fff9ed] font-serif text-5xl font-bold shadow-inner sm:h-24 sm:w-20 sm:text-6xl"
-              style={{ borderColor: accent, color: numberColor }}
-            >
-              {digit}
-            </span>
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-[#f4e8d2]">Serial {padBonoNumber(bono.serial)}</p>
-        {qrUrl && (
-          <div className="mt-4 rounded-xl bg-white p-2">
-            <img
-              src={qrUrl}
-              crossOrigin="anonymous"
-              alt="Código QR de verificación del bono"
-              width={120}
-              height={120}
-              className="h-24 w-24 sm:h-[120px] sm:w-[120px]"
-            />
+      {/* SECCIÓN 3: TALONARIO / DÍGITOS DE 2 CIFRAS Y VALIDACIÓN */}
+      <aside className="relative flex min-w-0 flex-col items-center justify-between border-t border-dashed border-[#b99452]/50 bg-gradient-to-b from-[#641f32] via-[#5c1a2c] to-[#481220] px-5 py-7 text-center text-[#fff9ed] shadow-inner md:border-t-0 md:border-l">
+        {/* Muescas decorativas en corte lateral */}
+        <div className="hidden md:block absolute -top-3 -left-3 h-6 w-6 rounded-full border border-amber-500/50 bg-[#fbf7eb]" />
+        <div className="hidden md:block absolute -bottom-3 -left-3 h-6 w-6 rounded-full border border-amber-500/50 bg-[#fbf7eb]" />
+
+        <div className="w-full">
+          <div className="inline-block rounded-full border border-amber-300/40 bg-black/20 px-3 py-0.5 text-xs font-extrabold uppercase tracking-[.25em] text-[#e5c986]">
+            NÚMERO ASIGNADO
           </div>
-        )}
-        {verifyUrl && raffle.bono_show_qr !== false && (
-          <p className="mt-2 max-w-full break-all text-[10px] text-[#f4e8d2]">
-            Verificación: {verifyUrl}
-          </p>
-        )}
+
+          <div className="mt-4 flex justify-center gap-2.5" aria-label={`Número ${number}`}>
+            {number.split("").map((digit, index) => (
+              <span
+                key={index}
+                className="flex h-20 w-16 items-center justify-center rounded-2xl border-2 bg-gradient-to-b from-[#ffffff] to-[#fff5e3] font-serif text-5xl font-black shadow-xl sm:h-24 sm:w-20 sm:text-6xl"
+                style={{ borderColor: accent, color: numberColor }}
+              >
+                {digit}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-3 inline-block rounded-md bg-black/25 px-2.5 py-1 text-xs font-bold tracking-wider text-[#f4e8d2]">
+            Bono Serial {padBonoNumber(bono.serial)}
+          </div>
+        </div>
+
+        <div className="w-full pt-4">
+          {qrUrl && (
+            <div className="mx-auto flex w-fit flex-col items-center rounded-2xl border border-amber-200/50 bg-white p-2.5 shadow-xl">
+              <img
+                src={qrUrl}
+                crossOrigin="anonymous"
+                alt="Código QR de verificación del bono"
+                width={120}
+                height={120}
+                className="h-24 w-24 rounded-lg object-contain sm:h-[110px] sm:w-[110px]"
+              />
+              <span className="mt-1 text-[10px] font-bold tracking-tight text-slate-800">
+                Escanear para verificar
+              </span>
+            </div>
+          )}
+
+          {verifyUrl && raffle.bono_show_qr !== false && (
+            <p className="mt-2 max-w-full break-all text-[10px] text-[#f4e8d2]/80">
+              Cód: {bono.verification_code || "OFICIAL"}
+            </p>
+          )}
+        </div>
       </aside>
 
       {raffle.bono_footer_text && (
-        <footer className="border-t border-[#b99452]/50 px-4 py-3 text-center font-serif text-sm italic text-[#59483a] md:col-span-3">
+        <footer className="border-t border-[#b99452]/50 bg-[#f4ead5] px-4 py-3 text-center font-serif text-sm italic text-[#59483a] shadow-inner md:col-span-3">
           {raffle.bono_footer_text}
         </footer>
       )}
+
       {statusDisplay !== "hidden" && bono.status?.toLowerCase() === "reservado" && (
         <div className="pointer-events-none absolute left-0 top-6 -rotate-12 border-y border-[#e0b45b] bg-[#8f1118]/95 px-6 py-1 text-sm font-semibold italic text-white shadow-md">
           Reservado
